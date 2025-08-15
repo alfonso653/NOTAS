@@ -10,9 +10,20 @@ dependencies:
     sdk: flutter
   provider: ^6.0.0
   shared_preferences: ^2.0.15
+  
 
 flutter:
   assets:
     - assets/grid.png
     - assets/lines.png
     - assets/dots.png
+    - assets/nota.gif
+  fonts:
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Nunito-BoldItalic.ttf
+          weight: 700
+          style: italic

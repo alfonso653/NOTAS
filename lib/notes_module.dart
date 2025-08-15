@@ -99,140 +99,76 @@ class NoteListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Notas', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 28)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black87),
-            tooltip: 'Buscar',
-            onPressed: () {
-              // Aquí puedes implementar la búsqueda
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Buscar'),
-                  content: const Text('Función de búsqueda próximamente.'),
-                  actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+    return Consumer<NoteProvider>(
+      builder: (context, provider, child) {
+        if (provider.notes.isEmpty) {
+          return const Center(
+            child: Text('No tienes notas aún. ¡Agrega tu primera nota!',
+                style: TextStyle(fontSize: 18, color: Colors.grey)),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: provider.notes.length,
+          itemBuilder: (context, index) {
+            final note = provider.notes[index];
+            return Card(
+              color: note.color,
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                onTap: () {
+                  Navigator.of(context).push(PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        NoteEditScreen(note: note),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      );
+                    },
+                  ));
+                },
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  child: Icon(Icons.note, color: Colors.amber, size: 22),
                 ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black87),
-            tooltip: 'Menú',
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                title: Text(
+                  note.title.isEmpty ? 'Sin título' : note.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
-                builder: (ctx) => Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(leading: const Icon(Icons.settings), title: const Text('Configuración'), onTap: () => Navigator.pop(ctx)),
-                    ListTile(leading: const Icon(Icons.info_outline), title: const Text('Acerca de'), onTap: () => Navigator.pop(ctx)),
+                subtitle: Text(
+                  note.date,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                trailing: PopupMenuButton<String>(
+                  icon: const Icon(Icons.delete_outline, color: Colors.black54),
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      provider.deleteNote(note);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                        value: 'delete', child: Text('Eliminar')),
                   ],
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Consumer<NoteProvider>(
-        builder: (context, provider, child) {
-          if (provider.notes.isEmpty) {
-            return const Center(
-              child: Text('No tienes notas aún. ¡Agrega tu primera nota!', style: TextStyle(fontSize: 18, color: Colors.grey)),
+              ),
             );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: provider.notes.length,
-            itemBuilder: (context, index) {
-              final note = provider.notes[index];
-              return Card(
-                color: note.color,
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NoteEditScreen(note: note),
-                      ),
-                    );
-                  },
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.amber.shade100),
-                      ),
-                      child: const Icon(Icons.sticky_note_2_outlined, color: Colors.amber, size: 26),
-                    ),
-                  title: Text(
-                    note.title.isEmpty ? 'Sin título' : note.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                  ),
-                  subtitle: Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(note.date, style: const TextStyle(color: Colors.grey)),
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: Colors.black54),
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        provider.deleteNote(note);
-                      }
-                    },
-                    itemBuilder: (ctx) => [
-                      const PopupMenuItem(value: 'delete', child: Text('Eliminar')),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.amber,
-        onPressed: () {
-          final now = DateTime.now();
-          final newNote = Note(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: '',
-            content: '',
-            date: '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
-          );
-          context.read<NoteProvider>().addNote(newNote);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => NoteEditScreen(note: newNote),
-            ),
-          );
-        },
-        tooltip: 'Nueva nota',
-        child: const Icon(Icons.add, color: Colors.white, size: 32),
-        elevation: 4,
-        shape: const CircleBorder(),
-      ),
+          },
+        );
+      },
     );
   }
+// ...existing code...
 }
 
 /// Pantalla de edición de notas que contiene campos para el título, contenido,
@@ -285,18 +221,19 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Text('◀️', style: TextStyle(fontSize: 24)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Editar nota', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('Editar nota',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.check, color: Colors.amber),
+            icon: const Text('✅', style: TextStyle(fontSize: 24)),
             tooltip: 'Guardar',
             onPressed: _saveNote,
           ),
           IconButton(
-            icon: const Icon(Icons.share, color: Colors.black54),
+            icon: const Text('📤', style: TextStyle(fontSize: 24)),
             tooltip: 'Compartir',
             onPressed: () {
               showModalBottomSheet(
@@ -323,7 +260,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             },
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.black54),
+            icon: const Text('⚙️', style: TextStyle(fontSize: 22)),
             tooltip: 'Opciones',
             onSelected: (value) {
               switch (value) {
@@ -331,7 +268,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                   showModalBottomSheet(
                     context: context,
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(16)),
                     ),
                     builder: (_) => SkinPanel(
                       selectedSkin: _skin,
@@ -350,16 +288,22 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: const Text('Eliminar nota'),
-                      content: const Text('¿Estás seguro de que deseas eliminar esta nota?'),
+                      content: const Text(
+                          '¿Estás seguro de que deseas eliminar esta nota?'),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancelar')),
                         TextButton(
                           onPressed: () {
-                            context.read<NoteProvider>().deleteNote(widget.note);
+                            context
+                                .read<NoteProvider>()
+                                .deleteNote(widget.note);
                             Navigator.pop(ctx);
                             Navigator.pop(context);
                           },
-                          child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                          child: const Text('Eliminar',
+                              style: TextStyle(color: Colors.red)),
                         ),
                       ],
                     ),
@@ -369,7 +313,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             },
             itemBuilder: (ctx) => [
               const PopupMenuItem(value: 'skins', child: Text('Skins y color')),
-              const PopupMenuItem(value: 'delete', child: Text('Eliminar nota')),
+              const PopupMenuItem(
+                  value: 'delete', child: Text('Eliminar nota')),
             ],
           ),
         ],
@@ -381,15 +326,18 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             color: Colors.grey.shade100,
             child: Row(
               children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                Icon(Icons.calendar_today,
+                    size: 16, color: Colors.grey.shade600),
                 const SizedBox(width: 4),
-                Text(widget.note.date, style: const TextStyle(color: Colors.black54)),
+                Text(widget.note.date,
+                    style: const TextStyle(color: Colors.black54)),
                 const SizedBox(width: 8),
                 const Text('|', style: TextStyle(color: Colors.black26)),
                 const SizedBox(width: 8),
                 const Icon(Icons.book, size: 16, color: Colors.amber),
                 const SizedBox(width: 4),
-                const Text('Cuaderno predeterminado', style: TextStyle(color: Colors.black54)),
+                const Text('Cuaderno predeterminado',
+                    style: TextStyle(color: Colors.black54)),
               ],
             ),
           ),
@@ -429,119 +377,89 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               ),
             ),
           ),
+          // Barra inferior bonita y minimalista
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.check_circle_outline, color: Colors.amber, size: 28),
-                  tooltip: 'Guardar',
-                  onPressed: _saveNote,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.text_format, color: Colors.black54, size: 28),
-                  tooltip: 'Formato',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Formato'),
-                        content: const Text('Opciones de formato próximamente.'),
-                        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-                      ),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.camera_alt_outlined, color: Colors.black54, size: 28),
-                  tooltip: 'Añadir foto',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Foto'),
-                        content: const Text('Función de añadir foto próximamente.'),
-                        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-                      ),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: Colors.black54, size: 28),
-                  tooltip: 'Garabato',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Garabato'),
-                        content: const Text('Función de garabato próximamente.'),
-                        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-                      ),
-                    );
-                  },
-                ),
+                _buildIconBox('✅', _saveNote),
+                _buildIconBox('🔤', () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Formato'),
+                      content: const Text('Opciones de formato próximamente.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK'))
+                      ],
+                    ),
+                  );
+                }),
+                _buildIconBox('📷', () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Foto'),
+                      content:
+                          const Text('Función de añadir foto próximamente.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK'))
+                      ],
+                    ),
+                  );
+                }),
+                _buildIconBox('✏️', () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Garabato'),
+                      content: const Text('Función de garabato próximamente.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK'))
+                      ],
+                    ),
+                  );
+                }),
               ],
             ),
           ),
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.check_circle_outline, color: Colors.amber, size: 28),
-                    tooltip: 'Guardar',
-                    onPressed: _saveNote,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.text_format, color: Colors.black54, size: 28),
-                    tooltip: 'Formato',
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Formato'),
-                          content: const Text('Opciones de formato próximamente.'),
-                          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-                        ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.camera_alt_outlined, color: Colors.black54, size: 28),
-                    tooltip: 'Añadir foto',
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Foto'),
-                          content: const Text('Función de añadir foto próximamente.'),
-                          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-                        ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, color: Colors.black54, size: 28),
-                    tooltip: 'Garabato',
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Garabato'),
-                          content: const Text('Función de garabato próximamente.'),
-                          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
         ],
+      ),
+    );
+  }
+
+  // Icono bonito con fondo y borde sutil
+  Widget _buildIconBox(String emoji, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 54,
+        height: 54,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.amber.withOpacity(0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.amber.withOpacity(0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          emoji,
+          style: const TextStyle(fontSize: 30),
+        ),
       ),
     );
   }

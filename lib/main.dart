@@ -20,6 +20,10 @@ class NotesApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
           useMaterial3: true,
           fontFamily: 'Roboto',
+          splashColor: const Color.fromARGB(
+              255, 255, 255, 255), // Color del efecto expansivo (splash)
+          highlightColor: const Color.fromARGB(255, 255, 255, 255)
+              .withOpacity(0), // Color al mantener presionado
         ),
         home: const HomeScreen(),
       ),
@@ -51,24 +55,71 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          transitionBuilder: (child, animation) {
+            final offsetAnimation = Tween<Offset>(
+              begin: const Offset(0.0, 0.5),
+              end: Offset.zero,
+            ).animate(animation);
+            return SlideTransition(
+              position: offsetAnimation,
+              child: FadeTransition(
+                opacity: animation,
+                child: child,
+              ),
+            );
+          },
+          child: Text(
+            _selectedIndex == 0 ? 'Enseñanzas' : 'Pendientes',
+            key: ValueKey(_selectedIndex),
+            style: const TextStyle(
+              fontFamily: 'Nunito',
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 28,
+            ),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black),
+            onPressed: () {
+              // Acción de búsqueda (puedes personalizarla)
+            },
+            tooltip: 'Buscar',
+          ),
+        ],
+      ),
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: Colors.amber[800],
+        selectedItemColor: const Color.fromARGB(255, 13, 0, 0),
         unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.white,
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         elevation: 8,
         type: BottomNavigationBarType.fixed,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.sticky_note_2_outlined, size: 28),
-            activeIcon: Icon(Icons.sticky_note_2, size: 28),
-            label: 'Notas',
+            icon: Image.asset(
+              'assets/nota.gif',
+              width: 28,
+              height: 28,
+            ),
+            activeIcon: Image.asset(
+              'assets/nota.gif',
+              width: 32,
+              height: 32,
+            ),
+            label: 'Enseñanzas',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.checklist_outlined, size: 28),
-            activeIcon: Icon(Icons.checklist, size: 28),
+            icon: Icon(Icons.check_circle_outline),
+            activeIcon: Icon(Icons.check_circle),
             label: 'Pendientes',
           ),
         ],
@@ -82,7 +133,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
                   title: '',
                   content: '',
-                  date: '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+                  date:
+                      '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
                 );
                 context.read<NoteProvider>().addNote(newNote);
                 Navigator.push(

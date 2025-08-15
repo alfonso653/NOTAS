@@ -1,0 +1,8 @@
+# Añade la fuente Nunito desde Google Fonts
+flutter:
+  fonts:
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700
