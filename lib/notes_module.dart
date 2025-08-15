@@ -136,7 +136,11 @@ class NoteListScreen extends StatelessWidget {
                   width: 40,
                   height: 40,
                   alignment: Alignment.center,
-                  child: Icon(Icons.note, color: Colors.amber, size: 22),
+                  child: Image.asset(
+                    'assets/agenda.png',
+                    width: 22,
+                    height: 22,
+                  ),
                 ),
                 title: Text(
                   note.title.isEmpty ? 'Sin título' : note.title,

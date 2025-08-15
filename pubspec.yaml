@@ -18,6 +18,9 @@ flutter:
     - assets/lines.png
     - assets/dots.png
     - assets/nota.gif
+    - assets/pendientes.gif
+    - assets/mas.png
+    - assets/agenda.png
   fonts:
     - family: Nunito
       fonts:

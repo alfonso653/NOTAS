@@ -118,38 +118,64 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Enseñanzas',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle_outline),
-            activeIcon: Icon(Icons.check_circle),
+            icon: Image.asset(
+              'assets/pendientes.gif',
+              width: 28,
+              height: 28,
+            ),
+            activeIcon: Image.asset(
+              'assets/pendientes.gif',
+              width: 32,
+              height: 32,
+            ),
             label: 'Pendientes',
           ),
         ],
       ),
-      floatingActionButton: _selectedIndex == 0
-          ? FloatingActionButton(
-              backgroundColor: Colors.amber,
-              onPressed: () {
-                final now = DateTime.now();
-                final newNote = Note(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: '',
-                  content: '',
-                  date:
-                      '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
-                );
-                context.read<NoteProvider>().addNote(newNote);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => NoteEditScreen(note: newNote),
-                  ),
-                );
-              },
-              tooltip: 'Nueva nota',
-              child: const Icon(Icons.add, color: Colors.white, size: 32),
-              elevation: 4,
-              shape: const CircleBorder(),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.transparent,
+        onPressed: () {
+          if (_selectedIndex == 0) {
+            final now = DateTime.now();
+            final newNote = Note(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              title: '',
+              content: '',
+              date:
+                  '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+            );
+            context.read<NoteProvider>().addNote(newNote);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => NoteEditScreen(note: newNote),
+              ),
+            );
+          } else {
+            // Acción para pendientes (puedes personalizarla)
+          }
+        },
+        tooltip: _selectedIndex == 0 ? 'Nueva enseñanza' : 'Nuevo pendiente',
+        elevation: 0,
+        shape: const CircleBorder(),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          transitionBuilder: (child, animation) => ScaleTransition(
+            scale: animation,
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          ),
+          child: Image.asset(
+            'assets/mas.png',
+            key: ValueKey(_selectedIndex),
+            width: 36,
+            height: 36,
+            // color: null, // Mostrar el PNG con sus colores originales en ambas pestañas
+          ),
+        ),
+      ),
     );
   }
 }
