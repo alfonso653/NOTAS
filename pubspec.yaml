@@ -21,6 +21,7 @@ flutter:
     - assets/pendientes.gif
     - assets/mas.png
     - assets/agenda.png
+    - assets/lupa.png
   fonts:
     - family: Nunito
       fonts:
