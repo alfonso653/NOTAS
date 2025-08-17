@@ -352,13 +352,39 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 const Icon(Icons.book, size: 16, color: Colors.amber),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: TextField(
-                    controller: _categoriaController,
+                  child: DropdownButtonFormField<String>(
+                    value: _categoriaController.text.isNotEmpty
+                        ? _categoriaController.text
+                        : null,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       hintText: 'Categoría',
                       border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
                     ),
                     style: const TextStyle(color: Colors.black54, fontSize: 14),
+                    items: const [
+                      DropdownMenuItem(value: 'Sermón', child: Text('Sermón')),
+                      DropdownMenuItem(
+                          value: 'Estudio Bíblico',
+                          child: Text('Estudio Bíblico')),
+                      DropdownMenuItem(
+                          value: 'Reflexión', child: Text('Reflexión')),
+                      DropdownMenuItem(
+                          value: 'Devocional', child: Text('Devocional')),
+                      DropdownMenuItem(
+                          value: 'Testimonio', child: Text('Testimonio')),
+                      DropdownMenuItem(
+                          value: 'Apuntes Generales',
+                          child: Text('Apuntes Generales')),
+                      DropdownMenuItem(
+                          value: 'Discipulado', child: Text('Discipulado')),
+                    ],
+                    onChanged: (v) {
+                      setState(() {
+                        _categoriaController.text = v ?? '';
+                      });
+                    },
                   ),
                 ),
               ],

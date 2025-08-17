@@ -266,13 +266,13 @@ class NoteListScreen extends StatelessWidget {
         }
         // Mapa de categorías a colores pastel
         const categoriaColores = {
-          'Sermón': Color(0xFFFFD6E0),
+          'Sermón': Color(0xFFD6FFF0), // verde menta pastel
           'Estudio Bíblico': Color(0xFFD6EFFF),
           'Reflexión': Color(0xFFFFF9D6),
           'Devocional': Color(0xFFD6FFD6),
           'Testimonio': Color(0xFFEAD6FF),
-          'Apuntes Generales': Color(0xFFFFEFD6),
-          'Discipulado': Color(0xFFD6FFF6),
+          'Apuntes Generales': Color(0xFFB2C7E2), // azul oscuro pastel
+          'Discipulado': Color(0xFFB2E2B2), // verde pastel oscuro único
         };
         final categorias = categoriaColores.keys.toList();
         return ListView.builder(
@@ -335,7 +335,11 @@ class NoteListScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          note.categoria,
+                          note.categoria
+                              .split(' ')
+                              .map((w) => w.isNotEmpty ? w[0] : '')
+                              .join()
+                              .toUpperCase(),
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -346,44 +350,16 @@ class NoteListScreen extends StatelessWidget {
                     ]
                   ],
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.arrow_drop_down_circle_outlined,
-                          color: Colors.indigo),
-                      tooltip: 'Categoría',
-                      onSelected: (cat) {
-                        final updated = Note(
-                          id: note.id,
-                          title: note.title,
-                          content: note.content,
-                          date: note.date,
-                          categoria: cat,
-                          skin: note.skin,
-                          color: categoriaColores[cat] ?? Colors.white,
-                        );
-                        Provider.of<NoteProvider>(context, listen: false)
-                            .updateNote(updated);
-                      },
-                      itemBuilder: (ctx) => [
-                        for (final cat in categorias)
-                          PopupMenuItem(value: cat, child: Text(cat)),
-                      ],
-                    ),
-                    const SizedBox(width: 4),
-                    PopupMenuButton<String>(
-                      icon: const Text('🗑️', style: TextStyle(fontSize: 18)),
-                      onSelected: (value) {
-                        if (value == 'delete') {
-                          provider.deleteNote(note);
-                        }
-                      },
-                      itemBuilder: (ctx) => [
-                        const PopupMenuItem(
-                            value: 'delete', child: Text('Eliminar')),
-                      ],
-                    ),
+                trailing: PopupMenuButton<String>(
+                  icon: const Text('🗑️', style: TextStyle(fontSize: 18)),
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      provider.deleteNote(note);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                        value: 'delete', child: Text('Eliminar')),
                   ],
                 ),
               ),
