@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
+import 'package:flutter/rendering.dart';
 import 'dart:convert';
 
 // Modelo de tarea pendiente
@@ -199,6 +203,30 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   late Color _noteColor;
   late String _skin;
 
+  final GlobalKey _noteKey = GlobalKey();
+  Future<void> _shareAsText() async {
+    final text = '${_titleController.text}\n\n${_contentController.text}';
+    await Share.share(text, subject: _titleController.text);
+  }
+
+  Future<void> _shareAsImage() async {
+    try {
+      RenderRepaintBoundary boundary =
+          _noteKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+      await Share.shareXFiles(
+          [XFile.fromData(pngBytes, mimeType: 'image/png', name: 'nota.png')],
+          text: _titleController.text);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo compartir como imagen: $e')),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -236,7 +264,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Text('⬅️', style: TextStyle(fontSize: 24, color: Colors.black)),
+          icon: const Text('⬅️',
+              style: TextStyle(fontSize: 24, color: Colors.black)),
           onPressed: () => Navigator.pop(context),
           tooltip: 'Volver',
         ),
@@ -246,7 +275,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Text('✔️', style: TextStyle(fontSize: 24, color: Colors.black)),
+            icon: const Text('✔️',
+                style: TextStyle(fontSize: 24, color: Colors.black)),
             tooltip: 'Guardar',
             onPressed: _saveNote,
           ),
@@ -269,12 +299,18 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                     ListTile(
                       leading: const Icon(Icons.text_fields),
                       title: const Text('Compartir como texto'),
-                      onTap: () => Navigator.pop(ctx),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        await _shareAsText();
+                      },
                     ),
                     ListTile(
                       leading: const Icon(Icons.image),
                       title: const Text('Compartir como imagen'),
-                      onTap: () => Navigator.pop(ctx),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        await _shareAsImage();
+                      },
                     ),
                   ],
                 ),
@@ -282,7 +318,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             },
           ),
           PopupMenuButton<String>(
-            icon: const Text('⚙️', style: TextStyle(fontSize: 22, color: Colors.black)),
+            icon: const Text('⚙️',
+                style: TextStyle(fontSize: 22, color: Colors.black)),
             tooltip: 'Opciones',
             onSelected: (value) {
               switch (value) {
@@ -341,154 +378,161 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.grey.shade100,
-            child: Row(
-              children: [
-                Icon(Icons.calendar_today,
-                    size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 4),
-                Text(widget.note.date,
-                    style: const TextStyle(color: Colors.black54)),
-                const SizedBox(width: 8),
-                const Text('|', style: TextStyle(color: Colors.black26)),
-                const SizedBox(width: 8),
-                const Icon(Icons.book, size: 16, color: Colors.amber),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _categoriaController.text.isNotEmpty
-                        ? _categoriaController.text
-                        : null,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Categoría',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
+      body: RepaintBoundary(
+        key: _noteKey,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.grey.shade100,
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today,
+                      size: 16, color: Colors.grey.shade600),
+                  const SizedBox(width: 4),
+                  Text(widget.note.date,
+                      style: const TextStyle(color: Colors.black54)),
+                  const SizedBox(width: 8),
+                  const Text('|', style: TextStyle(color: Colors.black26)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.book, size: 16, color: Colors.amber),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _categoriaController.text.isNotEmpty
+                          ? _categoriaController.text
+                          : null,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Categoría',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      style:
+                          const TextStyle(color: Colors.black54, fontSize: 14),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'Sermón', child: Text('Sermón')),
+                        DropdownMenuItem(
+                            value: 'Estudio Bíblico',
+                            child: Text('Estudio Bíblico')),
+                        DropdownMenuItem(
+                            value: 'Reflexión', child: Text('Reflexión')),
+                        DropdownMenuItem(
+                            value: 'Devocional', child: Text('Devocional')),
+                        DropdownMenuItem(
+                            value: 'Testimonio', child: Text('Testimonio')),
+                        DropdownMenuItem(
+                            value: 'Apuntes Generales',
+                            child: Text('Apuntes Generales')),
+                        DropdownMenuItem(
+                            value: 'Discipulado', child: Text('Discipulado')),
+                      ],
+                      onChanged: (v) {
+                        setState(() {
+                          _categoriaController.text = v ?? '';
+                        });
+                      },
                     ),
-                    style: const TextStyle(color: Colors.black54, fontSize: 14),
-                    items: const [
-                      DropdownMenuItem(value: 'Sermón', child: Text('Sermón')),
-                      DropdownMenuItem(
-                          value: 'Estudio Bíblico',
-                          child: Text('Estudio Bíblico')),
-                      DropdownMenuItem(
-                          value: 'Reflexión', child: Text('Reflexión')),
-                      DropdownMenuItem(
-                          value: 'Devocional', child: Text('Devocional')),
-                      DropdownMenuItem(
-                          value: 'Testimonio', child: Text('Testimonio')),
-                      DropdownMenuItem(
-                          value: 'Apuntes Generales',
-                          child: Text('Apuntes Generales')),
-                      DropdownMenuItem(
-                          value: 'Discipulado', child: Text('Discipulado')),
-                    ],
-                    onChanged: (v) {
-                      setState(() {
-                        _categoriaController.text = v ?? '';
-                      });
-                    },
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  hintText: 'Encabezado',
+                  border: InputBorder.none,
+                ),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _noteColor,
+                  image: DecorationImage(
+                    image: AssetImage(
+                        'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png'),
+                    repeat: ImageRepeat.repeat,
                   ),
                 ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                hintText: 'Encabezado',
-                border: InputBorder.none,
-              ),
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: _noteColor,
-                image: DecorationImage(
-                  image: AssetImage(
-                      'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png'),
-                  repeat: ImageRepeat.repeat,
+                child: TextField(
+                  controller: _contentController,
+                  maxLines: null,
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.all(16),
+                    border: InputBorder.none,
+                    hintText: 'Escribe tu nota aquí...',
+                  ),
+                  style: const TextStyle(fontSize: 16, color: Colors.black87),
                 ),
               ),
-              child: TextField(
-                controller: _contentController,
-                maxLines: null,
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(16),
-                  border: InputBorder.none,
-                  hintText: 'Escribe tu nota aquí...',
-                ),
-                style: const TextStyle(fontSize: 16, color: Colors.black87),
+            ),
+            // Barra inferior bonita y minimalista
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildIconBox('✅', _saveNote),
+                  _buildIconBox('🔤', () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Formato'),
+                        content:
+                            const Text('Opciones de formato próximamente.'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('OK'))
+                        ],
+                      ),
+                    );
+                  }),
+                  _buildIconBox('📷', () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Foto'),
+                        content:
+                            const Text('Función de añadir foto próximamente.'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('OK'))
+                        ],
+                      ),
+                    );
+                  }),
+                  _buildIconBox('✏️', () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Garabato'),
+                        content:
+                            const Text('Función de garabato próximamente.'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('OK'))
+                        ],
+                      ),
+                    );
+                  }),
+                ],
               ),
             ),
-          ),
-          // Barra inferior bonita y minimalista
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildIconBox('✅', _saveNote),
-                _buildIconBox('🔤', () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Formato'),
-                      content: const Text('Opciones de formato próximamente.'),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'))
-                      ],
-                    ),
-                  );
-                }),
-                _buildIconBox('📷', () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Foto'),
-                      content:
-                          const Text('Función de añadir foto próximamente.'),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'))
-                      ],
-                    ),
-                  );
-                }),
-                _buildIconBox('✏️', () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Garabato'),
-                      content: const Text('Función de garabato próximamente.'),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'))
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
