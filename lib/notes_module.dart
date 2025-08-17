@@ -7,6 +7,10 @@ import 'dart:typed_data';
 import 'package:flutter/rendering.dart';
 import 'dart:convert';
 
+/// =========================
+/// MODELO + PROVIDER: Tareas
+/// =========================
+
 // Modelo de tarea pendiente
 class PendingTask {
   String id;
@@ -90,6 +94,10 @@ class PendingProvider extends ChangeNotifier {
   }
 }
 
+/// =======================
+/// MODELO + PROVIDER: Notas
+/// =======================
+
 /// Modelo de una nota.
 class Note {
   String id;
@@ -118,15 +126,23 @@ class Note {
       'date': date,
       'categoria': categoria,
       'skin': skin,
-      'color': color.value.toString(),
+      // Guardar como int (más robusto que string)
+      'color': color.value,
     };
   }
 
   factory Note.fromJson(Map<String, dynamic> json) {
-    String? skinValue = json['skin'];
-    if (skinValue == null || skinValue.isEmpty) {
-      skinValue = 'grid';
-    }
+    final skinValue = (json['skin'] as String?)?.isNotEmpty == true
+        ? json['skin'] as String
+        : 'grid';
+
+    final rawColor = json['color'];
+    final colorInt = rawColor is int
+        ? rawColor
+        : (rawColor is String
+            ? int.tryParse(rawColor) ?? 0xFFFFFFFF
+            : 0xFFFFFFFF);
+
     return Note(
       id: json['id'],
       title: json['title'] ?? '',
@@ -134,7 +150,7 @@ class Note {
       date: json['date'] ?? '',
       categoria: json['categoria'] ?? '',
       skin: skinValue,
-      color: Color(int.parse(json['color'] ?? '0xFFFFFFFF')),
+      color: Color(colorInt),
     );
   }
 }
@@ -183,11 +199,13 @@ class NoteProvider extends ChangeNotifier {
     _saveNotes();
     notifyListeners();
   }
-// ...existing code...
+
+  // ...existing code...
 }
 
-/// Pantalla de edición de notas que contiene campos para el título, contenido,
-/// selección de skins y colores y opciones de menú.
+/// ========================================
+/// PANTALLA: Edición de nota (NoteEditScreen)
+/// ========================================
 class NoteEditScreen extends StatefulWidget {
   final Note note;
   const NoteEditScreen({super.key, required this.note});
@@ -204,6 +222,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   late String _skin;
 
   final GlobalKey _noteKey = GlobalKey();
+
   Future<void> _shareAsText() async {
     final text = '${_titleController.text}\n\n${_contentController.text}';
     await Share.share(text, subject: _titleController.text);
@@ -211,16 +230,24 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
 
   Future<void> _shareAsImage() async {
     try {
-      RenderRepaintBoundary boundary =
+      final boundary =
           _noteKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      // Si aún no ha pintado, espera un instante
+      if (boundary.debugNeedsPaint) {
+        await Future.delayed(const Duration(milliseconds: 20));
+      }
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes = byteData!.buffer.asUint8List();
+
       await Share.shareXFiles(
-          [XFile.fromData(pngBytes, mimeType: 'image/png', name: 'nota.png')],
-          text: _titleController.text);
+        [XFile.fromData(pngBytes, mimeType: 'image/png', name: 'nota.png')],
+        text: _titleController.text,
+      );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No se pudo compartir como imagen: $e')),
       );
@@ -257,11 +284,33 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     Navigator.pop(context);
   }
 
+  Widget _buildIconBox(String emoji, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 56,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.black12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          emoji,
+          style: const TextStyle(fontSize: 30),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _noteColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: _noteColor,
         elevation: 0,
         leading: IconButton(
           icon: const Text('⬅️',
@@ -351,8 +400,9 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                           '¿Estás seguro de que deseas eliminar esta nota?'),
                       actions: [
                         TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Cancelar')),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancelar'),
+                        ),
                         TextButton(
                           onPressed: () {
                             context
@@ -370,10 +420,9 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                   break;
               }
             },
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(value: 'skins', child: Text('Skins y color')),
-              const PopupMenuItem(
-                  value: 'delete', child: Text('Eliminar nota')),
+            itemBuilder: (ctx) => const [
+              PopupMenuItem(value: 'skins', child: Text('Skins y color')),
+              PopupMenuItem(value: 'delete', child: Text('Eliminar nota')),
             ],
           ),
         ],
@@ -382,6 +431,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
         key: _noteKey,
         child: Column(
           children: [
+            // Barra superior con fecha y categoría
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: Colors.grey.shade100,
@@ -438,6 +488,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 ],
               ),
             ),
+
+            // Título
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
@@ -453,14 +505,20 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 ),
               ),
             ),
+
+            // Contenido con fondo de "skin"
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: _noteColor,
                   image: DecorationImage(
                     image: AssetImage(
                         'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png'),
                     repeat: ImageRepeat.repeat,
+                    filterQuality: FilterQuality.high, // nitidez
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.16), // + contraste
+                      BlendMode.darken,
+                    ),
                   ),
                 ),
                 child: TextField(
@@ -468,14 +526,15 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                   maxLines: null,
                   decoration: const InputDecoration(
                     contentPadding: EdgeInsets.all(16),
+                    hintText: 'Contenido...',
                     border: InputBorder.none,
-                    hintText: 'Escribe tu nota aquí...',
                   ),
-                  style: const TextStyle(fontSize: 16, color: Colors.black87),
+                  style: const TextStyle(fontSize: 18),
                 ),
               ),
             ),
-            // Barra inferior bonita y minimalista
+
+            // Barra inferior minimalista
             Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
@@ -492,8 +551,9 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                             const Text('Opciones de formato próximamente.'),
                         actions: [
                           TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('OK'))
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK'),
+                          ),
                         ],
                       ),
                     );
@@ -507,8 +567,9 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                             const Text('Función de añadir foto próximamente.'),
                         actions: [
                           TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('OK'))
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK'),
+                          ),
                         ],
                       ),
                     );
@@ -522,8 +583,9 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                             const Text('Función de garabato próximamente.'),
                         actions: [
                           TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('OK'))
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK'),
+                          ),
                         ],
                       ),
                     );
@@ -536,37 +598,11 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
       ),
     );
   }
-
-  // Icono bonito con fondo y borde sutil
-  Widget _buildIconBox(String emoji, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 54,
-        height: 54,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.amber.withOpacity(0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.amber.withOpacity(0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          emoji,
-          style: const TextStyle(fontSize: 30),
-        ),
-      ),
-    );
-  }
 }
 
-/// Panel inferior que permite elegir distintos fondos (skins) y colores para las notas.
+/// ===================
+/// PANEL: Skins & Color
+/// ===================
 class SkinPanel extends StatelessWidget {
   final String selectedSkin;
   final Color color;
@@ -581,42 +617,69 @@ class SkinPanel extends StatelessWidget {
     required this.onColorSelected,
   });
 
+  // Matriz para aumentar contraste en previews
+  static const List<double> _previewBoostMatrix = <double>[
+    // 4x5 matrix (20 entradas): contraste ~1.25 con leve desplazamiento
+    1.25, 0.00, 0.00, 0.00, -32.0,
+    0.00, 1.25, 0.00, 0.00, -32.0,
+    0.00, 0.00, 1.25, 0.00, -32.0,
+    0.00, 0.00, 0.00, 1.00, 0.0,
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: SingleChildScrollView(
+    final skins = [
+      'grid',
+      'dots',
+      'lines',
+      'plain',
+      'clouds',
+      'flowers',
+      'wood'
+    ];
+    final colors = <Color>[
+      Colors.white,
+      Colors.yellow.shade100,
+      Colors.amber.shade100,
+      Colors.pink.shade50,
+      Colors.blue.shade50,
+      Colors.green.shade50,
+      Colors.cyan.shade50,
+      Colors.orange.shade100,
+      Colors.grey.shade200,
+    ];
+
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Skins',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const Text('Fondo (Skin)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildSkinOption(context, 'grid', selectedSkin),
-                _buildSkinOption(context, 'lines', selectedSkin),
-                _buildSkinOption(context, 'dots', selectedSkin),
-              ],
+            SizedBox(
+              height: 86,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: skins.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (ctx, i) =>
+                    _buildSkinOption(ctx, skins[i], selectedSkin),
+              ),
             ),
-            const SizedBox(height: 16),
-            const Text('Colores', style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 18),
+            const Text('Color', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildColorOption(context, Colors.white, color),
-                _buildColorOption(context, const Color(0xFFFDF7EE), color),
-                _buildColorOption(context, const Color(0xFFEFF8FF), color),
-                _buildColorOption(context, const Color(0xFFF5EEFD), color),
-              ],
+            SizedBox(
+              height: 56,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: colors.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (ctx, i) =>
+                    _buildColorOption(ctx, colors[i], color),
+              ),
             ),
           ],
         ),
@@ -631,22 +694,110 @@ class SkinPanel extends StatelessWidget {
         onSkinSelected(skin);
         Navigator.pop(context);
       },
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: isSelected ? Colors.amber : Colors.grey,
-            width: isSelected ? 3 : 1,
+      onLongPress: () {
+        // Zoom rápido para ver detalles
+        showDialog(
+          context: context,
+          builder: (_) => Dialog(
+            insetPadding: const EdgeInsets.all(24),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: ColorFiltered(
+                colorFilter: ColorFilter.matrix(_previewBoostMatrix),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      'packages/notes_module/assets/$skin.png',
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.high,
+                    ),
+                    Positioned(
+                      left: 10,
+                      top: 10,
+                      child: _chip(_skinLabel(skin)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(8),
-          image: DecorationImage(
-            image: AssetImage('packages/notes_module/assets/$skin.png'),
-            repeat: ImageRepeat.repeat,
+        );
+      },
+      child: Material(
+        elevation: isSelected ? 4 : 1,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 86,
+          height: 86,
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isSelected ? Colors.amber : Colors.grey.shade400,
+              width: isSelected ? 3 : 1,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: ColorFiltered(
+            colorFilter: ColorFilter.matrix(_previewBoostMatrix),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  'packages/notes_module/assets/$skin.png',
+                  fit: BoxFit.cover,
+                  filterQuality: FilterQuality.high,
+                ),
+                Positioned(
+                  left: 6,
+                  top: 6,
+                  child: _chip(_skinLabel(skin)),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _chip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  String _skinLabel(String k) {
+    switch (k) {
+      case 'grid':
+        return 'Cuadrícula';
+      case 'dots':
+        return 'Puntos';
+      case 'lines':
+        return 'Rayas';
+      case 'plain':
+        return 'Liso';
+      case 'clouds':
+        return 'Nubes';
+      case 'flowers':
+        return 'Flores';
+      case 'wood':
+        return 'Madera';
+      default:
+        return k;
+    }
   }
 
   Widget _buildColorOption(BuildContext context, Color c, Color selected) {
