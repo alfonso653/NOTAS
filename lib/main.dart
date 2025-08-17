@@ -44,10 +44,49 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = <Widget>[
-    NoteListScreen(),
-    PendingScreen(),
-  ];
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchQuery = '';
+  }
+
+  void _showSearchDialog() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        String tempQuery = _searchQuery;
+        return AlertDialog(
+          title: const Text('Buscar'),
+          content: TextField(
+            autofocus: true,
+            decoration:
+                const InputDecoration(hintText: 'Nombre, fecha o categoría'),
+            onChanged: (v) => tempQuery = v,
+            controller: TextEditingController(text: _searchQuery),
+            onSubmitted: (v) => Navigator.of(context).pop(v),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(tempQuery),
+              child: const Text('Buscar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != null) {
+      setState(() {
+        _searchQuery = result.trim();
+      });
+    }
+  }
+
+  List<Widget> get _pages => [
+        NoteListScreen(searchQuery: _searchQuery),
+        PendingScreen(searchQuery: _searchQuery),
+      ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -94,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 28,
               height: 28,
             ),
-            onPressed: () {},
+            onPressed: _showSearchDialog,
             tooltip: 'Buscar',
           ),
         ],
@@ -148,6 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
               content: '',
               date:
                   '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+              categoria: '',
             );
             context.read<NoteProvider>().addNote(newNote);
             Navigator.push(
@@ -203,25 +243,47 @@ class _HomeScreenState extends State<HomeScreen> {
 
 // --- Pantalla de notas (ejemplo simple) ---
 class NoteListScreen extends StatelessWidget {
-  const NoteListScreen({super.key});
+  final String searchQuery;
+  const NoteListScreen({Key? key, this.searchQuery = ''}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Consumer<NoteProvider>(
       builder: (context, provider, child) {
-        if (provider.notes.isEmpty) {
+        final filtered = provider.notes.where((note) {
+          final q = searchQuery.toLowerCase();
+          return q.isEmpty ||
+              note.title.toLowerCase().contains(q) ||
+              note.date.toLowerCase().contains(q) ||
+              (note.categoria.isNotEmpty &&
+                  note.categoria.toLowerCase().contains(q));
+        }).toList();
+        if (filtered.isEmpty) {
           return const Center(
-            child: Text('No tienes notas aún. ¡Agrega tu primera nota!',
+            child: Text('No hay resultados.',
                 style: TextStyle(fontSize: 18, color: Colors.grey)),
           );
         }
+        // Mapa de categorías a colores pastel
+        const categoriaColores = {
+          'Sermón': Color(0xFFFFD6E0),
+          'Estudio Bíblico': Color(0xFFD6EFFF),
+          'Reflexión': Color(0xFFFFF9D6),
+          'Devocional': Color(0xFFD6FFD6),
+          'Testimonio': Color(0xFFEAD6FF),
+          'Apuntes Generales': Color(0xFFFFEFD6),
+          'Discipulado': Color(0xFFD6FFF6),
+        };
+        final categorias = categoriaColores.keys.toList();
         return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: provider.notes.length,
+          itemCount: filtered.length,
           itemBuilder: (context, index) {
-            final note = provider.notes[index];
+            final note = filtered[index];
+            final pastelColor =
+                categoriaColores[note.categoria] ?? Colors.white;
             return Card(
-              color: note.color,
+              color: pastelColor,
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -257,20 +319,71 @@ class NoteListScreen extends StatelessWidget {
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
-                subtitle: Text(
-                  note.date,
-                  style: const TextStyle(color: Colors.grey),
+                subtitle: Row(
+                  children: [
+                    Text(
+                      note.date,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    if (note.categoria.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          note.categoria,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                    ]
+                  ],
                 ),
-                trailing: PopupMenuButton<String>(
-                  icon: const Icon(Icons.delete_outline, color: Colors.black54),
-                  onSelected: (value) {
-                    if (value == 'delete') {
-                      provider.deleteNote(note);
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                        value: 'delete', child: Text('Eliminar')),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.arrow_drop_down_circle_outlined,
+                          color: Colors.indigo),
+                      tooltip: 'Categoría',
+                      onSelected: (cat) {
+                        final updated = Note(
+                          id: note.id,
+                          title: note.title,
+                          content: note.content,
+                          date: note.date,
+                          categoria: cat,
+                          skin: note.skin,
+                          color: categoriaColores[cat] ?? Colors.white,
+                        );
+                        Provider.of<NoteProvider>(context, listen: false)
+                            .updateNote(updated);
+                      },
+                      itemBuilder: (ctx) => [
+                        for (final cat in categorias)
+                          PopupMenuItem(value: cat, child: Text(cat)),
+                      ],
+                    ),
+                    const SizedBox(width: 4),
+                    PopupMenuButton<String>(
+                      icon: const Text('🗑️', style: TextStyle(fontSize: 18)),
+                      onSelected: (value) {
+                        if (value == 'delete') {
+                          provider.deleteNote(note);
+                        }
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                            value: 'delete', child: Text('Eliminar')),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -284,14 +397,34 @@ class NoteListScreen extends StatelessWidget {
 
 // --- Pantalla de pendientes ---
 class PendingScreen extends StatelessWidget {
-  const PendingScreen({super.key});
+  final String searchQuery;
+  const PendingScreen({Key? key, this.searchQuery = ''}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Consumer<PendingProvider>(
       builder: (context, provider, _) {
-        final pending = provider.tasks.where((t) => !t.completed).toList();
-        final done = provider.tasks.where((t) => t.completed).toList();
+        final q = searchQuery.toLowerCase();
+        final pending = provider.tasks
+            .where((t) =>
+                !t.completed &&
+                (q.isEmpty ||
+                    t.title.toLowerCase().contains(q) ||
+                    t.description.toLowerCase().contains(q) ||
+                    t.categoria.toLowerCase().contains(q) ||
+                    ("${t.dateTime.day}/${t.dateTime.month}/${t.dateTime.year}")
+                        .contains(q)))
+            .toList();
+        final done = provider.tasks
+            .where((t) =>
+                t.completed &&
+                (q.isEmpty ||
+                    t.title.toLowerCase().contains(q) ||
+                    t.description.toLowerCase().contains(q) ||
+                    t.categoria.toLowerCase().contains(q) ||
+                    ("${t.dateTime.day}/${t.dateTime.month}/${t.dateTime.year}")
+                        .contains(q)))
+            .toList();
         return Container(
           color: const Color(0xFFFEF7F0),
           child: Column(
@@ -359,6 +492,7 @@ class _AddTaskFormState extends State<AddTaskForm> {
   final _formKey = GlobalKey<FormState>();
   String _title = '';
   String _description = '';
+  String _categoria = '';
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
@@ -397,6 +531,7 @@ class _AddTaskFormState extends State<AddTaskForm> {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: _title,
         description: _description,
+        categoria: _categoria,
         dateTime: dateTime,
       ));
       Navigator.of(context).pop();
@@ -425,6 +560,13 @@ class _AddTaskFormState extends State<AddTaskForm> {
             onSaved: (v) => _description = v ?? '',
             validator: (v) =>
                 v == null || v.isEmpty ? 'Escribe una descripción' : null,
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            decoration: const InputDecoration(labelText: 'Categoría'),
+            onSaved: (v) => _categoria = v ?? '',
+            validator: (v) =>
+                v == null || v.isEmpty ? 'Escribe una categoría' : null,
           ),
           const SizedBox(height: 8),
           Row(

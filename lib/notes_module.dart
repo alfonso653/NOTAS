@@ -8,6 +8,7 @@ class PendingTask {
   String id;
   String title;
   String description;
+  String categoria;
   DateTime dateTime;
   bool completed;
 
@@ -15,6 +16,7 @@ class PendingTask {
     required this.id,
     required this.title,
     required this.description,
+    required this.categoria,
     required this.dateTime,
     this.completed = false,
   });
@@ -23,6 +25,7 @@ class PendingTask {
         'id': id,
         'title': title,
         'description': description,
+        'categoria': categoria,
         'dateTime': dateTime.toIso8601String(),
         'completed': completed,
       };
@@ -31,6 +34,7 @@ class PendingTask {
         id: json['id'],
         title: json['title'],
         description: json['description'],
+        categoria: json['categoria'] ?? '',
         dateTime: DateTime.parse(json['dateTime']),
         completed: json['completed'] ?? false,
       );
@@ -82,13 +86,13 @@ class PendingProvider extends ChangeNotifier {
   }
 }
 
-
 /// Modelo de una nota.
 class Note {
   String id;
   String title;
   String content;
   String date;
+  String categoria;
   String skin;
   Color color;
 
@@ -97,6 +101,7 @@ class Note {
     required this.title,
     required this.content,
     required this.date,
+    this.categoria = '',
     this.skin = 'grid',
     this.color = Colors.white,
   });
@@ -107,18 +112,24 @@ class Note {
       'title': title,
       'content': content,
       'date': date,
+      'categoria': categoria,
       'skin': skin,
       'color': color.value.toString(),
     };
   }
 
   factory Note.fromJson(Map<String, dynamic> json) {
+    String? skinValue = json['skin'];
+    if (skinValue == null || skinValue.isEmpty) {
+      skinValue = 'grid';
+    }
     return Note(
       id: json['id'],
       title: json['title'] ?? '',
       content: json['content'] ?? '',
       date: json['date'] ?? '',
-      skin: json['skin'] ?? 'grid',
+      categoria: json['categoria'] ?? '',
+      skin: skinValue,
       color: Color(int.parse(json['color'] ?? '0xFFFFFFFF')),
     );
   }
@@ -168,89 +179,6 @@ class NoteProvider extends ChangeNotifier {
     _saveNotes();
     notifyListeners();
   }
-}
-
-/// Pantalla principal que muestra la lista de notas.
-///
-/// Puedes integrar este widget en tu aplicación existente como una nueva ruta.
-class NoteListScreen extends StatelessWidget {
-  const NoteListScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<NoteProvider>(
-      builder: (context, provider, child) {
-        if (provider.notes.isEmpty) {
-          return const Center(
-            child: Text('No tienes notas aún. ¡Agrega tu primera nota!',
-                style: TextStyle(fontSize: 18, color: Colors.grey)),
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: provider.notes.length,
-          itemBuilder: (context, index) {
-            final note = provider.notes[index];
-            return Card(
-              color: note.color,
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                onTap: () {
-                  Navigator.of(context).push(PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        NoteEditScreen(note: note),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
-                    },
-                  ));
-                },
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  child: Image.asset(
-                    'assets/agenda.png',
-                    width: 22,
-                    height: 22,
-                  ),
-                ),
-                title: Text(
-                  note.title.isEmpty ? 'Sin título' : note.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                subtitle: Text(
-                  note.date,
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                trailing: PopupMenuButton<String>(
-                  icon: const Icon(Icons.delete_outline, color: Colors.black54),
-                  onSelected: (value) {
-                    if (value == 'delete') {
-                      provider.deleteNote(note);
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                        value: 'delete', child: Text('Eliminar')),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 // ...existing code...
 }
 
@@ -267,6 +195,7 @@ class NoteEditScreen extends StatefulWidget {
 class _NoteEditScreenState extends State<NoteEditScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
+  late TextEditingController _categoriaController;
   late Color _noteColor;
   late String _skin;
 
@@ -275,14 +204,16 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     super.initState();
     _titleController = TextEditingController(text: widget.note.title);
     _contentController = TextEditingController(text: widget.note.content);
+    _categoriaController = TextEditingController(text: widget.note.categoria);
     _noteColor = widget.note.color;
-    _skin = widget.note.skin;
+    _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _categoriaController.dispose();
     super.dispose();
   }
 
@@ -290,9 +221,10 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     final note = widget.note;
     note.title = _titleController.text;
     note.content = _contentController.text;
+    note.categoria = _categoriaController.text;
     note.date = DateTime.now().toLocal().toString().split(' ')[0];
     note.color = _noteColor;
-    note.skin = _skin;
+    note.skin = _skin.isEmpty ? 'grid' : _skin;
     context.read<NoteProvider>().updateNote(note);
     Navigator.pop(context);
   }
@@ -419,8 +351,16 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 const SizedBox(width: 8),
                 const Icon(Icons.book, size: 16, color: Colors.amber),
                 const SizedBox(width: 4),
-                const Text('Cuaderno predeterminado',
-                    style: TextStyle(color: Colors.black54)),
+                Expanded(
+                  child: TextField(
+                    controller: _categoriaController,
+                    decoration: const InputDecoration(
+                      hintText: 'Categoría',
+                      border: InputBorder.none,
+                    ),
+                    style: const TextStyle(color: Colors.black54, fontSize: 14),
+                  ),
+                ),
               ],
             ),
           ),
@@ -444,7 +384,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               decoration: BoxDecoration(
                 color: _noteColor,
                 image: DecorationImage(
-                  image: AssetImage('packages/notes_module/assets/$_skin.png'),
+                  image: AssetImage(
+                      'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png'),
                   repeat: ImageRepeat.repeat,
                 ),
               ),
