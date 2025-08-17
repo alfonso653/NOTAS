@@ -168,6 +168,53 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: Image.asset(
+            'assets/mas.png',
+            width: 32,
+            height: 32,
+          ),
+          onPressed: () {
+            if (_selectedIndex == 0) {
+              final now = DateTime.now();
+              final newNote = Note(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                title: '',
+                content: '',
+                date:
+                    '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+                categoria: '',
+              );
+              context.read<NoteProvider>().addNote(newNote);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NoteEditScreen(note: newNote),
+                ),
+              );
+            } else {
+              final pendingProvider = context.read<PendingProvider>();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (context) => Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                    left: 16,
+                    right: 16,
+                    top: 24,
+                  ),
+                  child: AddTaskForm(pendingProvider: pendingProvider),
+                ),
+              );
+            }
+          },
+          tooltip: _selectedIndex == 0 ? 'Nueva enseñanza' : 'Nuevo pendiente',
+        ),
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 400),
           transitionBuilder: (child, animation) {
@@ -194,6 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: Image.asset(
@@ -244,67 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.transparent,
-        onPressed: () {
-          if (_selectedIndex == 0) {
-            final now = DateTime.now();
-            final newNote = Note(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              title: '',
-              content: '',
-              date:
-                  '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
-              categoria: '',
-            );
-            context.read<NoteProvider>().addNote(newNote);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => NoteEditScreen(note: newNote),
-              ),
-            );
-          } else {
-            final pendingProvider = context.read<PendingProvider>();
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.white,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              builder: (context) => Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-                  left: 16,
-                  right: 16,
-                  top: 24,
-                ),
-                child: AddTaskForm(pendingProvider: pendingProvider),
-              ),
-            );
-          }
-        },
-        tooltip: _selectedIndex == 0 ? 'Nueva enseñanza' : 'Nuevo pendiente',
-        elevation: 0,
-        shape: const CircleBorder(),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          transitionBuilder: (child, animation) => ScaleTransition(
-            scale: animation,
-            child: FadeTransition(
-              opacity: animation,
-              child: child,
-            ),
-          ),
-          child: Image.asset(
-            'assets/mas.png',
-            key: ValueKey(_selectedIndex),
-            width: 36,
-            height: 36,
-          ),
-        ),
-      ),
+      // floatingActionButton eliminado, ahora el botón de más está en el AppBar
     );
   }
 }
