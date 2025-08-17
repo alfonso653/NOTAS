@@ -43,8 +43,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-
   String _searchQuery = '';
+  String _searchCategory = '';
 
   @override
   void initState() {
@@ -53,39 +53,107 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showSearchDialog() async {
-    final result = await showDialog<String>(
+    final categorias = [
+      '',
+      'Sermón',
+      'Estudio Bíblico',
+      'Reflexión',
+      'Devocional',
+      'Testimonio',
+      'Apuntes Generales',
+      'Discipulado',
+    ];
+    String tempQuery = _searchQuery;
+    String tempCategory = _searchCategory;
+    final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (context) {
-        String tempQuery = _searchQuery;
-        return AlertDialog(
-          title: const Text('Buscar'),
-          content: TextField(
-            autofocus: true,
-            decoration:
-                const InputDecoration(hintText: 'Nombre, fecha o categoría'),
-            onChanged: (v) => tempQuery = v,
-            controller: TextEditingController(text: _searchQuery),
-            onSubmitted: (v) => Navigator.of(context).pop(v),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(tempQuery),
-              child: const Text('Buscar'),
-            ),
-          ],
+        final queryController = TextEditingController(text: tempQuery);
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Buscar'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Nombre, fecha o palabra clave',
+                      suffixIcon: tempQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setState(() {
+                                  tempQuery = '';
+                                  queryController.clear();
+                                });
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (v) => setState(() => tempQuery = v),
+                    controller: queryController,
+                    onSubmitted: (v) => Navigator.of(context).pop({
+                      'query': v,
+                      'category': tempCategory,
+                    }),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: tempCategory,
+                    items: categorias
+                        .map((cat) => DropdownMenuItem(
+                              value: cat,
+                              child: Text(
+                                  cat.isEmpty ? 'Todas las categorías' : cat),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setState(() => tempCategory = v ?? ''),
+                    decoration: const InputDecoration(
+                      labelText: 'Categoría',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      tempQuery = '';
+                      tempCategory = '';
+                      queryController.clear();
+                    });
+                  },
+                  child: const Text('Quitar filtros'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop({
+                    'query': tempQuery,
+                    'category': tempCategory,
+                  }),
+                  child: const Text('Buscar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
     if (result != null) {
       setState(() {
-        _searchQuery = result.trim();
+        _searchQuery = result['query']?.trim() ?? '';
+        _searchCategory = result['category'] ?? '';
       });
     }
   }
 
   List<Widget> get _pages => [
-        NoteListScreen(searchQuery: _searchQuery),
-        PendingScreen(searchQuery: _searchQuery),
+        NoteListScreen(
+            searchQuery: _searchQuery, searchCategory: _searchCategory),
+        PendingScreen(
+            searchQuery: _searchQuery, searchCategory: _searchCategory),
       ];
 
   void _onItemTapped(int index) {
@@ -242,9 +310,13 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // --- Pantalla de notas (ejemplo simple) ---
+
 class NoteListScreen extends StatelessWidget {
   final String searchQuery;
-  const NoteListScreen({Key? key, this.searchQuery = ''}) : super(key: key);
+  final String searchCategory;
+  const NoteListScreen(
+      {Key? key, this.searchQuery = '', this.searchCategory = ''})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -252,11 +324,14 @@ class NoteListScreen extends StatelessWidget {
       builder: (context, provider, child) {
         final filtered = provider.notes.where((note) {
           final q = searchQuery.toLowerCase();
-          return q.isEmpty ||
+          final cat = searchCategory;
+          final matchesCategory = cat.isEmpty || note.categoria == cat;
+          final matchesQuery = q.isEmpty ||
               note.title.toLowerCase().contains(q) ||
               note.date.toLowerCase().contains(q) ||
               (note.categoria.isNotEmpty &&
                   note.categoria.toLowerCase().contains(q));
+          return matchesCategory && matchesQuery;
         }).toList();
         if (filtered.isEmpty) {
           return const Center(
@@ -274,7 +349,7 @@ class NoteListScreen extends StatelessWidget {
           'Apuntes Generales': Color(0xFFB2C7E2), // azul oscuro pastel
           'Discipulado': Color(0xFFB2E2B2), // verde pastel oscuro único
         };
-        final categorias = categoriaColores.keys.toList();
+        // final categorias = categoriaColores.keys.toList();
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: filtered.length,
@@ -372,18 +447,24 @@ class NoteListScreen extends StatelessWidget {
 }
 
 // --- Pantalla de pendientes ---
+
 class PendingScreen extends StatelessWidget {
   final String searchQuery;
-  const PendingScreen({Key? key, this.searchQuery = ''}) : super(key: key);
+  final String searchCategory;
+  const PendingScreen(
+      {Key? key, this.searchQuery = '', this.searchCategory = ''})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Consumer<PendingProvider>(
       builder: (context, provider, _) {
         final q = searchQuery.toLowerCase();
+        final cat = searchCategory;
         final pending = provider.tasks
             .where((t) =>
                 !t.completed &&
+                (cat.isEmpty || t.categoria == cat) &&
                 (q.isEmpty ||
                     t.title.toLowerCase().contains(q) ||
                     t.description.toLowerCase().contains(q) ||
@@ -394,6 +475,7 @@ class PendingScreen extends StatelessWidget {
         final done = provider.tasks
             .where((t) =>
                 t.completed &&
+                (cat.isEmpty || t.categoria == cat) &&
                 (q.isEmpty ||
                     t.title.toLowerCase().contains(q) ||
                     t.description.toLowerCase().contains(q) ||
