@@ -236,19 +236,26 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Text('◀️', style: TextStyle(fontSize: 24)),
+          icon: const Text('⬅️', style: TextStyle(fontSize: 24, color: Colors.black)),
           onPressed: () => Navigator.pop(context),
+          tooltip: 'Volver',
         ),
-        title: const Text('Editar nota',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Editar nota',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            icon: const Text('✅', style: TextStyle(fontSize: 24)),
+            icon: const Text('✔️', style: TextStyle(fontSize: 24, color: Colors.black)),
             tooltip: 'Guardar',
             onPressed: _saveNote,
           ),
           IconButton(
-            icon: const Text('📤', style: TextStyle(fontSize: 24)),
+            icon: Image.asset(
+              'assets/compartir.png',
+              width: 28,
+              height: 28,
+            ),
             tooltip: 'Compartir',
             onPressed: () {
               showModalBottomSheet(
@@ -275,7 +282,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             },
           ),
           PopupMenuButton<String>(
-            icon: const Text('⚙️', style: TextStyle(fontSize: 22)),
+            icon: const Text('⚙️', style: TextStyle(fontSize: 22, color: Colors.black)),
             tooltip: 'Opciones',
             onSelected: (value) {
               switch (value) {
