@@ -59,8 +59,10 @@ class PendingProvider extends ChangeNotifier {
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('pending_tasks') ?? '[]';
-    final list = json.decode(data) as List;
-    tasks = list.map((e) => PendingTask.fromJson(e)).toList();
+    final List<dynamic> list = json.decode(data);
+    tasks = list
+        .map((e) => PendingTask.fromJson(e as Map<String, dynamic>))
+        .toList();
     notifyListeners();
   }
 
@@ -126,8 +128,7 @@ class Note {
       'date': date,
       'categoria': categoria,
       'skin': skin,
-      // Guardar como int (más robusto que string)
-      'color': color.value,
+      'color': color.value, // como int
     };
   }
 
@@ -166,8 +167,8 @@ class NoteProvider extends ChangeNotifier {
   Future<void> _loadNotes() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('notes') ?? '[]';
-    final list = json.decode(data) as List;
-    notes = list.map((e) => Note.fromJson(e)).toList();
+    final List<dynamic> list = json.decode(data);
+    notes = list.map((e) => Note.fromJson(e as Map<String, dynamic>)).toList();
     notifyListeners();
   }
 
@@ -233,7 +234,6 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
       final boundary =
           _noteKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
-      // Si aún no ha pintado, espera un instante
       if (boundary.debugNeedsPaint) {
         await Future.delayed(const Duration(milliseconds: 20));
       }
@@ -502,30 +502,33 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               ),
             ),
 
-            // Contenido con fondo de "skin"
+            // Contenido con transición de cuadros al cambiar color
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(
-                        'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png'),
-                    repeat: ImageRepeat.repeat,
-                    filterQuality: FilterQuality.high, // nitidez
-                    colorFilter: ColorFilter.mode(
-                      Colors.black.withOpacity(0.16), // + contraste
-                      BlendMode.darken,
+              child: TileRevealColorTransition(
+                color: _noteColor,
+                child: Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage(
+                          'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png'),
+                      repeat: ImageRepeat.repeat,
+                      filterQuality: FilterQuality.high, // nitidez
+                      colorFilter: ColorFilter.mode(
+                        Colors.black.withOpacity(0.16), // + contraste
+                        BlendMode.darken,
+                      ),
                     ),
                   ),
-                ),
-                child: TextField(
-                  controller: _contentController,
-                  maxLines: null,
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.all(16),
-                    hintText: 'Contenido...',
-                    border: InputBorder.none,
+                  child: TextField(
+                    controller: _contentController,
+                    maxLines: null,
+                    decoration: const InputDecoration(
+                      contentPadding: EdgeInsets.all(16),
+                      hintText: 'Contenido...',
+                      border: InputBorder.none,
+                    ),
+                    style: const TextStyle(fontSize: 18),
                   ),
-                  style: const TextStyle(fontSize: 18),
                 ),
               ),
             ),
@@ -596,6 +599,139 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   }
 }
 
+/// =======================================================
+/// Widget para transición de cuadros (tiles) al cambiar color
+/// =======================================================
+class TileRevealColorTransition extends StatefulWidget {
+  final Color color;
+  final Widget child;
+  final int rows;
+  final int columns;
+  final Duration duration;
+
+  const TileRevealColorTransition({
+    super.key,
+    required this.color,
+    required this.child,
+    this.rows = 8,
+    this.columns = 16,
+    this.duration = const Duration(milliseconds: 1000),
+  });
+
+  @override
+  State<TileRevealColorTransition> createState() =>
+      _TileRevealColorTransitionState();
+}
+
+class _TileRevealColorTransitionState extends State<TileRevealColorTransition>
+    with SingleTickerProviderStateMixin {
+  late Color _oldColor;
+  late Color _currentColor;
+  late AnimationController _controller;
+  late List<Animation<double>> _tileAnims;
+  bool _animating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _oldColor = widget.color;
+    _currentColor = widget.color;
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+    _initTileAnims();
+  }
+
+  void _initTileAnims() {
+    final total = widget.rows * widget.columns;
+    _tileAnims = List.generate(total, (i) {
+      final row = i ~/ widget.columns;
+      final col = i % widget.columns;
+      // Efecto diagonal: tiles más arriba/izquierda empiezan antes
+      final delay = (row + col) / (widget.rows + widget.columns);
+      return Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: Interval(
+            delay * 0.7,
+            (delay * 0.7) + 0.3,
+            curve: Curves.easeInOut,
+          ),
+        ),
+      );
+    });
+  }
+
+  @override
+  void didUpdateWidget(TileRevealColorTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.color != _currentColor && !_animating) {
+      _oldColor = _currentColor;
+      _currentColor = widget.color;
+      _animating = true;
+      _controller.reset();
+      _initTileAnims();
+      _controller.forward().then((_) {
+        if (mounted) {
+          setState(() {
+            _animating = false;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileW = constraints.maxWidth / widget.columns;
+        final tileH = constraints.maxHeight / widget.rows;
+        final diameter = (tileW > tileH ? tileW : tileH) * 1.25;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: _animating ? _oldColor : _currentColor),
+            widget.child,
+            if (_animating)
+              ...List.generate(widget.rows * widget.columns, (i) {
+                final row = i ~/ widget.columns;
+                final col = i % widget.columns;
+                return AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    final v = _tileAnims[i].value;
+                    return Positioned(
+                      left: col * tileW + tileW / 2 - diameter / 2,
+                      top: row * tileH + tileH / 2 - diameter / 2,
+                      width: diameter,
+                      height: diameter,
+                      child: v > 0
+                          ? Opacity(
+                              opacity: v,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _currentColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    );
+                  },
+                );
+              }),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// ===================
 /// PANEL: Skins & Color
 /// ===================
@@ -609,28 +745,48 @@ class SkinPanel extends StatelessWidget {
     required this.onColorSelected,
   });
 
-  // Matriz para aumentar contraste en previews
-  // Eliminada matriz de contraste de skins
-
   @override
   Widget build(BuildContext context) {
     // Paleta extendida de colores pastel y vivos
     final colors = <Color>[
       // Blancos y grises claros
-      Colors.white, Colors.grey.shade50, Colors.grey.shade100,
-      Colors.grey.shade200, Colors.grey.shade300,
+      Colors.white,
+      Colors.grey.shade50,
+      Colors.grey.shade100,
+      Colors.grey.shade200,
+      Colors.grey.shade300,
       // Amarillos y naranjas pastel
-      Colors.yellow.shade50, Colors.yellow.shade100, Colors.yellow.shade200,
-      Colors.yellow.shade300, Colors.yellow.shade400, Colors.yellow.shade500,
-      Colors.amber.shade50, Colors.amber.shade100, Colors.amber.shade200,
-      Colors.amber.shade300, Colors.amber.shade400, Colors.amber.shade500,
-      Colors.orange.shade50, Colors.orange.shade100, Colors.orange.shade200,
-      Colors.orange.shade300, Colors.orange.shade400, Colors.orange.shade500,
+      Colors.yellow.shade50,
+      Colors.yellow.shade100,
+      Colors.yellow.shade200,
+      Colors.yellow.shade300,
+      Colors.yellow.shade400,
+      Colors.yellow.shade500,
+      Colors.amber.shade50,
+      Colors.amber.shade100,
+      Colors.amber.shade200,
+      Colors.amber.shade300,
+      Colors.amber.shade400,
+      Colors.amber.shade500,
+      Colors.orange.shade50,
+      Colors.orange.shade100,
+      Colors.orange.shade200,
+      Colors.orange.shade300,
+      Colors.orange.shade400,
+      Colors.orange.shade500,
       // Rosas y lilas pastel
-      Colors.pink.shade50, Colors.pink.shade100, Colors.pink.shade200,
-      Colors.pink.shade300, Colors.pink.shade400, Colors.pink.shade500,
-      Colors.purple.shade50, Colors.purple.shade100, Colors.purple.shade200,
-      Colors.purple.shade300, Colors.purple.shade400, Colors.purple.shade500,
+      Colors.pink.shade50,
+      Colors.pink.shade100,
+      Colors.pink.shade200,
+      Colors.pink.shade300,
+      Colors.pink.shade400,
+      Colors.pink.shade500,
+      Colors.purple.shade50,
+      Colors.purple.shade100,
+      Colors.purple.shade200,
+      Colors.purple.shade300,
+      Colors.purple.shade400,
+      Colors.purple.shade500,
       Colors.deepPurple.shade50,
       Colors.deepPurple.shade100,
       Colors.deepPurple.shade200,
@@ -638,28 +794,56 @@ class SkinPanel extends StatelessWidget {
       Colors.deepPurple.shade400,
       Colors.deepPurple.shade500,
       // Azules y celestes pastel
-      Colors.blue.shade50, Colors.blue.shade100, Colors.blue.shade200,
-      Colors.blue.shade300, Colors.blue.shade400, Colors.blue.shade500,
+      Colors.blue.shade50,
+      Colors.blue.shade100,
+      Colors.blue.shade200,
+      Colors.blue.shade300,
+      Colors.blue.shade400,
+      Colors.blue.shade500,
       Colors.lightBlue.shade50,
       Colors.lightBlue.shade100,
       Colors.lightBlue.shade200,
       Colors.lightBlue.shade300,
       Colors.lightBlue.shade400,
       Colors.lightBlue.shade500,
-      Colors.cyan.shade50, Colors.cyan.shade100, Colors.cyan.shade200,
-      Colors.cyan.shade300, Colors.cyan.shade400, Colors.cyan.shade500,
-      Colors.indigo.shade50, Colors.indigo.shade100, Colors.indigo.shade200,
-      Colors.indigo.shade300, Colors.indigo.shade400, Colors.indigo.shade500,
+      Colors.cyan.shade50,
+      Colors.cyan.shade100,
+      Colors.cyan.shade200,
+      Colors.cyan.shade300,
+      Colors.cyan.shade400,
+      Colors.cyan.shade500,
+      Colors.indigo.shade50,
+      Colors.indigo.shade100,
+      Colors.indigo.shade200,
+      Colors.indigo.shade300,
+      Colors.indigo.shade400,
+      Colors.indigo.shade500,
       // Verdes y menta pastel
-      Colors.green.shade50, Colors.green.shade100, Colors.green.shade200,
-      Colors.green.shade300, Colors.green.shade400, Colors.green.shade500,
-      Colors.lime.shade50, Colors.lime.shade100, Colors.lime.shade200,
-      Colors.lime.shade300, Colors.lime.shade400, Colors.lime.shade500,
-      Colors.teal.shade50, Colors.teal.shade100, Colors.teal.shade200,
-      Colors.teal.shade300, Colors.teal.shade400, Colors.teal.shade500,
+      Colors.green.shade50,
+      Colors.green.shade100,
+      Colors.green.shade200,
+      Colors.green.shade300,
+      Colors.green.shade400,
+      Colors.green.shade500,
+      Colors.lime.shade50,
+      Colors.lime.shade100,
+      Colors.lime.shade200,
+      Colors.lime.shade300,
+      Colors.lime.shade400,
+      Colors.lime.shade500,
+      Colors.teal.shade50,
+      Colors.teal.shade100,
+      Colors.teal.shade200,
+      Colors.teal.shade300,
+      Colors.teal.shade400,
+      Colors.teal.shade500,
       // Marrones claros
-      Colors.brown.shade50, Colors.brown.shade100, Colors.brown.shade200,
-      Colors.brown.shade300, Colors.brown.shade400, Colors.brown.shade500,
+      Colors.brown.shade50,
+      Colors.brown.shade100,
+      Colors.brown.shade200,
+      Colors.brown.shade300,
+      Colors.brown.shade400,
+      Colors.brown.shade500,
       // Extras personalizados elegantes y degradados
       Color(0xFFf6d365),
       Color(0xFFfda085),
@@ -675,8 +859,12 @@ class SkinPanel extends StatelessWidget {
       Color(0xFFffecd2),
       Color(0xFFa8edea),
       Color(0xFFfed6e3),
-      Color(0xFFcfd9df), Color(0xFFe2d1c3), Color(0xFFf5f7fa),
-      Color(0xFFc9ffbf), Color(0xFFffafbd), Color(0xFFb2fefa),
+      Color(0xFFcfd9df),
+      Color(0xFFe2d1c3),
+      Color(0xFFf5f7fa),
+      Color(0xFFc9ffbf),
+      Color(0xFFffafbd),
+      Color(0xFFb2fefa),
       Color(0xFFf3e7e9),
       Color(0xFFc9ffbf),
       Color(0xFFf9f586),
@@ -705,7 +893,9 @@ class SkinPanel extends StatelessWidget {
       Color(0xFFfed6e3),
       Color(0xFFcfd9df),
       Color(0xFFe2d1c3),
-      Color(0xFFf5f7fa), Color(0xFFc9ffbf), Color(0xFFffafbd),
+      Color(0xFFf5f7fa),
+      Color(0xFFc9ffbf),
+      Color(0xFFffafbd),
       Color(0xFFb2fefa),
     ];
 
@@ -721,9 +911,7 @@ class SkinPanel extends StatelessWidget {
             const SizedBox(height: 12),
             LayoutBuilder(
               builder: (context, constraints) {
-                // Calcula el tamaño máximo de cada cuadro para que quepan siempre
                 final maxWidth = constraints.maxWidth;
-                // Queremos cuadros de ~20-32px pero que nunca se salgan
                 final minBox = 20.0;
                 final maxBox = 32.0;
                 int crossAxisCount = (maxWidth / (minBox + 6)).floor();
@@ -752,10 +940,6 @@ class SkinPanel extends StatelessWidget {
     );
   }
 
-  // Eliminado _buildSkinOption y helpers relacionados con skins
-
-  // Eliminados helpers de skins
-
   Widget _buildColorOption(BuildContext context, Color c, Color selected,
       {double size = 40}) {
     final isSelected = c.value == selected.value;
@@ -764,16 +948,32 @@ class SkinPanel extends StatelessWidget {
         onColorSelected(c);
         Navigator.pop(context);
       },
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: c,
-          border: Border.all(
-            color: isSelected ? Colors.amber : Colors.grey,
-            width: isSelected ? 3 : 1,
+      child: AnimatedScale(
+        scale: isSelected ? 1.22 : 1.0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: c,
+            border: Border.all(
+              color: isSelected ? Colors.amber : Colors.grey.shade400,
+              width: isSelected ? 3.5 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.amber.withOpacity(0.18),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : [],
+            borderRadius: BorderRadius.circular(7),
           ),
-          borderRadius: BorderRadius.circular(6),
         ),
       ),
     );
