@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   String _searchCategory = '';
   DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
+  String _timeText = '';
 
   @override
   void initState() {
@@ -136,6 +136,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       tempQuery = '';
                       tempCategory = '';
                       queryController.clear();
+                    });
+                    Navigator.of(context).pop({
+                      'query': '',
+                      'category': '',
                     });
                   },
                   child: const Text('Quitar filtros'),
@@ -321,16 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: InkWell(
-                    onTap: () async {
-                      final picked = await showTimePicker(
-                        context: context,
-                        initialTime: _selectedTime ?? TimeOfDay.now(),
-                      );
-                      if (picked != null) {
-                        setState(() => _selectedTime = picked);
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(8),
+                    // Cambia a campo de texto en vez de showTimePicker
                     child: InputDecorator(
                       decoration: const InputDecoration(
                         labelText: 'Filtrar por hora',
@@ -341,21 +336,29 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           const Text('🕓 ', style: TextStyle(fontSize: 18)),
                           const SizedBox(width: 8),
-                          Text(
-                            _selectedTime != null
-                                ? _selectedTime!.format(context)
-                                : 'Todas las horas',
-                            style: TextStyle(
-                                color: _selectedTime != null
-                                    ? Colors.black87
-                                    : Colors.grey),
+                          Expanded(
+                            child: TextField(
+                              decoration: const InputDecoration(
+                                hintText: 'Todas las horas',
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
+                              style: TextStyle(
+                                  color: _timeText.isNotEmpty
+                                      ? Colors.black87
+                                      : Colors.grey),
+                              controller:
+                                  TextEditingController(text: _timeText),
+                              onChanged: (value) {
+                                setState(() => _timeText = value);
+                              },
+                            ),
                           ),
-                          if (_selectedTime != null)
+                          if (_timeText.isNotEmpty)
                             IconButton(
                               icon: const Text('🧹',
                                   style: TextStyle(fontSize: 18)),
-                              onPressed: () =>
-                                  setState(() => _selectedTime = null),
+                              onPressed: () => setState(() => _timeText = ''),
                               splashRadius: 16,
                             ),
                         ],
@@ -371,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
               searchQuery: _searchQuery,
               searchCategory: _searchCategory,
               selectedDate: _selectedDate,
-              selectedTime: _selectedTime,
+              timeText: _timeText,
             ),
           ),
         ],
@@ -436,13 +439,13 @@ class NoteListScreen extends StatelessWidget {
   final String searchQuery;
   final String searchCategory;
   final DateTime? selectedDate;
-  final TimeOfDay? selectedTime;
+  final String timeText;
   const NoteListScreen({
     Key? key,
     this.searchQuery = '',
     this.searchCategory = '',
     this.selectedDate,
-    this.selectedTime,
+    this.timeText = '',
   }) : super(key: key);
 
   @override
@@ -460,7 +463,6 @@ class NoteListScreen extends StatelessWidget {
                   note.categoria.toLowerCase().contains(q));
           bool matchesDate = true;
           if (selectedDate != null) {
-            // Extrae solo la parte de la fecha (ignora hora)
             final datePart = note.date.trim().split(' ')[0];
             final parts = datePart.split('/');
             if (parts.length == 3) {
@@ -479,24 +481,8 @@ class NoteListScreen extends StatelessWidget {
             }
           }
           bool matchesTime = true;
-          if (selectedTime != null) {
-            // Extrae la hora y minuto si existe
-            final timePart = note.date.trim().split(' ').length > 1
-                ? note.date.trim().split(' ')[1]
-                : null;
-            if (timePart != null && timePart.contains(':')) {
-              final tParts = timePart.split(':');
-              final h = int.tryParse(tParts[0]);
-              final min = int.tryParse(tParts[1]);
-              if (h != null && min != null) {
-                matchesTime =
-                    (selectedTime!.hour == h && selectedTime!.minute == min);
-              } else {
-                matchesTime = false;
-              }
-            } else {
-              matchesTime = false;
-            }
+          if (timeText.isNotEmpty) {
+            matchesTime = note.date.contains(timeText);
           }
           return matchesCategory && matchesQuery && matchesDate && matchesTime;
         }).toList();
