@@ -35,6 +35,16 @@ class NotesApp extends StatelessWidget {
 }
 
 class HomeScreen extends StatefulWidget {
+  /// Formatea la fecha guardada en el campo [date] para mostrar fecha y hora sin milisegundos.
+  String _formatDateTime(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr);
+      return "${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
   const HomeScreen({super.key});
 
   @override
@@ -300,6 +310,18 @@ class _HomeScreenState extends State<HomeScreen> {
 // --- Pantalla de notas (ejemplo simple) ---
 
 class NoteListScreen extends StatelessWidget {
+  /// Formatea la fecha guardada en el campo [date] para mostrar fecha y hora sin milisegundos.
+  String _formatDateTime(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr);
+      final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+      final ampm = dt.hour < 12 ? 'AM' : 'PM';
+      return "${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} $hour:${dt.minute.toString().padLeft(2, '0')} $ampm";
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
   final String searchQuery;
   final String searchCategory;
   const NoteListScreen(
@@ -385,7 +407,7 @@ class NoteListScreen extends StatelessWidget {
                 subtitle: Row(
                   children: [
                     Text(
-                      note.date,
+                      _formatDateTime(note.date),
                       style: const TextStyle(color: Colors.grey),
                     ),
                     if (note.categoria.isNotEmpty) ...[

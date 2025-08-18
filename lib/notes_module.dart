@@ -216,6 +216,18 @@ class NoteEditScreen extends StatefulWidget {
 }
 
 class _NoteEditScreenState extends State<NoteEditScreen> {
+  /// Formatea la fecha guardada en el campo [date] para mostrar fecha y hora.
+  String _formatDateTime(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr);
+      final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+      final ampm = dt.hour < 12 ? 'AM' : 'PM';
+      return "${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} $hour:${dt.minute.toString().padLeft(2, '0')} $ampm";
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   late TextEditingController _categoriaController;
@@ -277,7 +289,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     note.title = _titleController.text;
     note.content = _contentController.text;
     note.categoria = _categoriaController.text;
-    note.date = DateTime.now().toLocal().toString().split(' ')[0];
+    // Guarda fecha y hora exacta de entrada
+    note.date = DateTime.now().toLocal().toString();
     note.color = _noteColor;
     note.skin = _skin.isEmpty ? 'grid' : _skin;
     context.read<NoteProvider>().updateNote(note);
@@ -436,8 +449,11 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                   Icon(Icons.calendar_today,
                       size: 16, color: Colors.grey.shade600),
                   const SizedBox(width: 4),
-                  Text(widget.note.date,
-                      style: const TextStyle(color: Colors.black54)),
+                  // Fecha y hora (no editable)
+                  Text(
+                    _formatDateTime(widget.note.date),
+                    style: const TextStyle(color: Colors.black54),
+                  ),
                   const SizedBox(width: 8),
                   const Text('|', style: TextStyle(color: Colors.black26)),
                   const SizedBox(width: 8),
