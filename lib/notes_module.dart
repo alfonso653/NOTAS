@@ -380,11 +380,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                           BorderRadius.vertical(top: Radius.circular(16)),
                     ),
                     builder: (_) => SkinPanel(
-                      selectedSkin: _skin,
                       color: _noteColor,
-                      onSkinSelected: (s) {
-                        setState(() => _skin = s);
-                      },
                       onColorSelected: (c) {
                         setState(() => _noteColor = c);
                       },
@@ -604,203 +600,164 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
 /// PANEL: Skins & Color
 /// ===================
 class SkinPanel extends StatelessWidget {
-  final String selectedSkin;
   final Color color;
-  final ValueChanged<String> onSkinSelected;
   final ValueChanged<Color> onColorSelected;
 
   const SkinPanel({
     super.key,
-    required this.selectedSkin,
     required this.color,
-    required this.onSkinSelected,
     required this.onColorSelected,
   });
 
   // Matriz para aumentar contraste en previews
-  static const List<double> _previewBoostMatrix = <double>[
-    // 4x5 matrix (20 entradas): contraste ~1.25 con leve desplazamiento
-    1.25, 0.00, 0.00, 0.00, -32.0,
-    0.00, 1.25, 0.00, 0.00, -32.0,
-    0.00, 0.00, 1.25, 0.00, -32.0,
-    0.00, 0.00, 0.00, 1.00, 0.0,
-  ];
+  // Eliminada matriz de contraste de skins
 
   @override
   Widget build(BuildContext context) {
-    final skins = [
-      'grid',
-      'dots',
-      'lines',
-      'plain',
-      'clouds',
-      'flowers',
-      'wood'
-    ];
+    // Paleta extendida de colores pastel y vivos
     final colors = <Color>[
-      Colors.white,
-      Colors.yellow.shade100,
-      Colors.amber.shade100,
-      Colors.pink.shade50,
-      Colors.blue.shade50,
-      Colors.green.shade50,
-      Colors.cyan.shade50,
-      Colors.orange.shade100,
-      Colors.grey.shade200,
+      // Blancos y grises claros
+      Colors.white, Colors.grey.shade50, Colors.grey.shade100,
+      Colors.grey.shade200, Colors.grey.shade300,
+      // Amarillos y naranjas pastel
+      Colors.yellow.shade50, Colors.yellow.shade100, Colors.yellow.shade200,
+      Colors.yellow.shade300, Colors.yellow.shade400, Colors.yellow.shade500,
+      Colors.amber.shade50, Colors.amber.shade100, Colors.amber.shade200,
+      Colors.amber.shade300, Colors.amber.shade400, Colors.amber.shade500,
+      Colors.orange.shade50, Colors.orange.shade100, Colors.orange.shade200,
+      Colors.orange.shade300, Colors.orange.shade400, Colors.orange.shade500,
+      // Rosas y lilas pastel
+      Colors.pink.shade50, Colors.pink.shade100, Colors.pink.shade200,
+      Colors.pink.shade300, Colors.pink.shade400, Colors.pink.shade500,
+      Colors.purple.shade50, Colors.purple.shade100, Colors.purple.shade200,
+      Colors.purple.shade300, Colors.purple.shade400, Colors.purple.shade500,
+      Colors.deepPurple.shade50,
+      Colors.deepPurple.shade100,
+      Colors.deepPurple.shade200,
+      Colors.deepPurple.shade300,
+      Colors.deepPurple.shade400,
+      Colors.deepPurple.shade500,
+      // Azules y celestes pastel
+      Colors.blue.shade50, Colors.blue.shade100, Colors.blue.shade200,
+      Colors.blue.shade300, Colors.blue.shade400, Colors.blue.shade500,
+      Colors.lightBlue.shade50,
+      Colors.lightBlue.shade100,
+      Colors.lightBlue.shade200,
+      Colors.lightBlue.shade300,
+      Colors.lightBlue.shade400,
+      Colors.lightBlue.shade500,
+      Colors.cyan.shade50, Colors.cyan.shade100, Colors.cyan.shade200,
+      Colors.cyan.shade300, Colors.cyan.shade400, Colors.cyan.shade500,
+      Colors.indigo.shade50, Colors.indigo.shade100, Colors.indigo.shade200,
+      Colors.indigo.shade300, Colors.indigo.shade400, Colors.indigo.shade500,
+      // Verdes y menta pastel
+      Colors.green.shade50, Colors.green.shade100, Colors.green.shade200,
+      Colors.green.shade300, Colors.green.shade400, Colors.green.shade500,
+      Colors.lime.shade50, Colors.lime.shade100, Colors.lime.shade200,
+      Colors.lime.shade300, Colors.lime.shade400, Colors.lime.shade500,
+      Colors.teal.shade50, Colors.teal.shade100, Colors.teal.shade200,
+      Colors.teal.shade300, Colors.teal.shade400, Colors.teal.shade500,
+      // Marrones claros
+      Colors.brown.shade50, Colors.brown.shade100, Colors.brown.shade200,
+      Colors.brown.shade300, Colors.brown.shade400, Colors.brown.shade500,
+      // Extras personalizados elegantes y degradados
+      Color(0xFFf6d365),
+      Color(0xFFfda085),
+      Color(0xFFfbc2eb),
+      Color(0xFFa1c4fd),
+      Color(0xFFc2e9fb),
+      Color(0xFFd4fc79),
+      Color(0xFF96e6a1),
+      Color(0xFFf7797d),
+      Color(0xFFe0c3fc),
+      Color(0xFF8fd3f4),
+      Color(0xFFfcb69f),
+      Color(0xFFffecd2),
+      Color(0xFFa8edea),
+      Color(0xFFfed6e3),
+      Color(0xFFcfd9df), Color(0xFFe2d1c3), Color(0xFFf5f7fa),
+      Color(0xFFc9ffbf), Color(0xFFffafbd), Color(0xFFb2fefa),
+      Color(0xFFf3e7e9),
+      Color(0xFFc9ffbf),
+      Color(0xFFf9f586),
+      Color(0xFFf7b267),
+      Color(0xFFe0c3fc),
+      Color(0xFFf3e7e9),
+      Color(0xFFf5f7fa),
+      Color(0xFFe0eafc),
+      Color(0xFFf7ffea),
+      Color(0xFFe2d1c3),
+      Color(0xFFfbc2eb),
+      Color(0xFFfcb69f),
+      Color(0xFFf6d365),
+      Color(0xFFfda085),
+      Color(0xFFfbc2eb),
+      Color(0xFFa1c4fd),
+      Color(0xFFc2e9fb),
+      Color(0xFFd4fc79),
+      Color(0xFF96e6a1),
+      Color(0xFFf7797d),
+      Color(0xFFe0c3fc),
+      Color(0xFF8fd3f4),
+      Color(0xFFfcb69f),
+      Color(0xFFffecd2),
+      Color(0xFFa8edea),
+      Color(0xFFfed6e3),
+      Color(0xFFcfd9df),
+      Color(0xFFe2d1c3),
+      Color(0xFFf5f7fa), Color(0xFFc9ffbf), Color(0xFFffafbd),
+      Color(0xFFb2fefa),
     ];
 
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Fondo (Skin)',
+            const Text('Color de fondo',
                 style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 86,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: skins.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (ctx, i) =>
-                    _buildSkinOption(ctx, skins[i], selectedSkin),
-              ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Calcula el tamaño máximo de cada cuadro para que quepan siempre
+                final maxWidth = constraints.maxWidth;
+                // Queremos cuadros de ~20-32px pero que nunca se salgan
+                final minBox = 20.0;
+                final maxBox = 32.0;
+                int crossAxisCount = (maxWidth / (minBox + 6)).floor();
+                double boxSize =
+                    (maxWidth - (crossAxisCount - 1) * 6) / crossAxisCount;
+                if (boxSize > maxBox) boxSize = maxBox;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: colors.length,
+                  itemBuilder: (ctx, i) =>
+                      _buildColorOption(ctx, colors[i], color, size: boxSize),
+                );
+              },
             ),
-            const SizedBox(height: 18),
-            const Text('Color', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 56,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: colors.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (ctx, i) =>
-                    _buildColorOption(ctx, colors[i], color),
-              ),
-            ),
+            const SizedBox(height: 4),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSkinOption(BuildContext context, String skin, String selected) {
-    final isSelected = skin == selected;
-    return GestureDetector(
-      onTap: () {
-        onSkinSelected(skin);
-        Navigator.pop(context);
-      },
-      onLongPress: () {
-        // Zoom rápido para ver detalles
-        showDialog(
-          context: context,
-          builder: (_) => Dialog(
-            insetPadding: const EdgeInsets.all(24),
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: ColorFiltered(
-                colorFilter: ColorFilter.matrix(_previewBoostMatrix),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.asset(
-                      'packages/notes_module/assets/$skin.png',
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
-                    ),
-                    Positioned(
-                      left: 10,
-                      top: 10,
-                      child: _chip(_skinLabel(skin)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-      child: Material(
-        elevation: isSelected ? 4 : 1,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: 86,
-          height: 86,
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: isSelected ? Colors.amber : Colors.grey.shade400,
-              width: isSelected ? 3 : 1,
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: ColorFiltered(
-            colorFilter: ColorFilter.matrix(_previewBoostMatrix),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  'packages/notes_module/assets/$skin.png',
-                  fit: BoxFit.cover,
-                  filterQuality: FilterQuality.high,
-                ),
-                Positioned(
-                  left: 6,
-                  top: 6,
-                  child: _chip(_skinLabel(skin)),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // Eliminado _buildSkinOption y helpers relacionados con skins
 
-  Widget _chip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
+  // Eliminados helpers de skins
 
-  String _skinLabel(String k) {
-    switch (k) {
-      case 'grid':
-        return 'Cuadrícula';
-      case 'dots':
-        return 'Puntos';
-      case 'lines':
-        return 'Rayas';
-      case 'plain':
-        return 'Liso';
-      case 'clouds':
-        return 'Nubes';
-      case 'flowers':
-        return 'Flores';
-      case 'wood':
-        return 'Madera';
-      default:
-        return k;
-    }
-  }
-
-  Widget _buildColorOption(BuildContext context, Color c, Color selected) {
+  Widget _buildColorOption(BuildContext context, Color c, Color selected,
+      {double size = 40}) {
     final isSelected = c.value == selected.value;
     return GestureDetector(
       onTap: () {
@@ -808,8 +765,8 @@ class SkinPanel extends StatelessWidget {
         Navigator.pop(context);
       },
       child: Container(
-        width: 40,
-        height: 40,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: c,
           border: Border.all(
