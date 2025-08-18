@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 import 'package:provider/provider.dart';
 import 'notes_module.dart';
@@ -56,12 +59,333 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   String _searchCategory = '';
   DateTime? _selectedDate;
+  TimeOfDay? _selectedTimeFrom;
+  TimeOfDay? _selectedTimeTo;
   String _timeText = '';
+
+  bool get _isDesktopLike =>
+      kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.linux ||
+      defaultTargetPlatform == TargetPlatform.macOS;
 
   @override
   void initState() {
     super.initState();
     _searchQuery = '';
+  }
+
+  /// Diferir mutaciones al próximo frame para evitar re-entrancia.
+  void _defer(VoidCallback fn) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) fn();
+    });
+  }
+
+  // ---------- Picker MATERIAL (móvil) 12h con AM/PM ----------
+  Widget _hourMinutePicker({
+    required TimeOfDay initial,
+    required void Function(TimeOfDay) onChanged,
+  }) {
+    int hour = initial.hourOfPeriod == 0 ? 12 : initial.hourOfPeriod;
+    int minute = initial.minute;
+    bool isPm = initial.period == DayPeriod.pm;
+
+    return StatefulBuilder(
+      builder: (context, setSB) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 60,
+              height: 120,
+              child: ListWheelScrollView.useDelegate(
+                itemExtent: 36,
+                diameterRatio: 1.2,
+                physics: const FixedExtentScrollPhysics(),
+                controller: FixedExtentScrollController(initialItem: hour - 1),
+                onSelectedItemChanged: (i) {
+                  hour = i + 1;
+                  _defer(() {
+                    onChanged(TimeOfDay(
+                      hour: isPm
+                          ? (hour == 12 ? 12 : hour + 12)
+                          : (hour == 12 ? 0 : hour),
+                      minute: minute,
+                    ));
+                  });
+                },
+                childDelegate: ListWheelChildBuilderDelegate(
+                  builder: (context, i) => Center(
+                    child:
+                        Text('${i + 1}', style: const TextStyle(fontSize: 20)),
+                  ),
+                  childCount: 12,
+                ),
+              ),
+            ),
+            const Text(':', style: TextStyle(fontSize: 20)),
+            SizedBox(
+              width: 60,
+              height: 120,
+              child: ListWheelScrollView.useDelegate(
+                itemExtent: 36,
+                diameterRatio: 1.2,
+                physics: const FixedExtentScrollPhysics(),
+                controller: FixedExtentScrollController(initialItem: minute),
+                onSelectedItemChanged: (i) {
+                  minute = i;
+                  _defer(() {
+                    onChanged(TimeOfDay(
+                      hour: isPm
+                          ? (hour == 12 ? 12 : hour + 12)
+                          : (hour == 12 ? 0 : hour),
+                      minute: minute,
+                    ));
+                  });
+                },
+                childDelegate: ListWheelChildBuilderDelegate(
+                  builder: (context, i) => Center(
+                    child: Text(i.toString().padLeft(2, '0'),
+                        style: const TextStyle(fontSize: 20)),
+                  ),
+                  childCount: 60,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              children: [
+                RadioListTile<bool>(
+                  title: const Text('AM', style: TextStyle(fontSize: 14)),
+                  value: false,
+                  groupValue: isPm,
+                  onChanged: (v) {
+                    _defer(() {
+                      setSB(() => isPm = false);
+                      onChanged(TimeOfDay(
+                          hour: hour == 12 ? 0 : hour, minute: minute));
+                    });
+                  },
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                RadioListTile<bool>(
+                  title: const Text('PM', style: TextStyle(fontSize: 14)),
+                  value: true,
+                  groupValue: isPm,
+                  onChanged: (v) {
+                    _defer(() {
+                      setSB(() => isPm = true);
+                      onChanged(TimeOfDay(
+                          hour: hour == 12 ? 12 : hour + 12, minute: minute));
+                    });
+                  },
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ---------- Picker CUPERTINO (desktop/web) 12h con AM/PM ----------
+  Widget _cupertinoRangePicker({
+    required TimeOfDay initialFrom,
+    required TimeOfDay initialTo,
+    required void Function(TimeOfDay from, TimeOfDay to) onAceptar,
+  }) {
+    DateTime fromDT =
+        DateTime(2000, 1, 1, initialFrom.hour, initialFrom.minute);
+    DateTime toDT = DateTime(2000, 1, 1, initialTo.hour, initialTo.minute);
+
+    TimeOfDay _toTOD(DateTime d) => TimeOfDay(hour: d.hour, minute: d.minute);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('Selecciona el rango de horas',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Desde:', style: TextStyle(fontSize: 16))),
+        SizedBox(
+          height: 160,
+          child: CupertinoDatePicker(
+            mode: CupertinoDatePickerMode.time,
+            use24hFormat: false, // 12 h con AM/PM
+            initialDateTime: fromDT,
+            onDateTimeChanged: (d) => fromDT = d,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Align(
+            alignment: Alignment.centerLeft,
+            child: Text('Hasta:', style: TextStyle(fontSize: 16))),
+        SizedBox(
+          height: 160,
+          child: CupertinoDatePicker(
+            mode: CupertinoDatePickerMode.time,
+            use24hFormat: false,
+            initialDateTime: toDT,
+            onDateTimeChanged: (d) => toDT = d,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.pop(context),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              child: const Text('Aceptar'),
+              onPressed: () {
+                if (fromDT.isAfter(toDT)) {
+                  final tmp = fromDT;
+                  fromDT = toDT;
+                  toDT = tmp;
+                }
+                onAceptar(_toTOD(fromDT), _toTOD(toDT));
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Future<void> _showDoubleTimePicker() async {
+    if (_isDesktopLike) {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        enableDrag: false,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              left: 16,
+              right: 16,
+              top: 24,
+            ),
+            child: _cupertinoRangePicker(
+              initialFrom:
+                  _selectedTimeFrom ?? const TimeOfDay(hour: 8, minute: 0),
+              initialTo:
+                  _selectedTimeTo ?? const TimeOfDay(hour: 18, minute: 0),
+              onAceptar: (from, to) {
+                setState(() {
+                  _selectedTimeFrom = from;
+                  _selectedTimeTo = to;
+                  _timeText = '${from.format(context)} - ${to.format(context)}';
+                });
+              },
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    // En móvil (Android/iOS), rueda Material con AM/PM
+    TimeOfDay tempFrom =
+        _selectedTimeFrom ?? const TimeOfDay(hour: 8, minute: 0);
+    TimeOfDay tempTo = _selectedTimeTo ?? const TimeOfDay(hour: 18, minute: 0);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              left: 16,
+              right: 16,
+              top: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Selecciona el rango de horas',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text('Desde:', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _hourMinutePicker(
+                      initial: tempFrom,
+                      onChanged: (t) => tempFrom = t,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text('Hasta:', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _hourMinutePicker(
+                      initial: tempTo,
+                      onChanged: (t) => tempTo = t,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    child: const Text('Cancelar'),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    child: const Text('Aceptar'),
+                    onPressed: () {
+                      final fromMin = tempFrom.hour * 60 + tempFrom.minute;
+                      final toMin = tempTo.hour * 60 + tempTo.minute;
+                      if (fromMin > toMin) {
+                        final t = tempFrom;
+                        tempFrom = tempTo;
+                        tempTo = t;
+                      }
+                      _defer(() {
+                        setState(() {
+                          _selectedTimeFrom = tempFrom;
+                          _selectedTimeTo = tempTo;
+                          _timeText =
+                              '${tempFrom.format(context)} - ${tempTo.format(context)}';
+                        });
+                        Navigator.pop(context);
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showSearchDialog() async {
@@ -137,10 +461,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       tempCategory = '';
                       queryController.clear();
                     });
-                    Navigator.of(context).pop({
-                      'query': '',
-                      'category': '',
-                    });
+                    Navigator.of(context).pop({'query': '', 'category': ''});
                   },
                   child: const Text('Quitar filtros'),
                 ),
@@ -167,7 +488,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Widget> get _pages => [
         NoteListScreen(
-            searchQuery: _searchQuery, searchCategory: _searchCategory),
+          searchQuery: _searchQuery,
+          searchCategory: _searchCategory,
+          selectedDate: _selectedDate,
+          selectedTimeFrom: _selectedTimeFrom,
+          selectedTimeTo: _selectedTimeTo,
+        ),
         PendingScreen(
             searchQuery: _searchQuery, searchCategory: _searchCategory),
       ];
@@ -185,11 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Image.asset(
-            'assets/mas.png',
-            width: 32,
-            height: 32,
-          ),
+          icon: Image.asset('assets/mas.png', width: 32, height: 32),
           onPressed: () {
             if (_selectedIndex == 0) {
               final now = DateTime.now();
@@ -203,11 +525,9 @@ class _HomeScreenState extends State<HomeScreen> {
               );
               context.read<NoteProvider>().addNote(newNote);
               Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => NoteEditScreen(note: newNote),
-                ),
-              );
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => NoteEditScreen(note: newNote)));
             } else {
               final pendingProvider = context.read<PendingProvider>();
               showModalBottomSheet(
@@ -234,37 +554,27 @@ class _HomeScreenState extends State<HomeScreen> {
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 400),
           transitionBuilder: (child, animation) {
-            final offsetAnimation = Tween<Offset>(
-              begin: const Offset(0.0, 0.5),
-              end: Offset.zero,
-            ).animate(animation);
+            final offsetAnimation =
+                Tween<Offset>(begin: const Offset(0.0, 0.5), end: Offset.zero)
+                    .animate(animation);
             return SlideTransition(
-              position: offsetAnimation,
-              child: FadeTransition(
-                opacity: animation,
-                child: child,
-              ),
-            );
+                position: offsetAnimation,
+                child: FadeTransition(opacity: animation, child: child));
           },
           child: Text(
             _selectedIndex == 0 ? 'Enseñanzas' : 'Pendientes',
             key: ValueKey(_selectedIndex),
             style: const TextStyle(
-              fontFamily: 'Nunito',
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 28,
-            ),
+                fontFamily: 'Nunito',
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 28),
           ),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Image.asset(
-              'assets/lupa.png',
-              width: 28,
-              height: 28,
-            ),
+            icon: Image.asset('assets/lupa.png', width: 28, height: 28),
             onPressed: _showSearchDialog,
             tooltip: 'Buscar',
           ),
@@ -273,100 +583,126 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _selectedDate ?? DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setState(() => _selectedDate = picked);
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Filtrar por fecha',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      child: Row(
-                        children: [
-                          const Text('📅 ', style: TextStyle(fontSize: 18)),
-                          const SizedBox(width: 8),
-                          Text(
-                            _selectedDate != null
-                                ? "${_selectedDate!.year.toString().padLeft(4, '0')}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
-                                : 'Todas las fechas',
-                            style: TextStyle(
-                                color: _selectedDate != null
-                                    ? Colors.black87
-                                    : Colors.grey),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 500;
+                final filterWidth = isNarrow ? double.infinity : 220.0;
+                final filterSpacing = isNarrow ? 8.0 : 12.0;
+                return Flex(
+                  direction: isNarrow ? Axis.vertical : Axis.horizontal,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: filterWidth,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedDate ?? DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setState(() => _selectedDate = picked);
+                          }
+                        },
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: 'Filtrar por fecha',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
                           ),
-                          if (_selectedDate != null)
-                            IconButton(
-                              icon: const Text('🧹',
-                                  style: TextStyle(fontSize: 18)),
-                              onPressed: () =>
-                                  setState(() => _selectedDate = null),
-                              splashRadius: 16,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InkWell(
-                    // Cambia a campo de texto en vez de showTimePicker
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Filtrar por hora',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      child: Row(
-                        children: [
-                          const Text('🕓 ', style: TextStyle(fontSize: 18)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              decoration: const InputDecoration(
-                                hintText: 'Todas las horas',
-                                border: InputBorder.none,
-                                isDense: true,
+                          child: Row(
+                            children: [
+                              const Text('📅 ', style: TextStyle(fontSize: 18)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _selectedDate != null
+                                      ? "${_selectedDate!.year.toString().padLeft(4, '0')}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
+                                      : 'Fechas',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      color: _selectedDate != null
+                                          ? Colors.black87
+                                          : Colors.grey),
+                                ),
                               ),
-                              style: TextStyle(
-                                  color: _timeText.isNotEmpty
-                                      ? Colors.black87
-                                      : Colors.grey),
-                              controller:
-                                  TextEditingController(text: _timeText),
-                              onChanged: (value) {
-                                setState(() => _timeText = value);
-                              },
+                              if (_selectedDate != null)
+                                IconButton(
+                                  icon: const Text('🧹',
+                                      style: TextStyle(fontSize: 18)),
+                                  onPressed: () =>
+                                      setState(() => _selectedDate = null),
+                                  splashRadius: 16,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: filterSpacing, height: filterSpacing),
+                    SizedBox(
+                      width: filterWidth,
+                      child: Column(
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: _showDoubleTimePicker,
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Rango de horas',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Text('🕓 ',
+                                      style: TextStyle(fontSize: 18)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      (_selectedTimeFrom != null &&
+                                              _selectedTimeTo != null)
+                                          ? '${_selectedTimeFrom!.format(context)} - ${_selectedTimeTo!.format(context)}'
+                                          : 'Horas',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: (_selectedTimeFrom != null &&
+                                                _selectedTimeTo != null)
+                                            ? Colors.black87
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_selectedTimeFrom != null ||
+                                      _selectedTimeTo != null)
+                                    IconButton(
+                                      icon: const Text('🧹',
+                                          style: TextStyle(fontSize: 18)),
+                                      onPressed: () => setState(() {
+                                        _selectedTimeFrom = null;
+                                        _selectedTimeTo = null;
+                                        _timeText = '';
+                                      }),
+                                      splashRadius: 16,
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
-                          if (_timeText.isNotEmpty)
-                            IconButton(
-                              icon: const Text('🧹',
-                                  style: TextStyle(fontSize: 18)),
-                              onPressed: () => setState(() => _timeText = ''),
-                              splashRadius: 16,
-                            ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
           Expanded(
@@ -374,6 +710,8 @@ class _HomeScreenState extends State<HomeScreen> {
               searchQuery: _searchQuery,
               searchCategory: _searchCategory,
               selectedDate: _selectedDate,
+              selectedTimeFrom: _selectedTimeFrom,
+              selectedTimeTo: _selectedTimeTo,
               timeText: _timeText,
             ),
           ),
@@ -389,42 +727,25 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(
-            icon: Image.asset(
-              'assets/nota.gif',
-              width: 28,
-              height: 28,
-            ),
-            activeIcon: Image.asset(
-              'assets/nota.gif',
-              width: 32,
-              height: 32,
-            ),
+            icon: Image.asset('assets/nota.gif', width: 28, height: 28),
+            activeIcon: Image.asset('assets/nota.gif', width: 32, height: 32),
             label: 'Enseñanzas',
           ),
           BottomNavigationBarItem(
-            icon: Image.asset(
-              'assets/pendientes.gif',
-              width: 28,
-              height: 28,
-            ),
-            activeIcon: Image.asset(
-              'assets/pendientes.gif',
-              width: 32,
-              height: 32,
-            ),
+            icon: Image.asset('assets/pendientes.gif', width: 28, height: 28),
+            activeIcon:
+                Image.asset('assets/pendientes.gif', width: 32, height: 32),
             label: 'Pendientes',
           ),
         ],
       ),
-      // floatingActionButton eliminado, ahora el botón de más está en el AppBar
     );
   }
 }
 
-// --- Pantalla de notas (ejemplo simple) ---
+// --- Pantalla de notas ---
 
 class NoteListScreen extends StatelessWidget {
-  /// Formatea la fecha guardada en el campo [date] para mostrar fecha y hora sin milisegundos.
   String _formatDateTime(String dateStr) {
     try {
       final dt = DateTime.parse(dateStr);
@@ -436,15 +757,45 @@ class NoteListScreen extends StatelessWidget {
     }
   }
 
+  DateTime? _parseNoteDate(String s) {
+    s = s.trim();
+    try {
+      return DateTime.parse(s);
+    } catch (_) {}
+    try {
+      final parts = s.split(' ');
+      final dmy = parts[0].split('/');
+      final d = int.parse(dmy[0]), m = int.parse(dmy[1]), y = int.parse(dmy[2]);
+      int hh = 0, mm = 0;
+      if (parts.length > 1) {
+        final hm = parts[1].split(':');
+        hh = int.parse(hm[0]);
+        mm = int.parse(hm[1]);
+      }
+      return DateTime(y, m, d, hh, mm);
+    } catch (_) {}
+    try {
+      final dmy = s.split('/');
+      final d = int.parse(dmy[0]), m = int.parse(dmy[1]), y = int.parse(dmy[2]);
+      return DateTime(y, m, d);
+    } catch (_) {}
+    return null;
+  }
+
   final String searchQuery;
   final String searchCategory;
   final DateTime? selectedDate;
+  final TimeOfDay? selectedTimeFrom;
+  final TimeOfDay? selectedTimeTo;
   final String timeText;
+
   const NoteListScreen({
     Key? key,
     this.searchQuery = '',
     this.searchCategory = '',
     this.selectedDate,
+    this.selectedTimeFrom,
+    this.selectedTimeTo,
     this.timeText = '',
   }) : super(key: key);
 
@@ -461,48 +812,56 @@ class NoteListScreen extends StatelessWidget {
               note.date.toLowerCase().contains(q) ||
               (note.categoria.isNotEmpty &&
                   note.categoria.toLowerCase().contains(q));
+
           bool matchesDate = true;
+          final parsed = _parseNoteDate(note.date);
           if (selectedDate != null) {
-            final datePart = note.date.trim().split(' ')[0];
-            final parts = datePart.split('/');
-            if (parts.length == 3) {
-              final d = int.tryParse(parts[0]);
-              final m = int.tryParse(parts[1]);
-              final y = int.tryParse(parts[2]);
-              if (d != null && m != null && y != null) {
-                matchesDate = (selectedDate!.year == y &&
-                    selectedDate!.month == m &&
-                    selectedDate!.day == d);
-              } else {
-                matchesDate = false;
-              }
-            } else {
+            if (parsed == null) {
               matchesDate = false;
+            } else {
+              matchesDate = parsed.year == selectedDate!.year &&
+                  parsed.month == selectedDate!.month &&
+                  parsed.day == selectedDate!.day;
             }
           }
+
           bool matchesTime = true;
-          if (timeText.isNotEmpty) {
+          if (selectedTimeFrom != null && selectedTimeTo != null) {
+            if (parsed == null) {
+              matchesTime = false;
+            } else {
+              final mins = parsed.hour * 60 + parsed.minute;
+              final fromM =
+                  selectedTimeFrom!.hour * 60 + selectedTimeFrom!.minute;
+              final toM = selectedTimeTo!.hour * 60 + selectedTimeTo!.minute;
+              final low = fromM <= toM ? fromM : toM;
+              final high = fromM <= toM ? toM : fromM;
+              matchesTime = (mins >= low && mins <= high);
+            }
+          } else if (timeText.isNotEmpty) {
             matchesTime = note.date.contains(timeText);
           }
+
           return matchesCategory && matchesQuery && matchesDate && matchesTime;
         }).toList();
+
         if (filtered.isEmpty) {
           return const Center(
             child: Text('No hay resultados.',
                 style: TextStyle(fontSize: 18, color: Colors.grey)),
           );
         }
-        // Mapa de categorías a colores pastel
+
         const categoriaColores = {
-          'Sermón': Color(0xFFD6FFF0), // verde menta pastel
+          'Sermón': Color(0xFFD6FFF0),
           'Estudio Bíblico': Color(0xFFD6EFFF),
           'Reflexión': Color(0xFFFFF9D6),
           'Devocional': Color(0xFFD6FFD6),
           'Testimonio': Color(0xFFEAD6FF),
-          'Apuntes Generales': Color(0xFFB2C7E2), // azul oscuro pastel
-          'Discipulado': Color(0xFFB2E2B2), // verde pastel oscuro único
+          'Apuntes Generales': Color(0xFFB2C7E2),
+          'Discipulado': Color(0xFFB2E2B2),
         };
-        // final categorias = categoriaColores.keys.toList();
+
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: filtered.length,
@@ -514,8 +873,7 @@ class NoteListScreen extends StatelessWidget {
               color: pastelColor,
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  borderRadius: BorderRadius.circular(12)),
               child: ListTile(
                 onTap: () {
                   Navigator.of(context).push(PageRouteBuilder(
@@ -523,10 +881,7 @@ class NoteListScreen extends StatelessWidget {
                         NoteEditScreen(note: note),
                     transitionsBuilder:
                         (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
+                      return FadeTransition(opacity: animation, child: child);
                     },
                   ));
                 },
@@ -534,11 +889,8 @@ class NoteListScreen extends StatelessWidget {
                   width: 40,
                   height: 40,
                   alignment: Alignment.center,
-                  child: Image.asset(
-                    'assets/agenda.png',
-                    width: 22,
-                    height: 22,
-                  ),
+                  child:
+                      Image.asset('assets/agenda.png', width: 22, height: 22),
                 ),
                 title: Text(
                   note.title.isEmpty ? 'Sin título' : note.title,
@@ -549,10 +901,8 @@ class NoteListScreen extends StatelessWidget {
                 ),
                 subtitle: Row(
                   children: [
-                    Text(
-                      _formatDateTime(note.date),
-                      style: const TextStyle(color: Colors.grey),
-                    ),
+                    Text(_formatDateTime(note.date),
+                        style: const TextStyle(color: Colors.grey)),
                     if (note.categoria.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(
@@ -569,21 +919,19 @@ class NoteListScreen extends StatelessWidget {
                               .join()
                               .toUpperCase(),
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black54,
-                          ),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54),
                         ),
                       ),
-                    ]
+                    ],
                   ],
                 ),
                 trailing: PopupMenuButton<String>(
                   icon: const Text('🗑️', style: TextStyle(fontSize: 18)),
                   onSelected: (value) {
-                    if (value == 'delete') {
-                      provider.deleteNote(note);
-                    }
+                    if (value == 'delete')
+                      context.read<NoteProvider>().deleteNote(note);
                   },
                   itemBuilder: (ctx) => [
                     const PopupMenuItem(
@@ -640,9 +988,8 @@ class PendingScreen extends StatelessWidget {
           color: const Color(0xFFFEF7F0),
           child: Column(
             children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -657,8 +1004,8 @@ class PendingScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     if (pending.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 32),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 32),
                         child: Text('No tienes tareas pendientes.',
                             style: TextStyle(color: Colors.grey)),
                       ),
@@ -667,8 +1014,8 @@ class PendingScreen extends StatelessWidget {
                         onComplete: provider.completeTask,
                         onDelete: provider.deleteTask)),
                     if (done.isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 24, bottom: 8),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 24, bottom: 8),
                         child: Text('Completadas',
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
@@ -690,7 +1037,8 @@ class PendingScreen extends StatelessWidget {
   }
 }
 
-// --- Widget para agregar tarea ---
+// --- Formulario para agregar tarea ---
+
 class AddTaskForm extends StatefulWidget {
   final PendingProvider pendingProvider;
   const AddTaskForm({required this.pendingProvider, super.key});
@@ -756,7 +1104,7 @@ class _AddTaskFormState extends State<AddTaskForm> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Nueva tarea',
+          const Text('Nueva tarea',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           TextFormField(
@@ -821,7 +1169,8 @@ class _AddTaskFormState extends State<AddTaskForm> {
   }
 }
 
-// --- Widget para mostrar una tarea ---
+// --- Tarjeta de tarea ---
+
 class TaskCard extends StatelessWidget {
   final PendingTask task;
   final void Function(String id)? onComplete;
@@ -846,10 +1195,9 @@ class TaskCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
         ],
       ),
       child: ListTile(
@@ -868,12 +1216,13 @@ class TaskCard extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.indigo),
+                const Icon(Icons.calendar_today,
+                    size: 16, color: Colors.indigo),
                 const SizedBox(width: 4),
                 Text(
                     '${task.dateTime.day}/${task.dateTime.month}/${task.dateTime.year}'),
                 const SizedBox(width: 12),
-                Icon(Icons.access_time, size: 16, color: Colors.indigo),
+                const Icon(Icons.access_time, size: 16, color: Colors.indigo),
                 const SizedBox(width: 4),
                 Text(
                     '${task.dateTime.hour.toString().padLeft(2, '0')}:${task.dateTime.minute.toString().padLeft(2, '0')}'),
