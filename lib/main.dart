@@ -55,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   String _searchQuery = '';
   String _searchCategory = '';
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
 
   @override
   void initState() {
@@ -192,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: '',
                 content: '',
                 date:
-                    '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
+                    '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
                 categoria: '',
               );
               context.read<NoteProvider>().addNote(newNote);
@@ -264,7 +266,116 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: _pages[_selectedIndex],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _selectedDate ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setState(() => _selectedDate = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Filtrar por fecha',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('📅 ', style: TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          Text(
+                            _selectedDate != null
+                                ? "${_selectedDate!.year.toString().padLeft(4, '0')}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
+                                : 'Todas las fechas',
+                            style: TextStyle(
+                                color: _selectedDate != null
+                                    ? Colors.black87
+                                    : Colors.grey),
+                          ),
+                          if (_selectedDate != null)
+                            IconButton(
+                              icon: const Text('🧹',
+                                  style: TextStyle(fontSize: 18)),
+                              onPressed: () =>
+                                  setState(() => _selectedDate = null),
+                              splashRadius: 16,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: _selectedTime ?? TimeOfDay.now(),
+                      );
+                      if (picked != null) {
+                        setState(() => _selectedTime = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Filtrar por hora',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('🕓 ', style: TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          Text(
+                            _selectedTime != null
+                                ? _selectedTime!.format(context)
+                                : 'Todas las horas',
+                            style: TextStyle(
+                                color: _selectedTime != null
+                                    ? Colors.black87
+                                    : Colors.grey),
+                          ),
+                          if (_selectedTime != null)
+                            IconButton(
+                              icon: const Text('🧹',
+                                  style: TextStyle(fontSize: 18)),
+                              onPressed: () =>
+                                  setState(() => _selectedTime = null),
+                              splashRadius: 16,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: NoteListScreen(
+              searchQuery: _searchQuery,
+              searchCategory: _searchCategory,
+              selectedDate: _selectedDate,
+              selectedTime: _selectedTime,
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -324,9 +435,15 @@ class NoteListScreen extends StatelessWidget {
 
   final String searchQuery;
   final String searchCategory;
-  const NoteListScreen(
-      {Key? key, this.searchQuery = '', this.searchCategory = ''})
-      : super(key: key);
+  final DateTime? selectedDate;
+  final TimeOfDay? selectedTime;
+  const NoteListScreen({
+    Key? key,
+    this.searchQuery = '',
+    this.searchCategory = '',
+    this.selectedDate,
+    this.selectedTime,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -341,7 +458,47 @@ class NoteListScreen extends StatelessWidget {
               note.date.toLowerCase().contains(q) ||
               (note.categoria.isNotEmpty &&
                   note.categoria.toLowerCase().contains(q));
-          return matchesCategory && matchesQuery;
+          bool matchesDate = true;
+          if (selectedDate != null) {
+            // Extrae solo la parte de la fecha (ignora hora)
+            final datePart = note.date.trim().split(' ')[0];
+            final parts = datePart.split('/');
+            if (parts.length == 3) {
+              final d = int.tryParse(parts[0]);
+              final m = int.tryParse(parts[1]);
+              final y = int.tryParse(parts[2]);
+              if (d != null && m != null && y != null) {
+                matchesDate = (selectedDate!.year == y &&
+                    selectedDate!.month == m &&
+                    selectedDate!.day == d);
+              } else {
+                matchesDate = false;
+              }
+            } else {
+              matchesDate = false;
+            }
+          }
+          bool matchesTime = true;
+          if (selectedTime != null) {
+            // Extrae la hora y minuto si existe
+            final timePart = note.date.trim().split(' ').length > 1
+                ? note.date.trim().split(' ')[1]
+                : null;
+            if (timePart != null && timePart.contains(':')) {
+              final tParts = timePart.split(':');
+              final h = int.tryParse(tParts[0]);
+              final min = int.tryParse(tParts[1]);
+              if (h != null && min != null) {
+                matchesTime =
+                    (selectedTime!.hour == h && selectedTime!.minute == min);
+              } else {
+                matchesTime = false;
+              }
+            } else {
+              matchesTime = false;
+            }
+          }
+          return matchesCategory && matchesQuery && matchesDate && matchesTime;
         }).toList();
         if (filtered.isEmpty) {
           return const Center(
