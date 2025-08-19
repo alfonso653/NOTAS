@@ -920,11 +920,7 @@ class NoteListScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          note.categoria
-                              .split(' ')
-                              .map((w) => w.isNotEmpty ? w[0] : '')
-                              .join()
-                              .toUpperCase(),
+                          _categoriaAbreviatura(note.categoria),
                           style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
@@ -1262,5 +1258,27 @@ class TaskCard extends StatelessWidget {
               ),
       ),
     );
+  }
+}
+
+// --- Abreviaturas de categorías ---
+String _categoriaAbreviatura(String categoria) {
+  switch (categoria) {
+    case 'Sermón':
+      return 'SER';
+    case 'Estudio Bíblico':
+      return 'EST';
+    case 'Reflexión':
+      return 'REF';
+    case 'Devocional':
+      return 'DEV';
+    case 'Testimonio':
+      return 'TES';
+    case 'Apuntes Generales':
+      return 'APG';
+    case 'Discipulado':
+      return 'DIS';
+    default:
+      return categoria.length >= 3 ? categoria.substring(0, 3).toUpperCase() : categoria.toUpperCase();
   }
 }
