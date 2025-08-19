@@ -523,8 +523,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+        backgroundColor: const Color(0xFFFEF7F0), // Beige igual al fondo
+        elevation: 0, // Sin sombra
+        shadowColor: Colors.transparent,
         leading: _selectedIndex == 0
             ? IconButton(
                 icon: Image.asset('assets/mas.png', width: 32, height: 32),
@@ -858,10 +859,10 @@ class NoteListScreen extends StatelessWidget {
           'Sermón': Color(0xFFD6FFF0),
           'Estudio Bíblico': Color(0xFFD6EFFF),
           'Reflexión': Color(0xFFFFF9D6),
-          'Devocional': Color(0xFFD6FFD6),
+          'Devocional': Color(0xFFB2E2B2), // Verde claro
           'Testimonio': Color(0xFFEAD6FF),
           'Apuntes Generales': Color(0xFFB2C7E2),
-          'Discipulado': Color(0xFFB2E2B2),
+          'Discipulado': Color(0xFFFFD6D6), // Rosa claro, bien distinto
         };
 
         return ListView.builder(
@@ -934,11 +935,11 @@ class NoteListScreen extends StatelessWidget {
                   icon: const Text('🗑️', style: TextStyle(fontSize: 15)),
                   onSelected: (value) {
                     if (value == 'delete')
+                      // ignore: curly_braces_in_flow_control_structures
                       context.read<NoteProvider>().deleteNote(note);
                   },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                        value: 'delete', child: Text('Eliminar')),
+                  itemBuilder: (ctx) => const [
+                    PopupMenuItem(value: 'delete', child: Text('Eliminar')),
                   ],
                 ),
               ),
@@ -1279,6 +1280,8 @@ String _categoriaAbreviatura(String categoria) {
     case 'Discipulado':
       return 'DIS';
     default:
-      return categoria.length >= 3 ? categoria.substring(0, 3).toUpperCase() : categoria.toUpperCase();
+      return categoria.length >= 3
+          ? categoria.substring(0, 3).toUpperCase()
+          : categoria.toUpperCase();
   }
 }
