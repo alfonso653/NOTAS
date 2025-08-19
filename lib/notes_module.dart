@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
-import 'dart:ui' as ui;
-import 'dart:typed_data';
-import 'package:flutter/rendering.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import 'dart:convert';
 
 /// =========================
@@ -241,27 +241,40 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     await Share.share(text, subject: _titleController.text);
   }
 
-  Future<void> _shareAsImage() async {
+  Future<void> _shareAsPdf() async {
     try {
-      final boundary =
-          _noteKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-
-      if (boundary.debugNeedsPaint) {
-        await Future.delayed(const Duration(milliseconds: 20));
-      }
-
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      final pngBytes = byteData!.buffer.asUint8List();
-
-      await Share.shareXFiles(
-        [XFile.fromData(pngBytes, mimeType: 'image/png', name: 'nota.png')],
-        text: _titleController.text,
+      final pdf = pw.Document();
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(_titleController.text,
+                  style: pw.TextStyle(
+                      fontSize: 22, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 8),
+              pw.Text('Fecha: ${_formatDateTime(widget.note.date)}',
+                  style: pw.TextStyle(fontSize: 12)),
+              pw.Text('Categoría: ${_categoriaController.text}',
+                  style: pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 16),
+              pw.Text(_contentController.text,
+                  style: pw.TextStyle(fontSize: 16)),
+            ],
+          ),
+        ),
       );
+      final bytes = await pdf.save();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/nota.pdf');
+      await file.writeAsBytes(bytes);
+      await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'application/pdf', name: 'nota.pdf')],
+          text: _titleController.text);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo compartir como imagen: $e')),
+        SnackBar(content: Text('No se pudo compartir como PDF: $e')),
       );
     }
   }
@@ -367,11 +380,11 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.image),
-                      title: const Text('Compartir como imagen'),
+                      leading: const Icon(Icons.picture_as_pdf),
+                      title: const Text('Compartir como PDF'),
                       onTap: () async {
                         Navigator.pop(ctx);
-                        await _shareAsImage();
+                        await _shareAsPdf();
                       },
                     ),
                   ],
