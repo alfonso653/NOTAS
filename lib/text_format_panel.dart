@@ -294,6 +294,13 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
     required bool selected,
     required VoidCallback onTap,
   }) {
+    // Mapeo de label a asset
+    final iconMap = {
+      'B': 'bold',
+      'I': 'italic',
+      'U': 'underline',
+      'S': 'strikethrough',
+    };
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: onTap,
@@ -305,13 +312,11 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
           color: selected ? _primary : _tileBg,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-            color: selected ? Colors.white : Colors.black87,
-          ),
+        child: Image.asset(
+          'assets/fontsabc/${iconMap[label] ?? 'bold'}.png',
+          width: 22,
+          height: 22,
+          color: selected ? Colors.white : Colors.black87,
         ),
       ),
     );
@@ -322,6 +327,18 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
     bool selected = false,
     VoidCallback? onTap,
   }) {
+    // Mapeo de iconos a asset
+    final iconAsset = {
+      Icons.format_align_left: 'align_left',
+      Icons.format_align_center: 'align_center',
+      Icons.format_align_right: 'align_right',
+      Icons.format_align_justify: 'align_justify',
+      Icons.format_list_bulleted: 'list_bulleted',
+      Icons.format_list_numbered: 'list_numbered',
+      Icons.format_indent_decrease: 'indent_decrease',
+      Icons.format_indent_increase: 'indent_increase',
+      Icons.brush: 'brush',
+    };
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: onTap,
@@ -333,12 +350,10 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
           color: selected ? _primary : _tileBg,
           borderRadius: BorderRadius.circular(10),
         ),
-        // TODO: para usar PNG propios:
-        // Reemplaza el Icon(...) por:
-        // Image.asset('assets/icons/mi_icono.png', width: 22, height: 22, color: selected ? Colors.white : Colors.black87)
-        child: Icon(
-          icon,
-          size: 22,
+        child: Image.asset(
+          'assets/fontsabc/${iconAsset[icon] ?? 'bold'}.png',
+          width: 22,
+          height: 22,
           color: selected ? Colors.white : Colors.black87,
         ),
       ),
@@ -365,6 +380,8 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Image.asset('assets/fontsabc/font_size.png', width: 22, height: 22, color: Colors.black87),
+            const SizedBox(width: 4),
             Text('${v.fontSize}',
                 style: const TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(width: 4),
@@ -380,15 +397,7 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
       width: _btn.width,
       height: _btn.height,
       alignment: Alignment.center,
-      child: Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.black, width: 2),
-          color: c,
-        ),
-      ),
+      child: Image.asset('assets/fontsabc/color_picker.png', width: 30, height: 30),
     );
   }
 

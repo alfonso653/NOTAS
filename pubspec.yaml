@@ -33,6 +33,21 @@ flutter:
     - assets/fonts/Nunito-Bold.ttf
     - assets/fonts/Nunito-BoldItalic.ttf
     - assets/fonts/Nunito-Regular.ttf
+    - assets/fontsabc/bold.png
+    - assets/fontsabc/italic.png
+    - assets/fontsabc/underline.png
+    - assets/fontsabc/strikethrough.png
+    - assets/fontsabc/font_size.png
+    - assets/fontsabc/align_left.png
+    - assets/fontsabc/align_center.png
+    - assets/fontsabc/align_right.png
+    - assets/fontsabc/align_justify.png
+    - assets/fontsabc/list_bulleted.png
+    - assets/fontsabc/list_numbered.png
+    - assets/fontsabc/indent_decrease.png
+    - assets/fontsabc/indent_increase.png
+    - assets/fontsabc/brush.png
+    - assets/fontsabc/color_picker.png
   fonts:
     - family: Nunito
       fonts:
