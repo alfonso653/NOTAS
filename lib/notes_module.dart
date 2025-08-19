@@ -269,8 +269,9 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
       final file = File('${dir.path}/nota.pdf');
       await file.writeAsBytes(bytes);
       await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'application/pdf', name: 'nota.pdf')],
-          text: _titleController.text);
+        [XFile(file.path, mimeType: 'application/pdf', name: 'nota.pdf')],
+        text: _titleController.text,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -460,7 +461,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.7),
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
                     color: Colors.black12,
                     blurRadius: 6,
@@ -550,15 +551,20 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               ),
             ),
 
-            // Contenido con transición de cuadros al cambiar color
+            // Contenido con transición de cuadros al cambiar color (más fluida)
             Expanded(
               child: TileRevealColorTransition(
                 color: _noteColor,
+                duration: const Duration(milliseconds: 800), // muy fluida
+                rows: 24, // mosaico fino
+                columns: 48,
+                curve: Curves.fastOutSlowIn,
                 child: Container(
                   decoration: BoxDecoration(
                     image: DecorationImage(
                       image: AssetImage(
-                          'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png'),
+                        'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png',
+                      ),
                       repeat: ImageRepeat.repeat,
                       filterQuality: FilterQuality.high, // nitidez
                       colorFilter: ColorFilter.mode(
@@ -648,7 +654,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
 }
 
 /// =======================================================
-/// Widget para transición de cuadros (tiles) al cambiar color
+/// Widget para transición de color ULTRA fluida con CustomPainter
 /// =======================================================
 class TileRevealColorTransition extends StatefulWidget {
   final Color color;
@@ -656,14 +662,16 @@ class TileRevealColorTransition extends StatefulWidget {
   final int rows;
   final int columns;
   final Duration duration;
+  final Curve curve;
 
   const TileRevealColorTransition({
     super.key,
     required this.color,
     required this.child,
-    this.rows = 8,
-    this.columns = 16,
-    this.duration = const Duration(milliseconds: 1000),
+    this.rows = 16,
+    this.columns = 32,
+    this.duration = const Duration(milliseconds: 900),
+    this.curve = Curves.easeInOutCubic,
   });
 
   @override
@@ -676,7 +684,6 @@ class _TileRevealColorTransitionState extends State<TileRevealColorTransition>
   late Color _oldColor;
   late Color _currentColor;
   late AnimationController _controller;
-  late List<Animation<double>> _tileAnims;
   bool _animating = false;
 
   @override
@@ -685,44 +692,25 @@ class _TileRevealColorTransitionState extends State<TileRevealColorTransition>
     _oldColor = widget.color;
     _currentColor = widget.color;
     _controller = AnimationController(vsync: this, duration: widget.duration);
-    _initTileAnims();
-  }
-
-  void _initTileAnims() {
-    final total = widget.rows * widget.columns;
-    _tileAnims = List.generate(total, (i) {
-      final row = i ~/ widget.columns;
-      final col = i % widget.columns;
-      // Efecto diagonal: tiles más arriba/izquierda empiezan antes
-      final delay = (row + col) / (widget.rows + widget.columns);
-      return Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(
-          parent: _controller,
-          curve: Interval(
-            delay * 0.7,
-            (delay * 0.7) + 0.3,
-            curve: Curves.easeInOut,
-          ),
-        ),
-      );
-    });
   }
 
   @override
-  void didUpdateWidget(TileRevealColorTransition oldWidget) {
+  void didUpdateWidget(covariant TileRevealColorTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.color != _currentColor && !_animating) {
+
+    final changedColor = widget.color.value != _currentColor.value;
+
+    if (changedColor) {
       _oldColor = _currentColor;
       _currentColor = widget.color;
       _animating = true;
-      _controller.reset();
-      _initTileAnims();
-      _controller.forward().then((_) {
-        if (mounted) {
-          setState(() {
-            _animating = false;
-          });
-        }
+      _controller.duration = widget.duration;
+      _controller.forward(from: 0).whenComplete(() {
+        if (!mounted) return;
+        setState(() => _animating = false);
+      });
+      _controller.addListener(() {
+        if (mounted) setState(() {});
       });
     }
   }
@@ -735,48 +723,102 @@ class _TileRevealColorTransitionState extends State<TileRevealColorTransition>
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tileW = constraints.maxWidth / widget.columns;
-        final tileH = constraints.maxHeight / widget.rows;
-        final diameter = (tileW > tileH ? tileW : tileH) * 1.25;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(color: _animating ? _oldColor : _currentColor),
-            widget.child,
-            if (_animating)
-              ...List.generate(widget.rows * widget.columns, (i) {
-                final row = i ~/ widget.columns;
-                final col = i % widget.columns;
-                return AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    final v = _tileAnims[i].value;
-                    return Positioned(
-                      left: col * tileW + tileW / 2 - diameter / 2,
-                      top: row * tileH + tileH / 2 - diameter / 2,
-                      width: diameter,
-                      height: diameter,
-                      child: v > 0
-                          ? Opacity(
-                              opacity: v,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: _currentColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    );
-                  },
-                );
-              }),
-          ],
-        );
-      },
+    return RepaintBoundary(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(
+                painter: _RevealPainter(
+                  progress: _controller.value,
+                  animating: _animating,
+                  oldColor: _oldColor,
+                  newColor: _currentColor,
+                  rows: widget.rows,
+                  cols: widget.columns,
+                  curve: widget.curve,
+                ),
+              ),
+              widget.child,
+            ],
+          );
+        },
+      ),
     );
+  }
+}
+
+class _RevealPainter extends CustomPainter {
+  final double progress; // 0..1
+  final bool animating;
+  final Color oldColor;
+  final Color newColor;
+  final int rows;
+  final int cols;
+  final Curve curve;
+
+  _RevealPainter({
+    required this.progress,
+    required this.animating,
+    required this.oldColor,
+    required this.newColor,
+    required this.rows,
+    required this.cols,
+    required this.curve,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Base
+    final basePaint = Paint()..color = animating ? oldColor : newColor;
+    canvas.drawRect(Offset.zero & size, basePaint);
+
+    if (!animating) return;
+
+    // Revelado suave con “círculos” por tile
+    final tileW = size.width / cols;
+    final tileH = size.height / rows;
+    final maxR = (tileW > tileH ? tileW : tileH) * 0.9;
+    final paintNew = Paint()..color = newColor;
+
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final delay = (r + c) / (rows + cols); // 0..1
+        final start = delay * 0.7;
+        final end = start + 0.3;
+
+        double t;
+        if (progress <= start) {
+          t = 0.0;
+        } else if (progress >= end) {
+          t = 1.0;
+        } else {
+          t = (progress - start) / (end - start);
+        }
+
+        final eased = curve.transform(t);
+
+        final cx = (c + 0.5) * tileW;
+        final cy = (r + 0.5) * tileH;
+        final radius = maxR * eased;
+
+        if (radius > 0) {
+          canvas.drawCircle(Offset(cx, cy), radius, paintNew);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RevealPainter old) {
+    return progress != old.progress ||
+        animating != old.animating ||
+        oldColor.value != old.oldColor.value ||
+        newColor.value != old.newColor.value ||
+        rows != old.rows ||
+        cols != old.cols ||
+        curve != old.curve;
   }
 }
 
@@ -795,15 +837,13 @@ class SkinPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Paleta extendida de colores pastel y vivos
+    // Paleta extendida de colores
     final colors = <Color>[
-      // Blancos y grises claros
       Colors.white,
       Colors.grey.shade50,
       Colors.grey.shade100,
       Colors.grey.shade200,
       Colors.grey.shade300,
-      // Amarillos y naranjas pastel
       Colors.yellow.shade50,
       Colors.yellow.shade100,
       Colors.yellow.shade200,
@@ -822,7 +862,6 @@ class SkinPanel extends StatelessWidget {
       Colors.orange.shade300,
       Colors.orange.shade400,
       Colors.orange.shade500,
-      // Rosas y lilas pastel
       Colors.pink.shade50,
       Colors.pink.shade100,
       Colors.pink.shade200,
@@ -841,7 +880,6 @@ class SkinPanel extends StatelessWidget {
       Colors.deepPurple.shade300,
       Colors.deepPurple.shade400,
       Colors.deepPurple.shade500,
-      // Azules y celestes pastel
       Colors.blue.shade50,
       Colors.blue.shade100,
       Colors.blue.shade200,
@@ -866,7 +904,6 @@ class SkinPanel extends StatelessWidget {
       Colors.indigo.shade300,
       Colors.indigo.shade400,
       Colors.indigo.shade500,
-      // Verdes y menta pastel
       Colors.green.shade50,
       Colors.green.shade100,
       Colors.green.shade200,
@@ -885,66 +922,64 @@ class SkinPanel extends StatelessWidget {
       Colors.teal.shade300,
       Colors.teal.shade400,
       Colors.teal.shade500,
-      // Marrones claros
       Colors.brown.shade50,
       Colors.brown.shade100,
       Colors.brown.shade200,
       Colors.brown.shade300,
       Colors.brown.shade400,
       Colors.brown.shade500,
-      // Extras personalizados elegantes y degradados
-      Color(0xFFf6d365),
-      Color(0xFFfda085),
-      Color(0xFFfbc2eb),
-      Color(0xFFa1c4fd),
-      Color(0xFFc2e9fb),
-      Color(0xFFd4fc79),
-      Color(0xFF96e6a1),
-      Color(0xFFf7797d),
-      Color(0xFFe0c3fc),
-      Color(0xFF8fd3f4),
-      Color(0xFFfcb69f),
-      Color(0xFFffecd2),
-      Color(0xFFa8edea),
-      Color(0xFFfed6e3),
-      Color(0xFFcfd9df),
-      Color(0xFFe2d1c3),
-      Color(0xFFf5f7fa),
-      Color(0xFFc9ffbf),
-      Color(0xFFffafbd),
-      Color(0xFFb2fefa),
-      Color(0xFFf3e7e9),
-      Color(0xFFc9ffbf),
-      Color(0xFFf9f586),
-      Color(0xFFf7b267),
-      Color(0xFFe0c3fc),
-      Color(0xFFf3e7e9),
-      Color(0xFFf5f7fa),
-      Color(0xFFe0eafc),
-      Color(0xFFf7ffea),
-      Color(0xFFe2d1c3),
-      Color(0xFFfbc2eb),
-      Color(0xFFfcb69f),
-      Color(0xFFf6d365),
-      Color(0xFFfda085),
-      Color(0xFFfbc2eb),
-      Color(0xFFa1c4fd),
-      Color(0xFFc2e9fb),
-      Color(0xFFd4fc79),
-      Color(0xFF96e6a1),
-      Color(0xFFf7797d),
-      Color(0xFFe0c3fc),
-      Color(0xFF8fd3f4),
-      Color(0xFFfcb69f),
-      Color(0xFFffecd2),
-      Color(0xFFa8edea),
-      Color(0xFFfed6e3),
-      Color(0xFFcfd9df),
-      Color(0xFFe2d1c3),
-      Color(0xFFf5f7fa),
-      Color(0xFFc9ffbf),
-      Color(0xFFffafbd),
-      Color(0xFFb2fefa),
+      const Color(0xFFf6d365),
+      const Color(0xFFfda085),
+      const Color(0xFFfbc2eb),
+      const Color(0xFFa1c4fd),
+      const Color(0xFFc2e9fb),
+      const Color(0xFFd4fc79),
+      const Color(0xFF96e6a1),
+      const Color(0xFFf7797d),
+      const Color(0xFFe0c3fc),
+      const Color(0xFF8fd3f4),
+      const Color(0xFFfcb69f),
+      const Color(0xFFffecd2),
+      const Color(0xFFa8edea),
+      const Color(0xFFfed6e3),
+      const Color(0xFFcfd9df),
+      const Color(0xFFe2d1c3),
+      const Color(0xFFf5f7fa),
+      const Color(0xFFc9ffbf),
+      const Color(0xFFffafbd),
+      const Color(0xFFb2fefa),
+      const Color(0xFFf3e7e9),
+      const Color(0xFFc9ffbf),
+      const Color(0xFFf9f586),
+      const Color(0xFFf7b267),
+      const Color(0xFFe0c3fc),
+      const Color(0xFFf3e7e9),
+      const Color(0xFFf5f7fa),
+      const Color(0xFFe0eafc),
+      const Color(0xFFf7ffea),
+      const Color(0xFFe2d1c3),
+      const Color(0xFFfbc2eb),
+      const Color(0xFFfcb69f),
+      const Color(0xFFf6d365),
+      const Color(0xFFfda085),
+      const Color(0xFFfbc2eb),
+      const Color(0xFFa1c4fd),
+      const Color(0xFFc2e9fb),
+      const Color(0xFFd4fc79),
+      const Color(0xFF96e6a1),
+      const Color(0xFFf7797d),
+      const Color(0xFFe0c3fc),
+      const Color(0xFF8fd3f4),
+      const Color(0xFFfcb69f),
+      const Color(0xFFffecd2),
+      const Color(0xFFa8edea),
+      const Color(0xFFfed6e3),
+      const Color(0xFFcfd9df),
+      const Color(0xFFe2d1c3),
+      const Color(0xFFf5f7fa),
+      const Color(0xFFc9ffbf),
+      const Color(0xFFffafbd),
+      const Color(0xFFb2fefa),
     ];
 
     return SafeArea(
@@ -960,8 +995,8 @@ class SkinPanel extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final maxWidth = constraints.maxWidth;
-                final minBox = 20.0;
-                final maxBox = 32.0;
+                const minBox = 20.0;
+                const maxBox = 32.0;
                 int crossAxisCount = (maxWidth / (minBox + 6)).floor();
                 double boxSize =
                     (maxWidth - (crossAxisCount - 1) * 6) / crossAxisCount;
