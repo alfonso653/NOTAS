@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'text_format_panel.dart';
 
 /// =========================
 /// MODELO + PROVIDER: Tareas
@@ -606,18 +607,15 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                       icon:
                           Image.asset('assets/abc.png', width: 32, height: 32),
                       onTap: () {
-                        showDialog(
+                        showModalBottomSheet(
                           context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Formato'),
-                            content:
-                                const Text('Opciones de formato próximamente.'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('OK'),
-                              ),
-                            ],
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (ctx) => Padding(
+                            padding: MediaQuery.of(ctx).viewInsets,
+                            child: TextFormatPanel(
+                              onClose: () => Navigator.pop(ctx),
+                            ),
                           ),
                         );
                       }),
