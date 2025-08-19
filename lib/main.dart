@@ -93,14 +93,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return StatefulBuilder(
       builder: (context, setSB) {
+        final double scrollWidth =
+            MediaQuery.of(context).size.width < 400 ? 48 : 60;
+        final double scrollHeight =
+            MediaQuery.of(context).size.height < 700 ? 90 : 120;
+        final double fontSize =
+            MediaQuery.of(context).size.width < 400 ? 16 : 20;
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 60,
-              height: 120,
+            Container(
+              width: scrollWidth,
+              height: scrollHeight,
+              alignment: Alignment.center,
               child: ListWheelScrollView.useDelegate(
-                itemExtent: 36,
+                itemExtent: scrollHeight / 3,
                 diameterRatio: 1.2,
                 physics: const FixedExtentScrollPhysics(),
                 controller: FixedExtentScrollController(initialItem: hour - 1),
@@ -118,18 +126,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 childDelegate: ListWheelChildBuilderDelegate(
                   builder: (context, i) => Center(
                     child:
-                        Text('${i + 1}', style: const TextStyle(fontSize: 20)),
+                        Text('${i + 1}', style: TextStyle(fontSize: fontSize)),
                   ),
                   childCount: 12,
                 ),
               ),
             ),
-            const Text(':', style: TextStyle(fontSize: 20)),
-            SizedBox(
-              width: 60,
-              height: 120,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Text(':', style: TextStyle(fontSize: fontSize)),
+            ),
+            Container(
+              width: scrollWidth,
+              height: scrollHeight,
+              alignment: Alignment.center,
               child: ListWheelScrollView.useDelegate(
-                itemExtent: 36,
+                itemExtent: scrollHeight / 3,
                 diameterRatio: 1.2,
                 physics: const FixedExtentScrollPhysics(),
                 controller: FixedExtentScrollController(initialItem: minute),
@@ -147,17 +159,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 childDelegate: ListWheelChildBuilderDelegate(
                   builder: (context, i) => Center(
                     child: Text(i.toString().padLeft(2, '0'),
-                        style: const TextStyle(fontSize: 20)),
+                        style: TextStyle(fontSize: fontSize)),
                   ),
                   childCount: 60,
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 RadioListTile<bool>(
-                  title: const Text('AM', style: TextStyle(fontSize: 14)),
+                  title: Text('AM', style: TextStyle(fontSize: fontSize - 4)),
                   value: false,
                   groupValue: isPm,
                   onChanged: (v) {
@@ -169,9 +182,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   dense: true,
                   contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
                 ),
                 RadioListTile<bool>(
-                  title: const Text('PM', style: TextStyle(fontSize: 14)),
+                  title: Text('PM', style: TextStyle(fontSize: fontSize - 4)),
                   value: true,
                   groupValue: isPm,
                   onChanged: (v) {
@@ -183,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   dense: true,
                   contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
                 ),
               ],
             ),
@@ -863,7 +878,7 @@ class NoteListScreen extends StatelessWidget {
         };
 
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           itemCount: filtered.length,
           itemBuilder: (context, index) {
             final note = filtered[index];
@@ -871,10 +886,12 @@ class NoteListScreen extends StatelessWidget {
                 categoriaColores[note.categoria] ?? Colors.white;
             return Card(
               color: pastelColor,
-              margin: const EdgeInsets.only(bottom: 12),
+              margin: const EdgeInsets.only(bottom: 8),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(10)),
               child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 onTap: () {
                   Navigator.of(context).push(PageRouteBuilder(
                     pageBuilder: (context, animation, secondaryAnimation) =>
@@ -886,31 +903,34 @@ class NoteListScreen extends StatelessWidget {
                   ));
                 },
                 leading: Container(
-                  width: 40,
-                  height: 40,
+                  width: 28,
+                  height: 28,
                   alignment: Alignment.center,
                   child:
-                      Image.asset('assets/agenda.png', width: 22, height: 22),
+                      Image.asset('assets/agenda.png', width: 15, height: 15),
                 ),
                 title: Text(
                   note.title.isEmpty ? 'Sin título' : note.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black87),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      fontSize: 15),
                 ),
                 subtitle: Row(
                   children: [
                     Text(_formatDateTime(note.date),
-                        style: const TextStyle(color: Colors.grey)),
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 12)),
                     if (note.categoria.isNotEmpty) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                            horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           note.categoria
@@ -919,7 +939,7 @@ class NoteListScreen extends StatelessWidget {
                               .join()
                               .toUpperCase(),
                           style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: Colors.black54),
                         ),
@@ -928,7 +948,7 @@ class NoteListScreen extends StatelessWidget {
                   ],
                 ),
                 trailing: PopupMenuButton<String>(
-                  icon: const Text('🗑️', style: TextStyle(fontSize: 18)),
+                  icon: const Text('🗑️', style: TextStyle(fontSize: 15)),
                   onSelected: (value) {
                     if (value == 'delete')
                       context.read<NoteProvider>().deleteNote(note);
