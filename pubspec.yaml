@@ -17,19 +17,22 @@ dependencies:
 
 flutter:
   assets:
-  - assets/agenda_icon.png
-  - assets/agenda.png
-  - assets/dots.png
-  - assets/grid.png
-  - assets/lines.png
-  - assets/lupa.png
-  - assets/mas.png
-  - assets/nota.gif
-  - assets/pendientes.gif
-  - assets/compartir.png
-  - assets/fonts/Nunito-Bold.ttf
-  - assets/fonts/Nunito-BoldItalic.ttf
-  - assets/fonts/Nunito-Regular.ttf
+    - assets/abc.png
+    - assets/camara.png
+    - assets/IA.png
+    - assets/agenda_icon.png
+    - assets/agenda.png
+    - assets/dots.png
+    - assets/grid.png
+    - assets/lines.png
+    - assets/lupa.png
+    - assets/mas.png
+    - assets/nota.gif
+    - assets/pendientes.gif
+    - assets/compartir.png
+    - assets/fonts/Nunito-Bold.ttf
+    - assets/fonts/Nunito-BoldItalic.ttf
+    - assets/fonts/Nunito-Regular.ttf
   fonts:
     - family: Nunito
       fonts:

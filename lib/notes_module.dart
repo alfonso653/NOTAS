@@ -311,7 +311,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     Navigator.pop(context);
   }
 
-  Widget _buildIconBox(String emoji, VoidCallback onTap) {
+  Widget _buildIconBox({required Widget icon, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -324,10 +324,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         alignment: Alignment.center,
-        child: Text(
-          emoji,
-          style: const TextStyle(fontSize: 30),
-        ),
+        child: icon,
       ),
     );
   }
@@ -589,60 +586,78 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
 
             // Barra inferior minimalista
             Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildIconBox('✅', _saveNote),
-                  _buildIconBox('🔤', () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Formato'),
-                        content:
-                            const Text('Opciones de formato próximamente.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'),
+                  _buildIconBox(
+                      icon:
+                          Image.asset('assets/abc.png', width: 32, height: 32),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Formato'),
+                            content:
+                                const Text('Opciones de formato próximamente.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('OK'),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }),
-                  _buildIconBox('📷', () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Foto'),
-                        content:
-                            const Text('Función de añadir foto próximamente.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'),
+                        );
+                      }),
+                  _buildIconBox(
+                      icon: Image.asset('assets/camara.png',
+                          width: 32, height: 32),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Foto'),
+                            content: const Text(
+                                'Función de añadir foto próximamente.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('OK'),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }),
-                  _buildIconBox('✏️', () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Garabato'),
-                        content:
-                            const Text('Función de garabato próximamente.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK'),
+                        );
+                      }),
+                  _buildIconBox(
+                      icon: Image.asset('assets/IA.png', width: 32, height: 32),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Mapa mental/conceptual'),
+                            content: const Text(
+                                'Función de mapa mental próximamente.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('OK'),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }),
+                        );
+                      }),
                 ],
               ),
             ),
