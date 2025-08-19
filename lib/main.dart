@@ -525,47 +525,28 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: Image.asset('assets/mas.png', width: 32, height: 32),
-          onPressed: () {
-            if (_selectedIndex == 0) {
-              final now = DateTime.now();
-              final newNote = Note(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                title: '',
-                content: '',
-                date:
-                    '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
-                categoria: '',
-              );
-              context.read<NoteProvider>().addNote(newNote);
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => NoteEditScreen(note: newNote)));
-            } else {
-              final pendingProvider = context.read<PendingProvider>();
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                builder: (context) => Padding(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-                    left: 16,
-                    right: 16,
-                    top: 24,
-                  ),
-                  child: AddTaskForm(pendingProvider: pendingProvider),
-                ),
-              );
-            }
-          },
-          tooltip: _selectedIndex == 0 ? 'Nueva enseñanza' : 'Nuevo pendiente',
-        ),
+        leading: _selectedIndex == 0
+            ? IconButton(
+                icon: Image.asset('assets/mas.png', width: 32, height: 32),
+                onPressed: () {
+                  final now = DateTime.now();
+                  final newNote = Note(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    title: '',
+                    content: '',
+                    date:
+                        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+                    categoria: '',
+                  );
+                  context.read<NoteProvider>().addNote(newNote);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => NoteEditScreen(note: newNote)));
+                },
+                tooltip: 'Nueva enseñanza',
+              )
+            : null,
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 400),
           transitionBuilder: (child, animation) {
@@ -595,143 +576,148 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 500;
-                final filterWidth = isNarrow ? double.infinity : 220.0;
-                final filterSpacing = isNarrow ? 8.0 : 12.0;
-                return Flex(
-                  direction: isNarrow ? Axis.vertical : Axis.horizontal,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: filterWidth,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _selectedDate ?? DateTime.now(),
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                          );
-                          if (picked != null) {
-                            setState(() => _selectedDate = picked);
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: 'Filtrar por fecha',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Text('📅 ', style: TextStyle(fontSize: 18)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _selectedDate != null
-                                      ? "${_selectedDate!.year.toString().padLeft(4, '0')}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
-                                      : 'Fechas',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                      color: _selectedDate != null
-                                          ? Colors.black87
-                                          : Colors.grey),
-                                ),
-                              ),
-                              if (_selectedDate != null)
-                                IconButton(
-                                  icon: const Text('🧹',
-                                      style: TextStyle(fontSize: 18)),
-                                  onPressed: () =>
-                                      setState(() => _selectedDate = null),
-                                  splashRadius: 16,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: filterSpacing, height: filterSpacing),
-                    SizedBox(
-                      width: filterWidth,
-                      child: Column(
+      body: _selectedIndex == 0
+          ? Column(
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 500;
+                      final filterWidth = isNarrow ? double.infinity : 220.0;
+                      final filterSpacing = isNarrow ? 8.0 : 12.0;
+                      return Flex(
+                        direction: isNarrow ? Axis.vertical : Axis.horizontal,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: _showDoubleTimePicker,
-                            child: InputDecorator(
-                              decoration: const InputDecoration(
-                                labelText: 'Rango de horas',
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 8),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Text('🕓 ',
-                                      style: TextStyle(fontSize: 18)),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      (_selectedTimeFrom != null &&
-                                              _selectedTimeTo != null)
-                                          ? '${_selectedTimeFrom!.format(context)} - ${_selectedTimeTo!.format(context)}'
-                                          : 'Horas',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: (_selectedTimeFrom != null &&
-                                                _selectedTimeTo != null)
-                                            ? Colors.black87
-                                            : Colors.grey,
+                          SizedBox(
+                            width: filterWidth,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _selectedDate ?? DateTime.now(),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null) {
+                                  setState(() => _selectedDate = picked);
+                                }
+                              },
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'Filtrar por fecha',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Text('📅 ',
+                                        style: TextStyle(fontSize: 18)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedDate != null
+                                            ? "${_selectedDate!.year.toString().padLeft(4, '0')}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
+                                            : 'Fechas',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                            color: _selectedDate != null
+                                                ? Colors.black87
+                                                : Colors.grey),
                                       ),
                                     ),
-                                  ),
-                                  if (_selectedTimeFrom != null ||
-                                      _selectedTimeTo != null)
-                                    IconButton(
-                                      icon: const Text('🧹',
-                                          style: TextStyle(fontSize: 18)),
-                                      onPressed: () => setState(() {
-                                        _selectedTimeFrom = null;
-                                        _selectedTimeTo = null;
-                                        _timeText = '';
-                                      }),
-                                      splashRadius: 16,
-                                    ),
-                                ],
+                                    if (_selectedDate != null)
+                                      IconButton(
+                                        icon: const Text('🧹',
+                                            style: TextStyle(fontSize: 18)),
+                                        onPressed: () => setState(
+                                            () => _selectedDate = null),
+                                        splashRadius: 16,
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
+                          SizedBox(width: filterSpacing, height: filterSpacing),
+                          SizedBox(
+                            width: filterWidth,
+                            child: Column(
+                              children: [
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: _showDoubleTimePicker,
+                                  child: InputDecorator(
+                                    decoration: const InputDecoration(
+                                      labelText: 'Rango de horas',
+                                      border: OutlineInputBorder(),
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Text('🕓 ',
+                                            style: TextStyle(fontSize: 18)),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            (_selectedTimeFrom != null &&
+                                                    _selectedTimeTo != null)
+                                                ? '${_selectedTimeFrom!.format(context)} - ${_selectedTimeTo!.format(context)}'
+                                                : 'Horas',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: (_selectedTimeFrom !=
+                                                          null &&
+                                                      _selectedTimeTo != null)
+                                                  ? Colors.black87
+                                                  : Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                        if (_selectedTimeFrom != null ||
+                                            _selectedTimeTo != null)
+                                          IconButton(
+                                            icon: const Text('🧹',
+                                                style: TextStyle(fontSize: 18)),
+                                            onPressed: () => setState(() {
+                                              _selectedTimeFrom = null;
+                                              _selectedTimeTo = null;
+                                              _timeText = '';
+                                            }),
+                                            splashRadius: 16,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: NoteListScreen(
-              searchQuery: _searchQuery,
-              searchCategory: _searchCategory,
-              selectedDate: _selectedDate,
-              selectedTimeFrom: _selectedTimeFrom,
-              selectedTimeTo: _selectedTimeTo,
-              timeText: _timeText,
-            ),
-          ),
-        ],
-      ),
+                      );
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: NoteListScreen(
+                    searchQuery: _searchQuery,
+                    searchCategory: _searchCategory,
+                    selectedDate: _selectedDate,
+                    selectedTimeFrom: _selectedTimeFrom,
+                    selectedTimeTo: _selectedTimeTo,
+                    timeText: _timeText,
+                  ),
+                ),
+              ],
+            )
+          : PendingScreen(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -756,6 +742,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+// ...existing code...
 }
 
 // --- Pantalla de notas ---
@@ -980,33 +967,34 @@ class PendingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<PendingProvider>(
       builder: (context, provider, _) {
-        final q = searchQuery.toLowerCase();
-        final cat = searchCategory;
-        final pending = provider.tasks
-            .where((t) =>
-                !t.completed &&
-                (cat.isEmpty || t.categoria == cat) &&
-                (q.isEmpty ||
-                    t.title.toLowerCase().contains(q) ||
-                    t.description.toLowerCase().contains(q) ||
-                    t.categoria.toLowerCase().contains(q) ||
-                    ("${t.dateTime.day}/${t.dateTime.month}/${t.dateTime.year}")
-                        .contains(q)))
-            .toList();
-        final done = provider.tasks
-            .where((t) =>
-                t.completed &&
-                (cat.isEmpty || t.categoria == cat) &&
-                (q.isEmpty ||
-                    t.title.toLowerCase().contains(q) ||
-                    t.description.toLowerCase().contains(q) ||
-                    t.categoria.toLowerCase().contains(q) ||
-                    ("${t.dateTime.day}/${t.dateTime.month}/${t.dateTime.year}")
-                        .contains(q)))
-            .toList();
-        return Container(
-          color: const Color(0xFFFEF7F0),
-          child: Column(
+        final pending = provider.tasks.where((t) => !t.completed).toList();
+        final done = provider.tasks.where((t) => t.completed).toList();
+        return Scaffold(
+          backgroundColor: const Color(0xFFFEF7F0),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (context) => Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                    left: 16,
+                    right: 16,
+                    top: 24,
+                  ),
+                  child: AddTaskForm(pendingProvider: provider),
+                ),
+              );
+            },
+            child: const Icon(Icons.add),
+            tooltip: 'Nueva tarea',
+          ),
+          body: Column(
             children: [
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
