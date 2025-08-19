@@ -459,8 +459,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               color: Colors.grey.shade100,
               child: Row(
                 children: [
-                  Icon(Icons.calendar_today,
-                      size: 16, color: Colors.grey.shade600),
+                  const Text('⏳',
+                      style: TextStyle(fontSize: 16, color: Colors.black)),
                   const SizedBox(width: 4),
                   // Fecha y hora (no editable)
                   Text(
@@ -470,10 +470,10 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                   const SizedBox(width: 8),
                   const Text('|', style: TextStyle(color: Colors.black26)),
                   const SizedBox(width: 8),
-                  const Icon(Icons.book, size: 16, color: Colors.amber),
-                  const SizedBox(width: 4),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      icon: const Text('📂',
+                          style: TextStyle(fontSize: 18, color: Colors.black)),
                       value: _categoriaController.text.isNotEmpty
                           ? _categoriaController.text
                           : null,
@@ -487,21 +487,22 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                           const TextStyle(color: Colors.black54, fontSize: 14),
                       items: const [
                         DropdownMenuItem(
-                            value: 'Sermón', child: Text('Sermón')),
+                            value: 'Sermón', child: Text('📖 Sermón')),
                         DropdownMenuItem(
                             value: 'Estudio Bíblico',
-                            child: Text('Estudio Bíblico')),
+                            child: Text('📚 Estudio Bíblico')),
                         DropdownMenuItem(
-                            value: 'Reflexión', child: Text('Reflexión')),
+                            value: 'Reflexión', child: Text('🤔 Reflexión')),
                         DropdownMenuItem(
-                            value: 'Devocional', child: Text('Devocional')),
+                            value: 'Devocional', child: Text('❤️ Devocional')),
                         DropdownMenuItem(
-                            value: 'Testimonio', child: Text('Testimonio')),
+                            value: 'Testimonio', child: Text('🌟 Testimonio')),
                         DropdownMenuItem(
                             value: 'Apuntes Generales',
-                            child: Text('Apuntes Generales')),
+                            child: Text('📓 Apuntes Generales')),
                         DropdownMenuItem(
-                            value: 'Discipulado', child: Text('Discipulado')),
+                            value: 'Discipulado',
+                            child: Text('🏫 Discipulado')),
                       ],
                       onChanged: (v) {
                         setState(() {
