@@ -493,15 +493,16 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                           Row(
                             children: [
                               Text(_categoriaIconStr(_categoriaController.text),
-                                  style: const TextStyle(fontSize: 14)),
+                                  style: const TextStyle(fontSize: 14, color: Colors.black54, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))])),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
                                   _categoriaController.text,
                                   style: const TextStyle(
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.normal,
                                     fontSize: 13.5,
+                                    shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))],
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -513,19 +514,20 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                   ),
                   // Solo icono de carpeta como botón
                   IconButton(
-                    icon: const Text('📂', style: TextStyle(fontSize: 18, color: Colors.black)),
+                    icon: const Text('📂',
+                        style: TextStyle(fontSize: 18, color: Colors.black)),
                     onPressed: () async {
                       final selected = await showMenu<String>(
                         context: context,
                         position: const RelativeRect.fromLTRB(200, 80, 16, 0),
                         items: [
-                          PopupMenuItem(value: 'Sermón', child: Row(children: [const Text('📖', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Sermón', style: TextStyle(fontSize: 13.5))])),
-                          PopupMenuItem(value: 'Estudio Bíblico', child: Row(children: [const Text('📚', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Estudio Bíblico', style: TextStyle(fontSize: 13.5))])),
-                          PopupMenuItem(value: 'Reflexión', child: Row(children: [const Text('🤔', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Reflexión', style: TextStyle(fontSize: 13.5))])),
-                          PopupMenuItem(value: 'Devocional', child: Row(children: [const Text('❤️', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Devocional', style: TextStyle(fontSize: 13.5))])),
-                          PopupMenuItem(value: 'Testimonio', child: Row(children: [const Text('🌟', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Testimonio', style: TextStyle(fontSize: 13.5))])),
-                          PopupMenuItem(value: 'Apuntes Generales', child: Row(children: [const Text('📓', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Apuntes Generales', style: TextStyle(fontSize: 13.5))])),
-                          PopupMenuItem(value: 'Discipulado', child: Row(children: [const Text('🏫', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Discipulado', style: TextStyle(fontSize: 13.5))])),
+                          PopupMenuItem(value: 'Sermón', child: Row(children: [const Text('📖', style: TextStyle(fontSize: 16, color: Colors.black54, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))])), const SizedBox(width: 6), const Text('Sermón', style: TextStyle(fontSize: 13.5, color: Colors.black54, fontWeight: FontWeight.normal, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))]))])),
+                          PopupMenuItem(value: 'Estudio Bíblico', child: Row(children: [const Text('📚', style: TextStyle(fontSize: 16, color: Colors.black54, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))])), const SizedBox(width: 6), const Text('Estudio Bíblico', style: TextStyle(fontSize: 13.5, color: Colors.black54, fontWeight: FontWeight.normal, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))]))])),
+                          PopupMenuItem(value: 'Reflexión', child: Row(children: [const Text('🤔', style: TextStyle(fontSize: 16, color: Colors.black54, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))])), const SizedBox(width: 6), const Text('Reflexión', style: TextStyle(fontSize: 13.5, color: Colors.black54, fontWeight: FontWeight.normal, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))]))])),
+                          PopupMenuItem(value: 'Devocional', child: Row(children: [const Text('❤️', style: TextStyle(fontSize: 16, color: Colors.black54, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))])), const SizedBox(width: 6), const Text('Devocional', style: TextStyle(fontSize: 13.5, color: Colors.black54, fontWeight: FontWeight.normal, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))]))])),
+                          PopupMenuItem(value: 'Testimonio', child: Row(children: [const Text('🌟', style: TextStyle(fontSize: 16, color: Colors.black54, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))])), const SizedBox(width: 6), const Text('Testimonio', style: TextStyle(fontSize: 13.5, color: Colors.black54, fontWeight: FontWeight.normal, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))]))])),
+                          PopupMenuItem(value: 'Apuntes Generales', child: Row(children: [const Text('📓', style: TextStyle(fontSize: 16, color: Colors.black54, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))])), const SizedBox(width: 6), const Text('Apuntes Generales', style: TextStyle(fontSize: 13.5, color: Colors.black54, fontWeight: FontWeight.normal, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))]))])),
+                          PopupMenuItem(value: 'Discipulado', child: Row(children: [const Text('🏫', style: TextStyle(fontSize: 16, color: Colors.black54, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))])), const SizedBox(width: 6), const Text('Discipulado', style: TextStyle(fontSize: 13.5, color: Colors.black54, fontWeight: FontWeight.normal, shadows: [Shadow(blurRadius: 1.5, color: Colors.black12, offset: Offset(0,1))]))])),
                         ],
                       );
                       if (selected != null) {
