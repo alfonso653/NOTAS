@@ -110,6 +110,7 @@ class Note {
   String categoria;
   String skin;
   Color color;
+  double titleFontSize;
 
   Note({
     required this.id,
@@ -119,6 +120,7 @@ class Note {
     this.categoria = '',
     this.skin = 'grid',
     this.color = Colors.white,
+    this.titleFontSize = 22,
   });
 
   Map<String, dynamic> toJson() {
@@ -130,6 +132,7 @@ class Note {
       'categoria': categoria,
       'skin': skin,
       'color': color.value, // como int
+      'titleFontSize': titleFontSize,
     };
   }
 
@@ -145,6 +148,16 @@ class Note {
             ? int.tryParse(rawColor) ?? 0xFFFFFFFF
             : 0xFFFFFFFF);
 
+    double fontSize = 22.0;
+    if (json['titleFontSize'] != null) {
+      if (json['titleFontSize'] is int) {
+        fontSize = (json['titleFontSize'] as int).toDouble();
+      } else if (json['titleFontSize'] is double) {
+        fontSize = json['titleFontSize'];
+      } else if (json['titleFontSize'] is String) {
+        fontSize = double.tryParse(json['titleFontSize']) ?? 22.0;
+      }
+    }
     return Note(
       id: json['id'],
       title: json['title'] ?? '',
@@ -153,6 +166,7 @@ class Note {
       categoria: json['categoria'] ?? '',
       skin: skinValue,
       color: Color(colorInt),
+      titleFontSize: fontSize,
     );
   }
 }
@@ -291,6 +305,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     _categoriaController = TextEditingController(text: widget.note.categoria);
     _noteColor = widget.note.color;
     _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
+    _titleFontSize = widget.note.titleFontSize;
   }
 
   @override
@@ -310,6 +325,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     note.date = DateTime.now().toLocal().toString();
     note.color = _noteColor;
     note.skin = _skin.isEmpty ? 'grid' : _skin;
+    note.titleFontSize = _titleFontSize;
     context.read<NoteProvider>().updateNote(note);
     Navigator.pop(context);
   }
@@ -735,32 +751,31 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             // Slider para tamaño de letra del título
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
-              child: Row(
-                children: [
-                  const Icon(Icons.text_fields,
-                      size: 18, color: Colors.black54),
-                  Expanded(
-                    child: Slider(
-                      value: _titleFontSize,
-                      min: 14,
-                      max: 36,
-                      divisions: 11,
-                      label: _titleFontSize.round().toString(),
-                      onChanged: (value) {
-                        setState(() {
-                          _titleFontSize = value;
-                        });
-                      },
-                    ),
-                  ),
-                  Text('${_titleFontSize.round()}',
-                      style:
-                          const TextStyle(fontSize: 13, color: Colors.black54)),
-                ],
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: Colors.black,
+                  inactiveTrackColor: Colors.black12,
+                  thumbColor: Colors.black,
+                  overlayColor: Colors.black26,
+                  trackHeight: 2.0,
+                  thumbShape:
+                      const RoundSliderThumbShape(enabledThumbRadius: 8.0),
+                ),
+                child: Slider(
+                  value: _titleFontSize,
+                  min: 14,
+                  max: 36,
+                  divisions: 11,
+                  onChanged: (value) {
+                    setState(() {
+                      _titleFontSize = value;
+                    });
+                  },
+                ),
               ),
             ),
 
-            // Título
+            // Título centrado y editable
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
@@ -793,19 +808,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 columns: 48,
                 curve: Curves.fastOutSlowIn,
                 child: Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(
-                        'packages/notes_module/assets/${(_skin.isNotEmpty ? _skin : 'grid')}.png',
-                      ),
-                      repeat: ImageRepeat.repeat,
-                      filterQuality: FilterQuality.high, // nitidez
-                      colorFilter: ColorFilter.mode(
-                        Colors.black.withOpacity(0.16), // + contraste
-                        BlendMode.darken,
-                      ),
-                    ),
-                  ),
+                  color: Colors.transparent,
                   child: TextField(
                     controller: _contentController,
                     maxLines: null,
