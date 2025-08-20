@@ -452,7 +452,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
         key: _noteKey,
         child: Column(
           children: [
-            // Barra superior con fecha y categoría
+            // Barra superior con fecha/hora y categoría debajo
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -468,6 +468,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 ],
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(2),
@@ -478,55 +479,62 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                     child: const Text('⏳',
                         style: TextStyle(fontSize: 16, color: Colors.black)),
                   ),
-                  const SizedBox(width: 4),
-                  // Fecha y hora (no editable)
-                  Text(
-                    _formatDateTime(widget.note.date),
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('|', style: TextStyle(color: Colors.black26)),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: DropdownButtonFormField<String>(
-                      icon: const Text('📂',
-                          style: TextStyle(fontSize: 18, color: Colors.black)),
-                      value: _categoriaController.text.isNotEmpty
-                          ? _categoriaController.text
-                          : null,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        hintText: 'Categoría',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      style:
-                          const TextStyle(color: Colors.black54, fontSize: 14),
-                      items: const [
-                        DropdownMenuItem(
-                            value: 'Sermón', child: Text('📖 Sermón')),
-                        DropdownMenuItem(
-                            value: 'Estudio Bíblico',
-                            child: Text('📚 Estudio Bíblico')),
-                        DropdownMenuItem(
-                            value: 'Reflexión', child: Text('🤔 Reflexión')),
-                        DropdownMenuItem(
-                            value: 'Devocional', child: Text('❤️ Devocional')),
-                        DropdownMenuItem(
-                            value: 'Testimonio', child: Text('🌟 Testimonio')),
-                        DropdownMenuItem(
-                            value: 'Apuntes Generales',
-                            child: Text('📓 Apuntes Generales')),
-                        DropdownMenuItem(
-                            value: 'Discipulado',
-                            child: Text('🏫 Discipulado')),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _formatDateTime(widget.note.date),
+                          style: const TextStyle(
+                              color: Colors.black54, fontSize: 13.5),
+                        ),
+                        if (_categoriaController.text.isNotEmpty)
+                          Row(
+                            children: [
+                              Text(_categoriaIconStr(_categoriaController.text),
+                                  style: const TextStyle(fontSize: 14)),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  _categoriaController.text,
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.5,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                       ],
-                      onChanged: (v) {
-                        setState(() {
-                          _categoriaController.text = v ?? '';
-                        });
-                      },
                     ),
+                  ),
+                  // Solo icono de carpeta como botón
+                  IconButton(
+                    icon: const Text('📂', style: TextStyle(fontSize: 18, color: Colors.black)),
+                    onPressed: () async {
+                      final selected = await showMenu<String>(
+                        context: context,
+                        position: const RelativeRect.fromLTRB(200, 80, 16, 0),
+                        items: [
+                          PopupMenuItem(value: 'Sermón', child: Row(children: [const Text('📖', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Sermón', style: TextStyle(fontSize: 13.5))])),
+                          PopupMenuItem(value: 'Estudio Bíblico', child: Row(children: [const Text('📚', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Estudio Bíblico', style: TextStyle(fontSize: 13.5))])),
+                          PopupMenuItem(value: 'Reflexión', child: Row(children: [const Text('🤔', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Reflexión', style: TextStyle(fontSize: 13.5))])),
+                          PopupMenuItem(value: 'Devocional', child: Row(children: [const Text('❤️', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Devocional', style: TextStyle(fontSize: 13.5))])),
+                          PopupMenuItem(value: 'Testimonio', child: Row(children: [const Text('🌟', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Testimonio', style: TextStyle(fontSize: 13.5))])),
+                          PopupMenuItem(value: 'Apuntes Generales', child: Row(children: [const Text('📓', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Apuntes Generales', style: TextStyle(fontSize: 13.5))])),
+                          PopupMenuItem(value: 'Discipulado', child: Row(children: [const Text('🏫', style: TextStyle(fontSize: 16)), const SizedBox(width: 6), const Text('Discipulado', style: TextStyle(fontSize: 13.5))])),
+                        ],
+                      );
+                      if (selected != null) {
+                        setState(() {
+                          _categoriaController.text = selected;
+                        });
+                      }
+                    },
+                    tooltip: 'Seleccionar categoría',
                   ),
                 ],
               ),
@@ -1073,5 +1081,27 @@ class SkinPanel extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// Devuelve el emoji de la categoría como string
+String _categoriaIconStr(String categoria) {
+  switch (categoria) {
+    case 'Sermón':
+      return '📖';
+    case 'Estudio Bíblico':
+      return '📚';
+    case 'Reflexión':
+      return '🤔';
+    case 'Devocional':
+      return '❤️';
+    case 'Testimonio':
+      return '🌟';
+    case 'Apuntes Generales':
+      return '📓';
+    case 'Discipulado':
+      return '🏫';
+    default:
+      return '';
   }
 }

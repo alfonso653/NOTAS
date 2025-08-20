@@ -380,7 +380,8 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset('assets/fontsabc/font_size.png', width: 22, height: 22, color: Colors.black87),
+            Image.asset('assets/fontsabc/font_size.png',
+                width: 22, height: 22, color: Colors.black87),
             const SizedBox(width: 4),
             Text('${v.fontSize}',
                 style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -397,7 +398,8 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
       width: _btn.width,
       height: _btn.height,
       alignment: Alignment.center,
-      child: Image.asset('assets/fontsabc/color_picker.png', width: 30, height: 30),
+      child: Image.asset('assets/fontsabc/color_picker.png',
+          width: 30, height: 30),
     );
   }
 
