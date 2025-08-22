@@ -75,7 +75,8 @@ class TextFormatPanel extends StatefulWidget {
   State<TextFormatPanel> createState() => _TextFormatPanelState();
 }
 
-class _TextFormatPanelState extends State<TextFormatPanel> with SingleTickerProviderStateMixin {
+class _TextFormatPanelState extends State<TextFormatPanel>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Offset> _offsetAnimation;
   late final Animation<double> _fadeAnimation;
@@ -137,7 +138,9 @@ class _TextFormatPanelState extends State<TextFormatPanel> with SingleTickerProv
                   width: 40, // la mitad de 80
                   height: 25, // la mitad de 50
                   decoration: BoxDecoration(
-                    color: v.bold ? const Color(0xFFFFC107) : const Color(0xFFF6F7F9),
+                    color: v.bold
+                        ? const Color(0xFFFFC107)
+                        : const Color(0xFFF6F7F9),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
@@ -147,7 +150,8 @@ class _TextFormatPanelState extends State<TextFormatPanel> with SingleTickerProv
                       ),
                     ],
                     border: Border.all(
-                      color: v.bold ? Colors.amber.shade700 : Colors.grey.shade300,
+                      color:
+                          v.bold ? Colors.amber.shade700 : Colors.grey.shade300,
                       width: 2,
                     ),
                   ),
@@ -168,11 +172,11 @@ class _TextFormatPanelState extends State<TextFormatPanel> with SingleTickerProv
         ),
       ),
     );
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+    @override
+    void dispose() {
+      _controller.dispose();
+      super.dispose();
+    }
   }
 
   // ---------------- pieces ----------------

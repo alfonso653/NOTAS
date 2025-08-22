@@ -19,7 +19,8 @@ class _TextPart {
   _TextPart(this.text, this.bold);
 
   Map<String, dynamic> toJson() => {'text': text, 'bold': bold};
-  factory _TextPart.fromJson(Map<String, dynamic> json) => _TextPart(json['text'] ?? '', json['bold'] ?? false);
+  factory _TextPart.fromJson(Map<String, dynamic> json) =>
+      _TextPart(json['text'] ?? '', json['bold'] ?? false);
 }
 
 /// =======================
@@ -87,7 +88,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   final Map<int, TextEditingController> _partControllers = {}; // Moved to State
   double _titleFontSize = 22;
   static const double _minTitleFontSize = 14;
-  static const double _maxTitleFontSize = 38; // Limite seguro para evitar overflow visual
+  static const double _maxTitleFontSize =
+      38; // Limite seguro para evitar overflow visual
   TextFormatValue _contentFormat = const TextFormatValue();
   TextFormatValue _lastFormat = const TextFormatValue();
 
@@ -115,11 +117,10 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     }
   }
 
-
   Future<void> _shareAsText() async {
-  // Compartir el texto concatenado de _contentParts
-  final text = _contentParts.map((e) => e.text).join('\n');
-  await Share.share(text.isEmpty ? 'Nota sin contenido' : text);
+    // Compartir el texto concatenado de _contentParts
+    final text = _contentParts.map((e) => e.text).join('\n');
+    await Share.share(text.isEmpty ? 'Nota sin contenido' : text);
   }
 
   Future<void> _shareAsPdf() async {
@@ -242,7 +243,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     _lastFormat = _contentFormat;
 
     // Cargar partes desde el modelo
-    _contentParts = (widget.note.contentParts).map((e) => _TextPart.fromJson(e)).toList();
+    _contentParts =
+        (widget.note.contentParts).map((e) => _TextPart.fromJson(e)).toList();
     _hiddenController.clear();
   }
 
@@ -569,10 +571,12 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                           child: Slider(
                             min: _minTitleFontSize,
                             max: _maxTitleFontSize,
-                            value: _titleFontSize.clamp(_minTitleFontSize, _maxTitleFontSize),
+                            value: _titleFontSize.clamp(
+                                _minTitleFontSize, _maxTitleFontSize),
                             onChanged: (v) {
                               setState(() {
-                                _titleFontSize = v.clamp(_minTitleFontSize, _maxTitleFontSize);
+                                _titleFontSize = v.clamp(
+                                    _minTitleFontSize, _maxTitleFontSize);
                               });
                               _saveNote();
                             },
@@ -610,12 +614,15 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                       children: List.generate(_contentParts.length, (i) {
                         final part = _contentParts[i];
                         if (_editingPartIndex == i) {
-                          _partControllers[i] ??= TextEditingController(text: part.text);
+                          _partControllers[i] ??=
+                              TextEditingController(text: part.text);
                           return Focus(
                             onFocusChange: (hasFocus) {
                               if (!hasFocus) {
                                 setState(() {
-                                  _contentParts[i] = _TextPart(_partControllers[i]?.text ?? part.text, part.bold);
+                                  _contentParts[i] = _TextPart(
+                                      _partControllers[i]?.text ?? part.text,
+                                      part.bold);
                                   _editingPartIndex = null;
                                   _partControllers.remove(i);
                                 });
@@ -628,16 +635,20 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                               maxLines: null,
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: part.bold
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                                 color: Colors.black87,
                               ),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                               ),
                               onSubmitted: (value) {
                                 setState(() {
-                                  _contentParts[i] = _TextPart(value, part.bold);
+                                  _contentParts[i] =
+                                      _TextPart(value, part.bold);
                                   _editingPartIndex = null;
                                   _partControllers.remove(i);
                                 });
@@ -646,22 +657,59 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                             ),
                           );
                         } else {
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _editingPartIndex = i;
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
-                              child: Text(
-                                part.text,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
-                                  color: Colors.black87,
+                          return LongPressDraggable<int>(
+                            data: i,
+                            feedback: Material(
+                              color: Colors.transparent,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 2.0, horizontal: 4.0),
+                                child: Text(
+                                  part.text,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: part.bold
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: Colors.black54,
+                                  ),
                                 ),
                               ),
+                            ),
+                            childWhenDragging: const SizedBox.shrink(),
+                            onDragCompleted: () {},
+                            child: DragTarget<int>(
+                              onWillAccept: (from) => from != i,
+                              onAccept: (from) {
+                                setState(() {
+                                  final moved = _contentParts.removeAt(from);
+                                  _contentParts.insert(i, moved);
+                                  _saveNote();
+                                });
+                              },
+                              builder: (context, candidateData, rejectedData) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _editingPartIndex = i;
+                                    });
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 2.0, horizontal: 4.0),
+                                    child: Text(
+                                      part.text,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: part.bold
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           );
                         }
