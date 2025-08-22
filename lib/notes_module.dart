@@ -8,6 +8,7 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'text_format_panel.dart';
+import 'note.dart';
 
 // Clase auxiliar para simular partes de texto con o sin negrita
 class _TextPart {
@@ -16,170 +17,9 @@ class _TextPart {
   _TextPart(this.text, this.bold);
 }
 
-/// =========================
-/// MODELO + PROVIDER: Tareas
-/// =========================
-
-// Modelo de tarea pendiente
-class PendingTask {
-  String id;
-  String title;
-  String description;
-  String categoria;
-  DateTime dateTime;
-  bool completed;
-
-  PendingTask({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.categoria,
-    required this.dateTime,
-    this.completed = false,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'description': description,
-        'categoria': categoria,
-        'dateTime': dateTime.toIso8601String(),
-        'completed': completed,
-      };
-
-  factory PendingTask.fromJson(Map<String, dynamic> json) => PendingTask(
-        id: json['id'],
-        title: json['title'],
-        description: json['description'],
-        categoria: json['categoria'] ?? '',
-        dateTime: DateTime.parse(json['dateTime']),
-        completed: json['completed'] ?? false,
-      );
-}
-
-// Provider para tareas pendientes
-class PendingProvider extends ChangeNotifier {
-  List<PendingTask> tasks = [];
-
-  PendingProvider() {
-    _loadTasks();
-  }
-
-  Future<void> _loadTasks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString('pending_tasks') ?? '[]';
-    final List<dynamic> list = json.decode(data);
-    tasks = list
-        .map((e) => PendingTask.fromJson(e as Map<String, dynamic>))
-        .toList();
-    notifyListeners();
-  }
-
-  Future<void> _saveTasks() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'pending_tasks',
-      json.encode(tasks.map((e) => e.toJson()).toList()),
-    );
-  }
-
-  void addTask(PendingTask task) {
-    tasks.insert(0, task);
-    _saveTasks();
-    notifyListeners();
-  }
-
-  void completeTask(String id) {
-    final idx = tasks.indexWhere((t) => t.id == id);
-    if (idx != -1) {
-      tasks[idx].completed = true;
-      _saveTasks();
-      notifyListeners();
-    }
-  }
-
-  void deleteTask(String id) {
-    tasks.removeWhere((t) => t.id == id);
-    _saveTasks();
-    notifyListeners();
-  }
-}
-
 /// =======================
-/// MODELO + PROVIDER: Notas
+/// PROVIDER: Notas
 /// =======================
-
-/// Modelo de una nota.
-class Note {
-  String id;
-  String title;
-  String content;
-  String date;
-  String categoria;
-  String skin;
-  Color color;
-  double titleFontSize;
-
-  Note({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.date,
-    this.categoria = '',
-    this.skin = 'grid',
-    this.color = Colors.white,
-    this.titleFontSize = 22,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'title': title,
-      'content': content,
-      'date': date,
-      'categoria': categoria,
-      'skin': skin,
-      'color': color.value, // como int
-      'titleFontSize': titleFontSize,
-    };
-  }
-
-  factory Note.fromJson(Map<String, dynamic> json) {
-    final skinValue = (json['skin'] as String?)?.isNotEmpty == true
-        ? json['skin'] as String
-        : 'grid';
-
-    final rawColor = json['color'];
-    final colorInt = rawColor is int
-        ? rawColor
-        : (rawColor is String
-            ? int.tryParse(rawColor) ?? 0xFFFFFFFF
-            : 0xFFFFFFFF);
-
-    double fontSize = 22.0;
-    if (json['titleFontSize'] != null) {
-      if (json['titleFontSize'] is int) {
-        fontSize = (json['titleFontSize'] as int).toDouble();
-      } else if (json['titleFontSize'] is double) {
-        fontSize = json['titleFontSize'];
-      } else if (json['titleFontSize'] is String) {
-        fontSize = double.tryParse(json['titleFontSize']) ?? 22.0;
-      }
-    }
-    return Note(
-      id: json['id'],
-      title: json['title'] ?? '',
-      content: json['content'] ?? '',
-      date: json['date'] ?? '',
-      categoria: json['categoria'] ?? '',
-      skin: skinValue,
-      color: Color(colorInt),
-      titleFontSize: fontSize,
-    );
-  }
-}
-
-/// Proveedor para gestionar el listado de notas y su persistencia local.
 class NoteProvider extends ChangeNotifier {
   List<Note> notes = [];
 
@@ -223,12 +63,10 @@ class NoteProvider extends ChangeNotifier {
     _saveNotes();
     notifyListeners();
   }
-
-  // ...existing code...
 }
 
 /// ========================================
-/// PANTALLA: Edición de nota (NoteEditScreen)
+/// PANTALLA: Edición de nota
 /// ========================================
 class NoteEditScreen extends StatefulWidget {
   final Note note;
@@ -242,11 +80,20 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   double _titleFontSize = 22;
   TextFormatValue _contentFormat = const TextFormatValue();
   TextFormatValue _lastFormat = const TextFormatValue();
+
   final List<_TextPart> _contentParts = [];
   final TextEditingController _hiddenController = TextEditingController();
-  FocusNode _hiddenFocus = FocusNode();
+  final FocusNode _hiddenFocus = FocusNode();
 
-  /// Formatea la fecha guardada en el campo [date] para mostrar fecha y hora.
+  late TextEditingController _titleController;
+  late TextEditingController _contentController;
+  late TextEditingController _categoriaController;
+  late Color _noteColor;
+  late String _skin;
+
+  final GlobalKey _noteKey = GlobalKey();
+
+  /// Fecha y hora legible
   String _formatDateTime(String dateStr) {
     try {
       final dt = DateTime.parse(dateStr);
@@ -258,21 +105,27 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     }
   }
 
-  late TextEditingController _titleController;
-  late TextEditingController _contentController;
-  late TextEditingController _categoriaController;
-  late Color _noteColor;
-  late String _skin;
-
-  final GlobalKey _noteKey = GlobalKey();
+  /// Une lo que ya se agregó con lo que está escribiéndose
+  String _composeContent() {
+    final buf = StringBuffer();
+    for (final p in _contentParts) {
+      buf.writeln(p.text);
+    }
+    if (_hiddenController.text.isNotEmpty) {
+      buf.writeln(_hiddenController.text);
+    }
+    return buf.toString().trimRight();
+  }
 
   Future<void> _shareAsText() async {
-    final text = '${_titleController.text}\n\n${_contentController.text}';
+    final composed = _composeContent();
+    final text = '${_titleController.text}\n\n$composed';
     await Share.share(text, subject: _titleController.text);
   }
 
   Future<void> _shareAsPdf() async {
     try {
+      final composed = _composeContent();
       final pdf = pw.Document();
       pdf.addPage(
         pw.Page(
@@ -288,8 +141,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               pw.Text('Categoría: ${_categoriaController.text}',
                   style: pw.TextStyle(fontSize: 12)),
               pw.SizedBox(height: 16),
-              pw.Text(_contentController.text,
-                  style: pw.TextStyle(fontSize: 16)),
+              pw.Text(composed, style: pw.TextStyle(fontSize: 16)),
             ],
           ),
         ),
@@ -310,39 +162,13 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _titleController = TextEditingController(text: widget.note.title);
-    _contentController = TextEditingController();
-    _categoriaController = TextEditingController(text: widget.note.categoria);
-    _noteColor = widget.note.color;
-    _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
-    _titleFontSize = widget.note.titleFontSize;
-    _contentFormat = const TextFormatValue();
-    _lastFormat = _contentFormat;
-    _contentParts.clear();
-    if (widget.note.content.isNotEmpty) {
-      _contentParts.add(_TextPart(widget.note.content, false));
-    }
-    _hiddenController.clear();
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _contentController.dispose();
-    _categoriaController.dispose();
-    super.dispose();
-  }
-
   void _saveNote() {
     final note = widget.note;
     note.title = _titleController.text;
+    _contentController.text = _composeContent();
     note.content = _contentController.text;
     note.categoria = _categoriaController.text;
-    // Guarda fecha y hora exacta de entrada
-    note.date = DateTime.now().toLocal().toString();
+    note.date = DateTime.now().toLocal().toString(); // guarda fecha/hora actual
     note.color = _noteColor;
     note.skin = _skin.isEmpty ? 'grid' : _skin;
     note.titleFontSize = _titleFontSize;
@@ -369,8 +195,40 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.note.title);
+    _contentController = TextEditingController(text: widget.note.content);
+    _categoriaController = TextEditingController(text: widget.note.categoria);
+    _noteColor = widget.note.color;
+    _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
+    _titleFontSize = widget.note.titleFontSize;
+    _contentFormat = const TextFormatValue();
+    _lastFormat = _contentFormat;
+
+    _contentParts.clear();
+    if (widget.note.content.isNotEmpty) {
+      _contentParts.add(_TextPart(widget.note.content, false));
+    }
+    _hiddenController.clear();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
+    _categoriaController.dispose();
+    _hiddenController.dispose();
+    _hiddenFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    const double _bottomBarHeight = 72.0;
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: _noteColor,
       appBar: AppBar(
         backgroundColor: _noteColor,
@@ -393,11 +251,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             onPressed: _saveNote,
           ),
           IconButton(
-            icon: Image.asset(
-              'assets/compartir.png',
-              width: 28,
-              height: 28,
-            ),
+            icon: Image.asset('assets/compartir.png', width: 28, height: 28),
             tooltip: 'Compartir',
             onPressed: () {
               showModalBottomSheet(
@@ -486,11 +340,13 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
           ),
         ],
       ),
+
+      // ======= BODY =======
       body: RepaintBoundary(
         key: _noteKey,
         child: Column(
           children: [
-            // Barra superior con fecha/hora y categoría debajo
+            // Cabecera (fecha/categoría)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -563,7 +419,6 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                       ],
                     ),
                   ),
-                  // Solo icono de carpeta como botón
                   IconButton(
                     icon: const Text('📂',
                         style: TextStyle(fontSize: 18, color: Colors.black)),
@@ -571,189 +426,26 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                       final selected = await showMenu<String>(
                         context: context,
                         position: const RelativeRect.fromLTRB(200, 80, 16, 0),
-                        items: [
+                        items: const [
                           PopupMenuItem(
-                              value: 'Sermón',
-                              child: Row(children: [
-                                const Text('📖',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text('Sermón',
-                                    style: TextStyle(
-                                        fontSize: 13.5,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.normal,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ]))
-                              ])),
+                              value: 'Sermón', child: Text('📖  Sermón')),
                           PopupMenuItem(
                               value: 'Estudio Bíblico',
-                              child: Row(children: [
-                                const Text('📚',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text('Estudio Bíblico',
-                                    style: TextStyle(
-                                        fontSize: 13.5,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.normal,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ]))
-                              ])),
+                              child: Text('📚  Estudio Bíblico')),
                           PopupMenuItem(
-                              value: 'Reflexión',
-                              child: Row(children: [
-                                const Text('🤔',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text('Reflexión',
-                                    style: TextStyle(
-                                        fontSize: 13.5,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.normal,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ]))
-                              ])),
+                              value: 'Reflexión', child: Text('🤔  Reflexión')),
                           PopupMenuItem(
                               value: 'Devocional',
-                              child: Row(children: [
-                                const Text('❤️',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text('Devocional',
-                                    style: TextStyle(
-                                        fontSize: 13.5,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.normal,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ]))
-                              ])),
+                              child: Text('❤️  Devocional')),
                           PopupMenuItem(
                               value: 'Testimonio',
-                              child: Row(children: [
-                                const Text('🌟',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text('Testimonio',
-                                    style: TextStyle(
-                                        fontSize: 13.5,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.normal,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ]))
-                              ])),
+                              child: Text('🌟  Testimonio')),
                           PopupMenuItem(
                               value: 'Apuntes Generales',
-                              child: Row(children: [
-                                const Text('📓',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text('Apuntes Generales',
-                                    style: TextStyle(
-                                        fontSize: 13.5,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.normal,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ]))
-                              ])),
+                              child: Text('📓  Apuntes Generales')),
                           PopupMenuItem(
                               value: 'Discipulado',
-                              child: Row(children: [
-                                const Text('🏫',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ])),
-                                const SizedBox(width: 6),
-                                const Text('Discipulado',
-                                    style: TextStyle(
-                                        fontSize: 13.5,
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.normal,
-                                        shadows: [
-                                          Shadow(
-                                              blurRadius: 1.5,
-                                              color: Colors.black12,
-                                              offset: Offset(0, 1))
-                                        ]))
-                              ])),
+                              child: Text('🏫  Discipulado')),
                         ],
                       );
                       if (selected != null) {
@@ -768,40 +460,11 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               ),
             ),
 
-            // Slider para tamaño de letra del título
+            // Título
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: Colors.black,
-                  inactiveTrackColor: Colors.black12,
-                  thumbColor: Colors.black,
-                  overlayColor: Colors.black26,
-                  trackHeight: 2.0,
-                  thumbShape:
-                      const RoundSliderThumbShape(enabledThumbRadius: 8.0),
-                ),
-                child: Slider(
-                  value: _titleFontSize,
-                  min: 14,
-                  max: 36,
-                  divisions: 11,
-                  onChanged: (value) {
-                    setState(() {
-                      _titleFontSize = value;
-                    });
-                  },
-                ),
-              ),
-            ),
-
-            // Título centrado y editable
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
                 controller: _titleController,
-                minLines: 1,
-                maxLines: null,
                 textAlign: TextAlign.center,
                 decoration: const InputDecoration(
                   hintText: 'Encabezado',
@@ -819,194 +482,172 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               ),
             ),
 
-            // Contenido con transición de cuadros al cambiar color (más fluida)
+            // Contenido con transición + LISTVIEW SCROLL
             Expanded(
               child: TileRevealColorTransition(
                 color: _noteColor,
-                duration: const Duration(milliseconds: 800), // muy fluida
-                rows: 24, // mosaico fino
+                duration: const Duration(milliseconds: 800),
+                rows: 24,
                 columns: 48,
                 curve: Curves.fastOutSlowIn,
-                child: Container(
-                  color: Colors.transparent,
-                  // Simulación de negrita por rango
-                  child: GestureDetector(
-                    onTap: () => _hiddenFocus.requestFocus(),
-                    child: Stack(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              child: RichText(
-                                text: TextSpan(
-                                  children: _contentParts
-                                      .map((part) => TextSpan(
-                                            text: part.text + '\n',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: part.bold
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                              color: Colors.black87,
-                                            ),
-                                          ))
-                                      .toList(),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              decoration: const BoxDecoration(
-                                border: Border.fromBorderSide(BorderSide.none),
-                                color: Colors.transparent,
-                              ),
-                              child: TextField(
-                                controller: _hiddenController,
-                                focusNode: _hiddenFocus,
-                                maxLines: 5,
-                                minLines: 1,
-                                keyboardType: TextInputType.multiline,
-                                textInputAction: TextInputAction.newline,
-                                cursorColor: Colors.amber,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    _bottomBarHeight +
+                        MediaQuery.of(context).padding.bottom +
+                        16,
+                  ),
+                  children: [
+                    // Texto ya fijado por partes
+                    RichText(
+                      text: TextSpan(
+                        children: _contentParts
+                            .map(
+                              (part) => TextSpan(
+                                text: part.text + '\n',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  fontWeight: _contentFormat.bold
+                                  fontWeight: part.bold
                                       ? FontWeight.bold
                                       : FontWeight.normal,
                                   color: Colors.black87,
                                 ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 10),
-                                  hintText:
-                                      'Escribe aquí... (Enter para nueva línea)',
-                                  fillColor: Colors.transparent,
-                                  filled: true,
-                                ),
-                                onSubmitted: (val) {
-                                  setState(() {
-                                    if (val.isNotEmpty) {
-                                      _contentParts.add(
-                                          _TextPart(val, _contentFormat.bold));
-                                    }
-                                    _hiddenController.clear();
-                                  });
-                                },
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            )
+                            .toList(),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    // Campo de escritura continua
+                    Container(
+                      decoration: const BoxDecoration(
+                        border: Border.fromBorderSide(BorderSide.none),
+                        color: Colors.transparent,
+                      ),
+                      child: TextField(
+                        controller: _hiddenController,
+                        focusNode: _hiddenFocus,
+                        maxLines: null,
+                        minLines: 1,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        cursorColor: Colors.amber,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: _contentFormat.bold
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: Colors.black87,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          hintText: 'Escribe aquí... (Enter para nueva línea)',
+                          fillColor: Colors.transparent,
+                          filled: true,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-
-            // Barra inferior minimalista
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildIconBox(
-                    icon: Image.asset('assets/abc.png', width: 32, height: 32),
-                    onTap: () async {
-                      // Antes de abrir el panel, guarda el texto actual con el formato anterior
-                      if (_hiddenController.text.isNotEmpty) {
-                        setState(() {
-                          _contentParts.add(_TextPart(
-                              _hiddenController.text, _contentFormat.bold));
-                          _hiddenController.clear();
-                        });
-                      }
-                      final prevFormat = _contentFormat;
-                      await showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (ctx) => Padding(
-                          padding: MediaQuery.of(ctx).viewInsets,
-                          child: TextFormatPanel(
-                            value: _contentFormat,
-                            onChanged: (val) {
-                              setState(() {
-                                // Si cambia el formato, guarda el texto actual con el formato anterior
-                                if (_contentFormat.bold != val.bold &&
-                                    _hiddenController.text.isNotEmpty) {
-                                  _contentParts.add(_TextPart(
-                                      _hiddenController.text,
-                                      _contentFormat.bold));
-                                  _hiddenController.clear();
-                                }
-                                _contentFormat = val;
-                              });
-                            },
-                            onClose: () => Navigator.pop(ctx),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildIconBox(
-                      icon: Image.asset('assets/camara.png',
-                          width: 32, height: 32),
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Foto'),
-                            content: const Text(
-                                'Función de añadir foto próximamente.'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                  _buildIconBox(
-                      icon: Image.asset('assets/IA.png', width: 32, height: 32),
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Mapa mental/conceptual'),
-                            content: const Text(
-                                'Función de mapa mental próximamente.'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                ],
-              ),
-            ),
           ],
+        ),
+      ),
+
+      // ======= BARRA INFERIOR =======
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(left: 10, right: 10, bottom: 8),
+        child: Container(
+          height: _bottomBarHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildIconBox(
+                icon: Image.asset('assets/abc.png', width: 32, height: 32),
+                onTap: () async {
+                  if (_hiddenController.text.isNotEmpty) {
+                    setState(() {
+                      _contentParts.add(
+                        _TextPart(_hiddenController.text, _contentFormat.bold),
+                      );
+                      _hiddenController.clear();
+                    });
+                  }
+                  await showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (ctx) => Padding(
+                      padding: MediaQuery.of(ctx).viewInsets,
+                      child: TextFormatPanel(
+                        value: _contentFormat,
+                        onChanged: (val) =>
+                            setState(() => _contentFormat = val),
+                        onClose: () => Navigator.pop(ctx),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildIconBox(
+                icon: Image.asset('assets/camara.png', width: 32, height: 32),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Foto'),
+                      content:
+                          const Text('Función de añadir foto próximamente.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK')),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              _buildIconBox(
+                icon: Image.asset('assets/IA.png', width: 32, height: 32),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Mapa mental/conceptual'),
+                      content:
+                          const Text('Función de mapa mental próximamente.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('OK')),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1014,7 +655,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
 }
 
 /// =======================================================
-/// Widget para transición de color ULTRA fluida con CustomPainter
+/// Widget para transición de color con CustomPainter
 /// =======================================================
 class TileRevealColorTransition extends StatefulWidget {
   final Color color;
@@ -1057,9 +698,7 @@ class _TileRevealColorTransitionState extends State<TileRevealColorTransition>
   @override
   void didUpdateWidget(covariant TileRevealColorTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
-
     final changedColor = widget.color.value != _currentColor.value;
-
     if (changedColor) {
       _oldColor = _currentColor;
       _currentColor = widget.color;
@@ -1130,13 +769,11 @@ class _RevealPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Base
     final basePaint = Paint()..color = animating ? oldColor : newColor;
     canvas.drawRect(Offset.zero & size, basePaint);
 
     if (!animating) return;
 
-    // Revelado suave con “círculos” por tile
     final tileW = size.width / cols;
     final tileH = size.height / rows;
     final maxR = (tileW > tileH ? tileW : tileH) * 0.9;
@@ -1197,7 +834,6 @@ class SkinPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Paleta extendida de colores
     final colors = <Color>[
       Colors.white,
       Colors.grey.shade50,
@@ -1288,38 +924,6 @@ class SkinPanel extends StatelessWidget {
       Colors.brown.shade300,
       Colors.brown.shade400,
       Colors.brown.shade500,
-      const Color(0xFFf6d365),
-      const Color(0xFFfda085),
-      const Color(0xFFfbc2eb),
-      const Color(0xFFa1c4fd),
-      const Color(0xFFc2e9fb),
-      const Color(0xFFd4fc79),
-      const Color(0xFF96e6a1),
-      const Color(0xFFf7797d),
-      const Color(0xFFe0c3fc),
-      const Color(0xFF8fd3f4),
-      const Color(0xFFfcb69f),
-      const Color(0xFFffecd2),
-      const Color(0xFFa8edea),
-      const Color(0xFFfed6e3),
-      const Color(0xFFcfd9df),
-      const Color(0xFFe2d1c3),
-      const Color(0xFFf5f7fa),
-      const Color(0xFFc9ffbf),
-      const Color(0xFFffafbd),
-      const Color(0xFFb2fefa),
-      const Color(0xFFf3e7e9),
-      const Color(0xFFc9ffbf),
-      const Color(0xFFf9f586),
-      const Color(0xFFf7b267),
-      const Color(0xFFe0c3fc),
-      const Color(0xFFf3e7e9),
-      const Color(0xFFf5f7fa),
-      const Color(0xFFe0eafc),
-      const Color(0xFFf7ffea),
-      const Color(0xFFe2d1c3),
-      const Color(0xFFfbc2eb),
-      const Color(0xFFfcb69f),
       const Color(0xFFf6d365),
       const Color(0xFFfda085),
       const Color(0xFFfbc2eb),

@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart'
 
 import 'package:provider/provider.dart';
 import 'notes_module.dart';
+import 'note.dart';
+import 'pending.dart';
 
 void main() {
   runApp(const NotesApp());
@@ -17,9 +19,8 @@ class NotesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<NoteProvider>(create: (_) => NoteProvider()),
-        ChangeNotifierProvider<PendingProvider>(
-            create: (_) => PendingProvider()),
+        ChangeNotifierProvider(create: (_) => NoteProvider()),
+        ChangeNotifierProvider(create: (_) => PendingProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -538,6 +539,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     date:
                         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
                     categoria: '',
+                    skin: 'grid',
+                    color: Colors.white,
+                    titleFontSize: 22.0,
                   );
                   context.read<NoteProvider>().addNote(newNote);
                   Navigator.push(
