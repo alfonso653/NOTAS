@@ -83,6 +83,8 @@ class NoteEditScreen extends StatefulWidget {
 
 class _NoteEditScreenState extends State<NoteEditScreen> {
   double _titleFontSize = 22;
+  static const double _minTitleFontSize = 14;
+  static const double _maxTitleFontSize = 38; // Limite seguro para evitar overflow visual
   TextFormatValue _contentFormat = const TextFormatValue();
   TextFormatValue _lastFormat = const TextFormatValue();
 
@@ -562,12 +564,12 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                             inactiveTrackColor: Colors.black26,
                           ),
                           child: Slider(
-                            min: 14,
-                            max: 48,
-                            value: _titleFontSize,
+                            min: _minTitleFontSize,
+                            max: _maxTitleFontSize,
+                            value: _titleFontSize.clamp(_minTitleFontSize, _maxTitleFontSize),
                             onChanged: (v) {
                               setState(() {
-                                _titleFontSize = v;
+                                _titleFontSize = v.clamp(_minTitleFontSize, _maxTitleFontSize);
                               });
                               _saveNote();
                             },
