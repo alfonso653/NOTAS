@@ -74,14 +74,17 @@ class NoteProvider extends ChangeNotifier {
 /// PANTALLA: Edición de nota
 /// ========================================
 class NoteEditScreen extends StatefulWidget {
+// ...existing code...
   final Note note;
-  const NoteEditScreen({super.key, required this.note});
+  NoteEditScreen({Key? key, required this.note}) : super(key: key);
 
   @override
   State<NoteEditScreen> createState() => _NoteEditScreenState();
 }
 
 class _NoteEditScreenState extends State<NoteEditScreen> {
+  int? _editingPartIndex; // Moved to State
+  final Map<int, TextEditingController> _partControllers = {}; // Moved to State
   double _titleFontSize = 22;
   static const double _minTitleFontSize = 14;
   static const double _maxTitleFontSize = 38; // Limite seguro para evitar overflow visual
@@ -602,23 +605,67 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                   ),
                   children: [
                     // Texto ya fijado por partes
-                    RichText(
-                      text: TextSpan(
-                        children: _contentParts
-                            .map(
-                              (part) => TextSpan(
-                                text: '${part.text}\n',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List.generate(_contentParts.length, (i) {
+                        final part = _contentParts[i];
+                        if (_editingPartIndex == i) {
+                          _partControllers[i] ??= TextEditingController(text: part.text);
+                          return Focus(
+                            onFocusChange: (hasFocus) {
+                              if (!hasFocus) {
+                                setState(() {
+                                  _contentParts[i] = _TextPart(_partControllers[i]?.text ?? part.text, part.bold);
+                                  _editingPartIndex = null;
+                                  _partControllers.remove(i);
+                                });
+                                _saveNote();
+                              }
+                            },
+                            child: TextField(
+                              controller: _partControllers[i],
+                              autofocus: true,
+                              maxLines: null,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
+                                color: Colors.black87,
+                              ),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                              onSubmitted: (value) {
+                                setState(() {
+                                  _contentParts[i] = _TextPart(value, part.bold);
+                                  _editingPartIndex = null;
+                                  _partControllers.remove(i);
+                                });
+                                _saveNote();
+                              },
+                            ),
+                          );
+                        } else {
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _editingPartIndex = i;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
+                              child: Text(
+                                part.text,
                                 style: TextStyle(
                                   fontSize: 18,
-                                  fontWeight: part.bold
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                                  fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
                                   color: Colors.black87,
                                 ),
                               ),
-                            )
-                            .toList(),
-                      ),
+                            ),
+                          );
+                        }
+                      }),
                     ),
                     const SizedBox(height: 8),
                     // Campo de escritura continua
