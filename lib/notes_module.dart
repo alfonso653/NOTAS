@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'dart:io';
 import 'dart:convert';
 
@@ -15,6 +17,9 @@ class _TextPart {
   final String text;
   final bool bold;
   _TextPart(this.text, this.bold);
+
+  Map<String, dynamic> toJson() => {'text': text, 'bold': bold};
+  factory _TextPart.fromJson(Map<String, dynamic> json) => _TextPart(json['text'] ?? '', json['bold'] ?? false);
 }
 
 /// =======================
@@ -81,17 +86,17 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   TextFormatValue _contentFormat = const TextFormatValue();
   TextFormatValue _lastFormat = const TextFormatValue();
 
-  final List<_TextPart> _contentParts = [];
+  List<_TextPart> _contentParts = [];
   final TextEditingController _hiddenController = TextEditingController();
   final FocusNode _hiddenFocus = FocusNode();
 
   late TextEditingController _titleController;
-  late TextEditingController _contentController;
   late TextEditingController _categoriaController;
   late Color _noteColor;
   late String _skin;
 
   final GlobalKey _noteKey = GlobalKey();
+  bool _editingTitle = false;
 
   /// Fecha y hora legible
   String _formatDateTime(String dateStr) {
@@ -105,13 +110,11 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     }
   }
 
-  String _composeContent() {
-    // Devuelve el contenido del controlador, o implementa tu lógica aquí
-    return _contentController.text;
-  }
 
   Future<void> _shareAsText() async {
-    // Implementa la lógica de compartir como texto aquí
+  // Compartir el texto concatenado de _contentParts
+  final text = _contentParts.map((e) => e.text).join('\n');
+  await Share.share(text.isEmpty ? 'Nota sin contenido' : text);
   }
 
   Future<void> _shareAsPdf() async {
@@ -121,7 +124,6 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
 
       // Calcular márgenes dinámicos
       final double baseMargin = 18.0;
-      final double imageMargin = 5.0;
       final double textScaleFactor = 1.2;
 
       // Margen superior mayor para el título
@@ -152,7 +154,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 pw.SizedBox(height: 12),
                 // Contenido
                 pw.Text(
-                  note.content,
+                  note.contentParts.map((e) => e['text'] ?? '').join('\n'),
                   style: pw.TextStyle(
                     fontSize: 16 * textScaleFactor,
                   ),
@@ -180,18 +182,29 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     }
   }
 
-  void _saveNote() {
+  // Acepta pop opcional para compatibilidad con las llamadas existentes
+  void _saveNote({bool pop = false}) {
     final note = widget.note;
     note.title = _titleController.text;
-    _contentController.text = _composeContent();
-    note.content = _contentController.text;
     note.categoria = _categoriaController.text;
-    note.date = DateTime.now().toLocal().toString(); // guarda fecha/hora actual
+    note.date = DateTime.now().toLocal().toString();
     note.color = _noteColor;
     note.skin = _skin.isEmpty ? 'grid' : _skin;
     note.titleFontSize = _titleFontSize;
+    // Si hay texto pendiente en el campo de edición, agrégalo como bloque temporal (sin duplicar si ya está al final)
+    List<_TextPart> partsToSave = List<_TextPart>.from(_contentParts);
+    String pendingText = _hiddenController.text.trim();
+    if (pendingText.isNotEmpty) {
+      // Si el último bloque ya es igual, no lo dupliques
+      if (partsToSave.isEmpty || partsToSave.last.text != pendingText) {
+        partsToSave.add(_TextPart(pendingText, _contentFormat.bold));
+      }
+    }
+    note.contentParts = partsToSave.map((e) => e.toJson()).toList();
     context.read<NoteProvider>().updateNote(note);
-    Navigator.pop(context);
+    if (pop) {
+      Navigator.pop(context);
+    }
   }
 
   Widget _buildIconBox({required Widget icon, required VoidCallback onTap}) {
@@ -216,7 +229,6 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.note.title);
-    _contentController = TextEditingController(text: widget.note.content);
     _categoriaController = TextEditingController(text: widget.note.categoria);
     _noteColor = widget.note.color;
     _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
@@ -224,17 +236,14 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     _contentFormat = const TextFormatValue();
     _lastFormat = _contentFormat;
 
-    _contentParts.clear();
-    if (widget.note.content.isNotEmpty) {
-      _contentParts.add(_TextPart(widget.note.content, false));
-    }
+    // Cargar partes desde el modelo
+    _contentParts = (widget.note.contentParts).map((e) => _TextPart.fromJson(e)).toList();
     _hiddenController.clear();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _contentController.dispose();
     _categoriaController.dispose();
     _hiddenController.dispose();
     _hiddenFocus.dispose();
@@ -262,12 +271,14 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
+          // Guardar
           IconButton(
             icon: const Text('✔️',
                 style: TextStyle(fontSize: 24, color: Colors.black)),
             tooltip: 'Guardar',
-            onPressed: _saveNote,
+            onPressed: () => _saveNote(pop: true),
           ),
+          // Compartir
           IconButton(
             icon: Image.asset('assets/compartir.png', width: 28, height: 28),
             tooltip: 'Compartir',
@@ -301,6 +312,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
               );
             },
           ),
+          // Opciones
           PopupMenuButton<String>(
             icon: const Text('⚙️',
                 style: TextStyle(fontSize: 22, color: Colors.black)),
@@ -317,7 +329,10 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                     builder: (_) => SkinPanel(
                       color: _noteColor,
                       onColorSelected: (c) {
-                        setState(() => _noteColor = c);
+                        setState(() {
+                          _noteColor = c;
+                          _saveNote(pop: false);
+                        });
                       },
                     ),
                   );
@@ -479,41 +494,69 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             ),
 
             // Título
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
               child: Column(
                 children: [
-                  TextField(
-                    controller: _titleController,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    minLines: 1,
-                    decoration: const InputDecoration(
-                      hintText: 'Encabezado',
-                      border: InputBorder.none,
-                      isCollapsed: false,
-                      contentPadding: EdgeInsets.symmetric(vertical: 4),
-                      counterText: '',
-                    ),
-                    style: TextStyle(
-                      fontSize: _titleFontSize,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    keyboardType: TextInputType.text,
-                    textInputAction: TextInputAction.done,
-                  ),
-                  SizedBox(height: 6),
+                  _editingTitle
+                      ? TextField(
+                          controller: _titleController,
+                          autofocus: true,
+                          textAlign: TextAlign.center,
+                          maxLines: null,
+                          minLines: 1,
+                          decoration: const InputDecoration(
+                            hintText: 'Encabezado',
+                            border: InputBorder.none,
+                            isCollapsed: true,
+                            contentPadding: EdgeInsets.zero,
+                            counterText: '',
+                          ),
+                          style: TextStyle(
+                            fontSize: _titleFontSize,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.done,
+                          onChanged: (v) => _saveNote(pop: false),
+                          onEditingComplete: () {
+                            setState(() => _editingTitle = false);
+                            _saveNote(pop: false);
+                          },
+                        )
+                      : GestureDetector(
+                          onTap: () {
+                            setState(() => _editingTitle = true);
+                          },
+                          child: Center(
+                            child: AutoSizeText(
+                              _titleController.text.isEmpty
+                                  ? 'Encabezado'
+                                  : _titleController.text,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: _titleFontSize,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 10,
+                              minFontSize: 10,
+                              overflow: TextOverflow.visible,
+                            ),
+                          ),
+                        ),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       Expanded(
                         child: SliderTheme(
                           data: SliderTheme.of(context).copyWith(
                             trackHeight: 2,
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 6),
+                            overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 12),
                             thumbColor: Colors.black,
                             activeTrackColor: Colors.black54,
                             inactiveTrackColor: Colors.black26,
@@ -523,7 +566,10 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                             max: 48,
                             value: _titleFontSize,
                             onChanged: (v) {
-                              setState(() => _titleFontSize = v);
+                              setState(() {
+                                _titleFontSize = v;
+                              });
+                              _saveNote();
                             },
                           ),
                         ),
@@ -533,8 +579,6 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 ],
               ),
             ),
-
-            // ...existing code...
 
             // Contenido con transición + LISTVIEW SCROLL
             Expanded(
@@ -561,7 +605,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                         children: _contentParts
                             .map(
                               (part) => TextSpan(
-                                text: part.text + '\n',
+                                text: '${part.text}\n',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: part.bold
@@ -606,6 +650,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                           fillColor: Colors.transparent,
                           filled: true,
                         ),
+                        onChanged: (v) => _saveNote(),
                       ),
                     ),
                   ],
@@ -647,6 +692,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                       );
                       _hiddenController.clear();
                     });
+                    _saveNote();
                   }
                   await showModalBottomSheet(
                     context: context,
@@ -700,7 +746,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                   );
                 },
               ),
-// ...existing code...
+              // ...existing code...
             ],
           ),
         ),

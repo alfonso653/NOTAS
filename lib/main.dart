@@ -535,13 +535,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   final newNote = Note(
                     id: DateTime.now().millisecondsSinceEpoch.toString(),
                     title: '',
-                    content: '',
                     date:
                         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
                     categoria: '',
                     skin: 'grid',
                     color: Colors.white,
                     titleFontSize: 22.0,
+                    contentParts: [],
                   );
                   context.read<NoteProvider>().addNote(newNote);
                   Navigator.push(
