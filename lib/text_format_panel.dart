@@ -99,150 +99,42 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // Panel con solo el botón de negrita "ABC"
     return Material(
       color: Colors.transparent,
-      child: Container(
-        margin: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(_radius),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 14,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header ----------------------------------------------------------
-            Row(
-              children: [
-                _closeButton(),
-                const SizedBox(width: 8),
-                _titleTab('Título', 0),
-                const SizedBox(width: 18),
-                _titleTab('Descripción', 1),
+      child: Center(
+        child: GestureDetector(
+          onTap: () => _set(v.copyWith(bold: !v.bold)),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 80,
+            height: 50,
+            decoration: BoxDecoration(
+              color: v.bold ? const Color(0xFFFFC107) : const Color(0xFFF6F7F9),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
               ],
-            ),
-            const SizedBox(height: 8),
-            _thinDivider(),
-
-            // Row 1: B I U S + tamaño ----------------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  _formatPill(
-                    label: 'B',
-                    selected: v.bold,
-                    onTap: () => _set(v.copyWith(bold: !v.bold)),
-                  ),
-                  const SizedBox(width: _gap),
-                  _formatPill(
-                    label: 'I',
-                    selected: v.italic,
-                    onTap: () => _set(v.copyWith(italic: !v.italic)),
-                  ),
-                  const SizedBox(width: _gap),
-                  _formatPill(
-                    label: 'U',
-                    selected: v.underline,
-                    onTap: () => _set(v.copyWith(underline: !v.underline)),
-                  ),
-                  const SizedBox(width: _gap),
-                  _formatPill(
-                    label: 'S',
-                    selected: v.strike,
-                    onTap: () => _set(v.copyWith(strike: !v.strike)),
-                  ),
-                  const Spacer(),
-                  _fontSizeMenu(),
-                ],
+              border: Border.all(
+                color: v.bold ? Colors.amber.shade700 : Colors.grey.shade300,
+                width: 2,
               ),
             ),
-            _thinDivider(),
-
-            // Row 2: alineación ----------------------------------------------
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  _iconSquare(
-                    icon: Icons.format_align_left,
-                    selected: v.align == TextAlign.left,
-                    onTap: () => _set(v.copyWith(align: TextAlign.left)),
-                  ),
-                  const SizedBox(width: _gap),
-                  _iconSquare(
-                    icon: Icons.format_align_center,
-                    selected: v.align == TextAlign.center,
-                    onTap: () => _set(v.copyWith(align: TextAlign.center)),
-                  ),
-                  const SizedBox(width: _gap),
-                  _iconSquare(
-                    icon: Icons.format_align_right,
-                    selected: v.align == TextAlign.right,
-                    onTap: () => _set(v.copyWith(align: TextAlign.right)),
-                  ),
-                  const SizedBox(width: _gap),
-                  _iconSquare(
-                    icon: Icons.format_align_justify,
-                    selected: v.align == TextAlign.justify,
-                    onTap: () => _set(v.copyWith(align: TextAlign.justify)),
-                  ),
-                ],
+            alignment: Alignment.center,
+            child: Text(
+              'ABC',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                color: v.bold ? Colors.white : Colors.black87,
+                letterSpacing: 2,
               ),
             ),
-            _thinDivider(),
-
-            // Row 3: listas / indent / pincel / color ------------------------
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  _iconSquare(
-                    icon: Icons.format_list_bulleted,
-                    selected: v.bulleted,
-                    onTap: () => _set(
-                      v.copyWith(bulleted: !v.bulleted, numbered: false),
-                    ),
-                  ),
-                  const SizedBox(width: _gap),
-                  _iconSquare(
-                    icon: Icons.format_list_numbered,
-                    selected: v.numbered,
-                    onTap: () => _set(
-                      v.copyWith(numbered: !v.numbered, bulleted: false),
-                    ),
-                  ),
-                  const SizedBox(width: _gap),
-                  _iconSquare(
-                    icon: Icons.format_indent_decrease,
-                    onTap: () =>
-                        _set(v.copyWith(indent: (v.indent - 1).clamp(0, 8))),
-                  ),
-                  const SizedBox(width: _gap),
-                  _iconSquare(
-                    icon: Icons.format_indent_increase,
-                    selected: v.indent > 0,
-                    onTap: () =>
-                        _set(v.copyWith(indent: (v.indent + 1).clamp(0, 8))),
-                  ),
-                  const Spacer(),
-                  _iconSquare(
-                    icon: Icons.brush,
-                    onTap: () => _cycleInkColor(),
-                  ),
-                  const SizedBox(width: _gap),
-                  _colorDot(v.inkColor),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

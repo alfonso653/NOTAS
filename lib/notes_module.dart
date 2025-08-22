@@ -6,7 +6,15 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:convert';
+
 import 'text_format_panel.dart';
+
+// Clase auxiliar para simular partes de texto con o sin negrita
+class _TextPart {
+  final String text;
+  final bool bold;
+  _TextPart(this.text, this.bold);
+}
 
 /// =========================
 /// MODELO + PROVIDER: Tareas
@@ -232,6 +240,11 @@ class NoteEditScreen extends StatefulWidget {
 
 class _NoteEditScreenState extends State<NoteEditScreen> {
   double _titleFontSize = 22;
+  TextFormatValue _contentFormat = const TextFormatValue();
+  TextFormatValue _lastFormat = const TextFormatValue();
+  final List<_TextPart> _contentParts = [];
+  final TextEditingController _hiddenController = TextEditingController();
+  FocusNode _hiddenFocus = FocusNode();
 
   /// Formatea la fecha guardada en el campo [date] para mostrar fecha y hora.
   String _formatDateTime(String dateStr) {
@@ -301,11 +314,18 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.note.title);
-    _contentController = TextEditingController(text: widget.note.content);
+    _contentController = TextEditingController();
     _categoriaController = TextEditingController(text: widget.note.categoria);
     _noteColor = widget.note.color;
     _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
     _titleFontSize = widget.note.titleFontSize;
+    _contentFormat = const TextFormatValue();
+    _lastFormat = _contentFormat;
+    _contentParts.clear();
+    if (widget.note.content.isNotEmpty) {
+      _contentParts.add(_TextPart(widget.note.content, false));
+    }
+    _hiddenController.clear();
   }
 
   @override
@@ -809,15 +829,81 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 curve: Curves.fastOutSlowIn,
                 child: Container(
                   color: Colors.transparent,
-                  child: TextField(
-                    controller: _contentController,
-                    maxLines: null,
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.all(16),
-                      hintText: 'Contenido...',
-                      border: InputBorder.none,
+                  // Simulación de negrita por rango
+                  child: GestureDetector(
+                    onTap: () => _hiddenFocus.requestFocus(),
+                    child: Stack(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              child: RichText(
+                                text: TextSpan(
+                                  children: _contentParts
+                                      .map((part) => TextSpan(
+                                            text: part.text + '\n',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: part.bold
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: Colors.black87,
+                                            ),
+                                          ))
+                                      .toList(),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: const BoxDecoration(
+                                border: Border.fromBorderSide(BorderSide.none),
+                                color: Colors.transparent,
+                              ),
+                              child: TextField(
+                                controller: _hiddenController,
+                                focusNode: _hiddenFocus,
+                                maxLines: 5,
+                                minLines: 1,
+                                keyboardType: TextInputType.multiline,
+                                textInputAction: TextInputAction.newline,
+                                cursorColor: Colors.amber,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: _contentFormat.bold
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: Colors.black87,
+                                ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 10),
+                                  hintText:
+                                      'Escribe aquí... (Enter para nueva línea)',
+                                  fillColor: Colors.transparent,
+                                  filled: true,
+                                ),
+                                onSubmitted: (val) {
+                                  setState(() {
+                                    if (val.isNotEmpty) {
+                                      _contentParts.add(
+                                          _TextPart(val, _contentFormat.bold));
+                                    }
+                                    _hiddenController.clear();
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    style: const TextStyle(fontSize: 18),
                   ),
                 ),
               ),
@@ -842,21 +928,44 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildIconBox(
-                      icon:
-                          Image.asset('assets/abc.png', width: 32, height: 32),
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (ctx) => Padding(
-                            padding: MediaQuery.of(ctx).viewInsets,
-                            child: TextFormatPanel(
-                              onClose: () => Navigator.pop(ctx),
-                            ),
+                    icon: Image.asset('assets/abc.png', width: 32, height: 32),
+                    onTap: () async {
+                      // Antes de abrir el panel, guarda el texto actual con el formato anterior
+                      if (_hiddenController.text.isNotEmpty) {
+                        setState(() {
+                          _contentParts.add(_TextPart(
+                              _hiddenController.text, _contentFormat.bold));
+                          _hiddenController.clear();
+                        });
+                      }
+                      final prevFormat = _contentFormat;
+                      await showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (ctx) => Padding(
+                          padding: MediaQuery.of(ctx).viewInsets,
+                          child: TextFormatPanel(
+                            value: _contentFormat,
+                            onChanged: (val) {
+                              setState(() {
+                                // Si cambia el formato, guarda el texto actual con el formato anterior
+                                if (_contentFormat.bold != val.bold &&
+                                    _hiddenController.text.isNotEmpty) {
+                                  _contentParts.add(_TextPart(
+                                      _hiddenController.text,
+                                      _contentFormat.bold));
+                                  _hiddenController.clear();
+                                }
+                                _contentFormat = val;
+                              });
+                            },
+                            onClose: () => Navigator.pop(ctx),
                           ),
-                        );
-                      }),
+                        ),
+                      );
+                    },
+                  ),
                   _buildIconBox(
                       icon: Image.asset('assets/camara.png',
                           width: 32, height: 32),
