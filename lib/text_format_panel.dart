@@ -75,7 +75,11 @@ class TextFormatPanel extends StatefulWidget {
   State<TextFormatPanel> createState() => _TextFormatPanelState();
 }
 
-class _TextFormatPanelState extends State<TextFormatPanel> {
+class _TextFormatPanelState extends State<TextFormatPanel> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _offsetAnimation;
+  late final Animation<double> _fadeAnimation;
+
   late TextFormatValue v;
 
   // Estilo visual
@@ -90,6 +94,22 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
   void initState() {
     super.initState();
     v = widget.value;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _offsetAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.elasticOut,
+    ));
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeIn,
+    );
+    _controller.forward();
   }
 
   void _set(TextFormatValue next) {
@@ -99,45 +119,60 @@ class _TextFormatPanelState extends State<TextFormatPanel> {
 
   @override
   Widget build(BuildContext context) {
-    // Panel con solo el botón de negrita "ABC"
+    // Panel con animación de subida y fade
     return Material(
       color: Colors.transparent,
-      child: Center(
-        child: GestureDetector(
-          onTap: () => _set(v.copyWith(bold: !v.bold)),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 80,
-            height: 50,
-            decoration: BoxDecoration(
-              color: v.bold ? const Color(0xFFFFC107) : const Color(0xFFF6F7F9),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onClose,
+        child: Center(
+          child: SlideTransition(
+            position: _offsetAnimation,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: GestureDetector(
+                onTap: () => _set(v.copyWith(bold: !v.bold)),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 40, // la mitad de 80
+                  height: 25, // la mitad de 50
+                  decoration: BoxDecoration(
+                    color: v.bold ? const Color(0xFFFFC107) : const Color(0xFFF6F7F9),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: v.bold ? Colors.amber.shade700 : Colors.grey.shade300,
+                      width: 2,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'B',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11, // la mitad de 22
+                      color: v.bold ? Colors.white : Colors.black87,
+                      letterSpacing: 2,
+                    ),
+                  ),
                 ),
-              ],
-              border: Border.all(
-                color: v.bold ? Colors.amber.shade700 : Colors.grey.shade300,
-                width: 2,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'ABC',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                color: v.bold ? Colors.white : Colors.black87,
-                letterSpacing: 2,
               ),
             ),
           ),
         ),
       ),
     );
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
   }
 
   // ---------------- pieces ----------------
