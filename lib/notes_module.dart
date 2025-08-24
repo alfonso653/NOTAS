@@ -15,6 +15,9 @@ import 'note.dart';
 // Variable global para controlar el Snackbar solo en guardado manual
 bool _showSavedSnackbar = false;
 
+// Bandera para controlar el inicio de edición y evitar parpadeo inicial
+bool _hasStartedEditing = false;
+
 // Clase auxiliar para simular partes de texto con o sin negrita
 class _TextPart {
   final String text;
@@ -86,7 +89,12 @@ class NoteEditScreen extends StatefulWidget {
   State<NoteEditScreen> createState() => _NoteEditScreenState();
 }
 
-class _NoteEditScreenState extends State<NoteEditScreen> {
+class _NoteEditScreenState extends State<NoteEditScreen>
+    with SingleTickerProviderStateMixin {
+  // Para animación de parpadeo
+  late AnimationController _blinkController;
+  late Animation<double> _blinkAnimation;
+  bool _hasUnsavedChanges = false;
   int? _editingPartIndex; // Moved to State
   final Map<int, TextEditingController> _partControllers = {}; // Moved to State
   double _titleFontSize = 22;
@@ -247,6 +255,20 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
 
   @override
   void initState() {
+    _blinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _blinkAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut),
+    );
+    _blinkController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _blinkController.reverse();
+      } else if (status == AnimationStatus.dismissed) {
+        _blinkController.forward();
+      }
+    });
     super.initState();
     _titleController = TextEditingController(text: widget.note.title);
     _categoriaController = TextEditingController(text: widget.note.categoria);
@@ -260,10 +282,36 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     _contentParts =
         (widget.note.contentParts).map((e) => _TextPart.fromJson(e)).toList();
     _hiddenController.clear();
+
+    // Detectar cambios para activar el color naranja
+    _titleController.addListener(_onAnyChange);
+    _categoriaController.addListener(_onAnyChange);
+    _hiddenController.addListener(_onAnyChange);
+  }
+
+  void _onAnyChange() {
+    if (!_hasStartedEditing) {
+      // Solo activar después de la primera edición real
+      if (_titleController.text.isNotEmpty || _categoriaController.text.isNotEmpty || _hiddenController.text.isNotEmpty) {
+        _hasStartedEditing = true;
+      } else {
+        return;
+      }
+    }
+    if (!_hasUnsavedChanges) {
+      setState(() {
+        _hasUnsavedChanges = true;
+        _blinkController.forward();
+      });
+    }
   }
 
   @override
   void dispose() {
+    _blinkController.dispose();
+    _titleController.removeListener(_onAnyChange);
+    _categoriaController.removeListener(_onAnyChange);
+    _hiddenController.removeListener(_onAnyChange);
     _titleController.dispose();
     _categoriaController.dispose();
     _hiddenController.dispose();
@@ -292,15 +340,29 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
-          // Guardar
-          IconButton(
-            icon: const Text('✔️',
-                style: TextStyle(fontSize: 24, color: Colors.black)),
-            tooltip: 'Guardar',
-            onPressed: () {
-              _showSavedSnackbar = true;
-              _saveNote(pop: false);
-            },
+          // Guardar animado solo el emoji
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: AnimatedBuilder(
+              animation: _blinkAnimation,
+              builder: (context, child) {
+                return IconButton(
+                  icon: Opacity(
+                    opacity: _hasUnsavedChanges ? _blinkAnimation.value : 1.0,
+                    child: const Text('💾', style: TextStyle(fontSize: 26)),
+                  ),
+                  tooltip: 'Guardar',
+                  onPressed: () {
+                    _showSavedSnackbar = true;
+                    setState(() {
+                      _hasUnsavedChanges = false;
+                    });
+                    _blinkController.reset();
+                    _saveNote(pop: false);
+                  },
+                );
+              },
+            ),
           ),
           // Compartir
           IconButton(
