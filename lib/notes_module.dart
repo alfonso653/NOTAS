@@ -12,6 +12,9 @@ import 'dart:convert';
 import 'text_format_panel.dart';
 import 'note.dart';
 
+// Variable global para controlar el Snackbar solo en guardado manual
+bool _showSavedSnackbar = false;
+
 // Clase auxiliar para simular partes de texto con o sin negrita
 class _TextPart {
   final String text;
@@ -208,6 +211,17 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
     }
     note.contentParts = partsToSave.map((e) => e.toJson()).toList();
     context.read<NoteProvider>().updateNote(note);
+    // Solo mostrar el Snackbar si se guarda manualmente (desde el botón)
+    if (_showSavedSnackbar) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nota guardada'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _showSavedSnackbar = false;
+    }
     if (pop) {
       Navigator.pop(context);
     }
@@ -283,7 +297,10 @@ class _NoteEditScreenState extends State<NoteEditScreen> {
             icon: const Text('✔️',
                 style: TextStyle(fontSize: 24, color: Colors.black)),
             tooltip: 'Guardar',
-            onPressed: () => _saveNote(pop: true),
+            onPressed: () {
+              _showSavedSnackbar = true;
+              _saveNote(pop: false);
+            },
           ),
           // Compartir
           IconButton(
