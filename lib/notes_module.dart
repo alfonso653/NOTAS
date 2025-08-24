@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'dart:io';
@@ -139,41 +140,68 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       final pdf = pw.Document();
       final note = widget.note;
 
-      // Calcular márgenes dinámicos
-      final double baseMargin = 18.0;
-      final double textScaleFactor = 1.2;
+      // Calcular márgenes y estilos
+      final double baseMargin = 24.0;
+      final double textScaleFactor = 1.15;
+  // Usar fuentes por defecto del paquete pdf
+  final pw.Font nunito = pw.Font.helvetica();
+  final pw.Font nunitoBold = pw.Font.helveticaBold();
+      final String fecha = DateTime.now().toLocal().toString().split('.')[0].replaceFirst('T', ' ');
 
-      // Margen superior mayor para el título
-      double titleMargin = baseMargin * 2;
-
-      // Contenido del PDF
       pdf.addPage(
         pw.Page(
-          margin: pw.EdgeInsets.only(
-            top: titleMargin,
-            bottom: baseMargin,
-            left: baseMargin,
-            right: baseMargin,
-          ),
+          margin: pw.EdgeInsets.all(baseMargin),
           build: (pw.Context context) {
             return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
-                // Título
-                pw.Text(
-                  note.title,
-                  style: pw.TextStyle(
-                    fontSize: 24 * textScaleFactor,
-                    fontWeight: pw.FontWeight.bold,
+                // Portada: título, categoría, fecha/hora
+                pw.Text(note.title,
+                    style: pw.TextStyle(
+                      font: nunitoBold,
+                      fontSize: 28,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                    textAlign: pw.TextAlign.center),
+                if (note.categoria.isNotEmpty)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
+                    child: pw.Text(note.categoria,
+                        style: pw.TextStyle(
+                          font: nunito,
+                          fontSize: 16,
+                          color: PdfColors.blueGrey,
+                        ),
+                        textAlign: pw.TextAlign.center),
                   ),
-                  textAlign: pw.TextAlign.center,
-                ),
+                pw.Text(fecha,
+                    style: pw.TextStyle(
+                      font: nunito,
+                      fontSize: 12,
+                      color: PdfColors.grey,
+                    ),
+                    textAlign: pw.TextAlign.center),
                 pw.SizedBox(height: 12),
-                // Contenido
-                pw.Text(
-                  note.contentParts.map((e) => e['text'] ?? '').join('\n'),
-                  style: pw.TextStyle(
-                    fontSize: 16 * textScaleFactor,
+                pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
+                pw.SizedBox(height: 12),
+                // Contenido fiel (con emojis, saltos, etc)
+                ...note.contentParts.map((e) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 8),
+                  child: pw.Text(
+                    e['text'] ?? '',
+                    style: pw.TextStyle(
+                      font: (e['bold'] ?? false) ? nunitoBold : nunito,
+                      fontSize: 16 * textScaleFactor,
+                    ),
+                  ),
+                )),
+                pw.Spacer(),
+                // Pie de página con número de página
+                pw.Align(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Text(
+                    'Página ${context.pageNumber} de ${context.pagesCount}',
+                    style: pw.TextStyle(fontSize: 10, color: PdfColors.grey, font: nunito),
                   ),
                 ),
               ],
