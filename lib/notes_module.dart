@@ -301,12 +301,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   // Acepta pop opcional para compatibilidad con las llamadas existentes
   void _saveNote({bool pop = false}) {
     final note = widget.note;
-    note.title = _titleController.text;
-    note.categoria = _categoriaController.text;
-    note.date = DateTime.now().toLocal().toString();
-    note.color = _noteColor;
-    note.skin = _skin.isEmpty ? 'grid' : _skin;
-    note.titleFontSize = _titleFontSize;
+  note.title = _titleController.text;
+  note.categoria = _categoriaController.text;
+  // No modificar note.date aquí, así se conserva la fecha y hora de creación
+  note.color = _noteColor;
+  note.skin = _skin.isEmpty ? 'grid' : _skin;
+  note.titleFontSize = _titleFontSize;
 
     List<_TextPart> partsToSave = List<_TextPart>.from(_contentParts);
     String pendingText = _hiddenController.text.trim();
@@ -385,19 +385,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   void _onAnyChange() {
-    if (!_hasStartedEditing) {
-      if ((_titleController.text.length == 1 &&
-              _titleController.text.trim().isNotEmpty) ||
-          (_categoriaController.text.length == 1 &&
-              _categoriaController.text.trim().isNotEmpty) ||
-          (_hiddenController.text.length == 1 &&
-              _hiddenController.text.trim().isNotEmpty)) {
-        _hasStartedEditing = true;
-        setHasUnsavedChanges(true);
-      }
-      return;
-    }
-    setHasUnsavedChanges(true);
+  setHasUnsavedChanges(true);
   }
 
   @override
@@ -820,6 +808,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 contentPadding: EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                               ),
+                              onChanged: (value) {
+                                setHasUnsavedChanges(true);
+                              },
                               onSubmitted: (value) {
                                 setState(() {
                                   _contentParts[i] =
