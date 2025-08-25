@@ -3,10 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:share_plus/share_plus.dart';
-import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/widgets.dart' as pw; // ✅ sin apóstrofo extra
 import 'package:pdf/pdf.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:auto_size_text/auto_size_text.dart';
+// Eliminado: import 'package:screenshot/screenshot.dart';
+import 'package:flutter/rendering.dart'; // Para RenderRepaintBoundary
+import 'dart:ui' as ui; // Para ui.Image y ImageByteFormat
+import 'dart:typed_data'; // ✅ ByteData
 import 'dart:io';
 import 'dart:convert';
 
@@ -82,7 +86,6 @@ class NoteProvider extends ChangeNotifier {
 /// PANTALLA: Edición de nota
 /// ========================================
 class NoteEditScreen extends StatefulWidget {
-// ...existing code...
   final Note note;
   NoteEditScreen({Key? key, required this.note}) : super(key: key);
 
@@ -92,6 +95,7 @@ class NoteEditScreen extends StatefulWidget {
 
 class _NoteEditScreenState extends State<NoteEditScreen>
     with SingleTickerProviderStateMixin {
+  // Eliminado: final ScreenshotController _screenshotController = ScreenshotController();
   // Para animación de parpadeo
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
@@ -113,14 +117,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
-  int? _editingPartIndex; // Moved to State
-  final Map<int, TextEditingController> _partControllers = {}; // Moved to State
+  int? _editingPartIndex;
+  final Map<int, TextEditingController> _partControllers = {};
   double _titleFontSize = 22;
   static const double _minTitleFontSize = 14;
-  static const double _maxTitleFontSize =
-      38; // Limite seguro para evitar overflow visual
+  static const double _maxTitleFontSize = 38;
   TextFormatValue _contentFormat = const TextFormatValue();
-  TextFormatValue _lastFormat = const TextFormatValue();
 
   List<_TextPart> _contentParts = [];
   final TextEditingController _hiddenController = TextEditingController();
@@ -147,7 +149,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   Future<void> _shareAsText() async {
-    // Compartir el texto concatenado de _contentParts
     final text = _contentParts.map((e) => e.text).join('\n');
     await Share.share(text.isEmpty ? 'Nota sin contenido' : text);
   }
@@ -157,10 +158,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       final pdf = pw.Document();
       final note = widget.note;
 
-      // Calcular márgenes y estilos
       final double baseMargin = 24.0;
       final double textScaleFactor = 1.15;
-      // Usar fuentes por defecto del paquete pdf
       final pw.Font nunito = pw.Font.helvetica();
       final pw.Font nunitoBold = pw.Font.helveticaBold();
       final String fecha = DateTime.now()
@@ -176,7 +175,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
-                // Portada: título, categoría, fecha/hora
                 pw.Text(note.title,
                     style: pw.TextStyle(
                       font: nunitoBold,
@@ -205,7 +203,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 pw.SizedBox(height: 12),
                 pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
                 pw.SizedBox(height: 12),
-                // Contenido fiel (con emojis, saltos, etc)
                 ...note.contentParts.map((e) => pw.Padding(
                       padding: const pw.EdgeInsets.only(bottom: 8),
                       child: pw.Text(
@@ -217,7 +214,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       ),
                     )),
                 pw.Spacer(),
-                // Pie de página con número de página
                 pw.Align(
                   alignment: pw.Alignment.centerRight,
                   child: pw.Text(
@@ -232,7 +228,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         ),
       );
 
-      // Guardar y compartir
       final bytes = await pdf.save();
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/nota.pdf');
@@ -249,6 +244,35 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
+  Future<void> _shareAsImage() async {
+    try {
+      // Captura usando RepaintBoundary (sin paquete screenshot)
+      final boundary =
+          _noteKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw Exception('No se pudo acceder al área de la nota');
+      }
+      final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw Exception('No se pudo codificar la imagen');
+      final bytes = byteData.buffer.asUint8List();
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/nota.png');
+      await file.writeAsBytes(bytes);
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/png', name: 'nota.png')],
+        text: _titleController.text,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo compartir como imagen: $e')),
+      );
+    }
+  }
+
   // Acepta pop opcional para compatibilidad con las llamadas existentes
   void _saveNote({bool pop = false}) {
     final note = widget.note;
@@ -258,18 +282,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     note.color = _noteColor;
     note.skin = _skin.isEmpty ? 'grid' : _skin;
     note.titleFontSize = _titleFontSize;
-    // Si hay texto pendiente en el campo de edición, agrégalo como bloque temporal (sin duplicar si ya está al final)
+
     List<_TextPart> partsToSave = List<_TextPart>.from(_contentParts);
     String pendingText = _hiddenController.text.trim();
     if (pendingText.isNotEmpty) {
-      // Si el último bloque ya es igual, no lo dupliques
       if (partsToSave.isEmpty || partsToSave.last.text != pendingText) {
         partsToSave.add(_TextPart(pendingText, _contentFormat.bold));
       }
     }
     note.contentParts = partsToSave.map((e) => e.toJson()).toList();
     context.read<NoteProvider>().updateNote(note);
-    // Solo mostrar el Snackbar si se guarda manualmente (desde el botón)
+
     if (_showSavedSnackbar) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -326,14 +349,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
     _titleFontSize = widget.note.titleFontSize;
     _contentFormat = const TextFormatValue();
-    _lastFormat = _contentFormat;
 
-    // Cargar partes desde el modelo
     _contentParts =
         (widget.note.contentParts).map((e) => _TextPart.fromJson(e)).toList();
     _hiddenController.clear();
 
-    // Detectar cambios para activar el color naranja
     _titleController.addListener(_onAnyChange);
     _categoriaController.addListener(_onAnyChange);
     _hiddenController.addListener(_onAnyChange);
@@ -341,14 +361,16 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   void _onAnyChange() {
     if (!_hasStartedEditing) {
-      // Solo activar después de la primera edición real
-      if (_titleController.text.isNotEmpty ||
-          _categoriaController.text.isNotEmpty ||
-          _hiddenController.text.isNotEmpty) {
+      if ((_titleController.text.length == 1 &&
+              _titleController.text.trim().isNotEmpty) ||
+          (_categoriaController.text.length == 1 &&
+              _categoriaController.text.trim().isNotEmpty) ||
+          (_hiddenController.text.length == 1 &&
+              _hiddenController.text.trim().isNotEmpty)) {
         _hasStartedEditing = true;
-      } else {
-        return;
+        setHasUnsavedChanges(true);
       }
+      return;
     }
     setHasUnsavedChanges(true);
   }
@@ -387,7 +409,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: [
-          // Guardar animado solo el emoji
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: AnimatedBuilder(
@@ -408,7 +429,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               },
             ),
           ),
-          // Compartir
           IconButton(
             icon: Image.asset('assets/compartir.png', width: 28, height: 28),
             tooltip: 'Compartir',
@@ -437,12 +457,19 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         await _shareAsPdf();
                       },
                     ),
+                    ListTile(
+                      leading: const Icon(Icons.image),
+                      title: const Text('Compartir como imagen'),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        await _shareAsImage();
+                      },
+                    ),
                   ],
                 ),
               );
             },
           ),
-          // Opciones
           PopupMenuButton<String>(
             icon: const Text('⚙️',
                 style: TextStyle(fontSize: 22, color: Colors.black)),
@@ -966,7 +993,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   );
                 },
               ),
-              // ...existing code...
             ],
           ),
         ),
@@ -1288,7 +1314,8 @@ class SkinPanel extends StatelessWidget {
                 if (boxSize > maxBox) boxSize = maxBox;
                 return GridView.builder(
                   shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics()
+                      .applyTo(const NeverScrollableScrollPhysics()),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     mainAxisSpacing: 6,
