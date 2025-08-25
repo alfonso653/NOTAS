@@ -149,8 +149,25 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   Future<void> _shareAsText() async {
-    final text = _contentParts.map((e) => e.text).join('\n');
-    await Share.share(text.isEmpty ? 'Nota sin contenido' : text);
+    final note = widget.note;
+    final String fecha = DateTime.now().toLocal().toString().split('.')[0].replaceFirst('T', ' ');
+    final buffer = StringBuffer();
+    buffer.writeln('Fecha: $fecha');
+    buffer.writeln();
+    buffer.writeln('**${note.title.toUpperCase()}**');
+    if (note.categoria.isNotEmpty) {
+      buffer.writeln('_${note.categoria}_');
+    }
+    buffer.writeln();
+    for (final part in _contentParts) {
+      if (part.bold) {
+        buffer.write('*${part.text}*');
+      } else {
+        buffer.write(part.text);
+      }
+      buffer.writeln();
+    }
+    await Share.share(buffer.toString().trim().isEmpty ? 'Nota sin contenido' : buffer.toString().trim());
   }
 
   Future<void> _shareAsPdf() async {
@@ -172,57 +189,65 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         pw.Page(
           margin: pw.EdgeInsets.all(baseMargin),
           build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-              children: [
-                pw.Text(note.title,
-                    style: pw.TextStyle(
-                      font: nunitoBold,
-                      fontSize: 28,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                    textAlign: pw.TextAlign.center),
-                if (note.categoria.isNotEmpty)
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
-                    child: pw.Text(note.categoria,
-                        style: pw.TextStyle(
-                          font: nunito,
-                          fontSize: 16,
-                          color: PdfColors.blueGrey,
-                        ),
-                        textAlign: pw.TextAlign.center),
+            return pw.Container(
+              padding: pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.blueGrey, width: 1.2),
+                borderRadius: pw.BorderRadius.circular(12),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: [
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.end,
+                    children: [
+                      pw.Text('Fecha: $fecha',
+                          style: pw.TextStyle(font: nunito, fontSize: 12, color: PdfColors.grey)),
+                    ],
                   ),
-                pw.Text(fecha,
-                    style: pw.TextStyle(
-                      font: nunito,
-                      fontSize: 12,
-                      color: PdfColors.grey,
-                    ),
-                    textAlign: pw.TextAlign.center),
-                pw.SizedBox(height: 12),
-                pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
-                pw.SizedBox(height: 12),
-                ...note.contentParts.map((e) => pw.Padding(
-                      padding: const pw.EdgeInsets.only(bottom: 8),
-                      child: pw.Text(
-                        e['text'] ?? '',
-                        style: pw.TextStyle(
-                          font: (e['bold'] ?? false) ? nunitoBold : nunito,
-                          fontSize: 16 * textScaleFactor,
-                        ),
+                  pw.SizedBox(height: 12),
+                  pw.Text(note.title,
+                      style: pw.TextStyle(
+                        font: nunitoBold,
+                        fontSize: 28,
+                        fontWeight: pw.FontWeight.bold,
                       ),
-                    )),
-                pw.Spacer(),
-                pw.Align(
-                  alignment: pw.Alignment.centerRight,
-                  child: pw.Text(
-                    'Página ${context.pageNumber} de ${context.pagesCount}',
-                    style: pw.TextStyle(
-                        fontSize: 10, color: PdfColors.grey, font: nunito),
+                      textAlign: pw.TextAlign.center),
+                  if (note.categoria.isNotEmpty)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
+                      child: pw.Text(note.categoria,
+                          style: pw.TextStyle(
+                            font: nunito,
+                            fontSize: 16,
+                            color: PdfColors.blueGrey,
+                          ),
+                          textAlign: pw.TextAlign.center),
+                    ),
+                  pw.SizedBox(height: 12),
+                  pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
+                  pw.SizedBox(height: 12),
+                  ...note.contentParts.map((e) => pw.Padding(
+                        padding: const pw.EdgeInsets.only(bottom: 8),
+                        child: pw.Text(
+                          e['text'] ?? '',
+                          style: pw.TextStyle(
+                            font: (e['bold'] ?? false) ? nunitoBold : nunito,
+                            fontSize: 16 * textScaleFactor,
+                          ),
+                        ),
+                      )),
+                  pw.Spacer(),
+                  pw.Align(
+                    alignment: pw.Alignment.centerRight,
+                    child: pw.Text(
+                      'Página ${context.pageNumber} de ${context.pagesCount}',
+                      style: pw.TextStyle(
+                          fontSize: 10, color: PdfColors.grey, font: nunito),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         ),
@@ -442,7 +467,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.text_fields),
+                      leading: const Text('🟢', style: TextStyle(fontSize: 22)),
                       title: const Text('Compartir como texto'),
                       onTap: () async {
                         Navigator.pop(ctx);
@@ -450,7 +475,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.picture_as_pdf),
+                      leading: const Text('🟡', style: TextStyle(fontSize: 22)),
                       title: const Text('Compartir como PDF'),
                       onTap: () async {
                         Navigator.pop(ctx);
@@ -458,7 +483,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.image),
+                      leading: const Text('🔴', style: TextStyle(fontSize: 22)),
                       title: const Text('Compartir como imagen'),
                       onTap: () async {
                         Navigator.pop(ctx);
