@@ -122,6 +122,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   double _titleFontSize = 22;
   static const double _minTitleFontSize = 14;
   static const double _maxTitleFontSize = 38;
+  double _contentFontSize = 18;
+  static const double _minContentFontSize = 12;
+  static const double _maxContentFontSize = 32;
   TextFormatValue _contentFormat = const TextFormatValue();
 
   List<_TextPart> _contentParts = [];
@@ -663,7 +666,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               ),
             ),
 
-            // Título
+            // Título y sliders
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
               child: Column(
@@ -717,6 +720,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           ),
                         ),
                   const SizedBox(height: 6),
+                  // Slider para el título
                   Row(
                     children: [
                       Expanded(
@@ -740,6 +744,38 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               setState(() {
                                 _titleFontSize = v.clamp(
                                     _minTitleFontSize, _maxTitleFontSize);
+                              });
+                              _saveNote();
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Slider para el contenido
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 2,
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 6),
+                            overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 12),
+                            thumbColor: Colors.blue,
+                            activeTrackColor: Colors.blueAccent,
+                            inactiveTrackColor: Colors.blue[100],
+                          ),
+                          child: Slider(
+                            min: _minContentFontSize,
+                            max: _maxContentFontSize,
+                            value: _contentFontSize.clamp(
+                                _minContentFontSize, _maxContentFontSize),
+                            onChanged: (v) {
+                              setState(() {
+                                _contentFontSize = v.clamp(
+                                    _minContentFontSize, _maxContentFontSize);
                               });
                               _saveNote();
                             },
@@ -797,7 +833,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               autofocus: true,
                               maxLines: null,
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: _contentFontSize,
                                 fontWeight: part.bold
                                     ? FontWeight.bold
                                     : FontWeight.normal,
@@ -833,7 +869,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 child: Text(
                                   part.text,
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: _contentFontSize,
                                     fontWeight: part.bold
                                         ? FontWeight.bold
                                         : FontWeight.normal,
@@ -866,7 +902,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     child: Text(
                                       part.text,
                                       style: TextStyle(
-                                        fontSize: 18,
+                                        fontSize: _contentFontSize,
                                         fontWeight: part.bold
                                             ? FontWeight.bold
                                             : FontWeight.normal,
@@ -897,7 +933,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         textInputAction: TextInputAction.newline,
                         cursorColor: Colors.amber,
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: _contentFontSize,
                           fontWeight: _contentFormat.bold
                               ? FontWeight.bold
                               : FontWeight.normal,

@@ -135,8 +135,8 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                 onTap: () => _set(v.copyWith(bold: !v.bold)),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  width: 40, // la mitad de 80
-                  height: 25, // la mitad de 50
+                  width: 80, // doble de ancho
+                  height: 50, // doble de alto
                   decoration: BoxDecoration(
                     color: v.bold
                         ? const Color(0xFFFFC107)
@@ -160,7 +160,7 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                     'B',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 11, // la mitad de 22
+                      fontSize: 22, // doble de tamaño
                       color: v.bold ? Colors.white : Colors.black87,
                       letterSpacing: 2,
                     ),
