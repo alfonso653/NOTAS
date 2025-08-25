@@ -96,6 +96,23 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
   bool _hasUnsavedChanges = false;
+
+  void setHasUnsavedChanges(bool value) {
+    if (_hasUnsavedChanges != value) {
+      setState(() {
+        _hasUnsavedChanges = value;
+        if (_hasUnsavedChanges) {
+          if (!_blinkController.isAnimating) {
+            _blinkController.repeat(reverse: true);
+          }
+        } else {
+          _blinkController.reset();
+          _blinkController.stop();
+        }
+      });
+    }
+  }
+
   int? _editingPartIndex; // Moved to State
   final Map<int, TextEditingController> _partControllers = {}; // Moved to State
   double _titleFontSize = 22;
@@ -143,10 +160,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       // Calcular márgenes y estilos
       final double baseMargin = 24.0;
       final double textScaleFactor = 1.15;
-  // Usar fuentes por defecto del paquete pdf
-  final pw.Font nunito = pw.Font.helvetica();
-  final pw.Font nunitoBold = pw.Font.helveticaBold();
-      final String fecha = DateTime.now().toLocal().toString().split('.')[0].replaceFirst('T', ' ');
+      // Usar fuentes por defecto del paquete pdf
+      final pw.Font nunito = pw.Font.helvetica();
+      final pw.Font nunitoBold = pw.Font.helveticaBold();
+      final String fecha = DateTime.now()
+          .toLocal()
+          .toString()
+          .split('.')[0]
+          .replaceFirst('T', ' ');
 
       pdf.addPage(
         pw.Page(
@@ -186,22 +207,23 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 pw.SizedBox(height: 12),
                 // Contenido fiel (con emojis, saltos, etc)
                 ...note.contentParts.map((e) => pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 8),
-                  child: pw.Text(
-                    e['text'] ?? '',
-                    style: pw.TextStyle(
-                      font: (e['bold'] ?? false) ? nunitoBold : nunito,
-                      fontSize: 16 * textScaleFactor,
-                    ),
-                  ),
-                )),
+                      padding: const pw.EdgeInsets.only(bottom: 8),
+                      child: pw.Text(
+                        e['text'] ?? '',
+                        style: pw.TextStyle(
+                          font: (e['bold'] ?? false) ? nunitoBold : nunito,
+                          fontSize: 16 * textScaleFactor,
+                        ),
+                      ),
+                    )),
                 pw.Spacer(),
                 // Pie de página con número de página
                 pw.Align(
                   alignment: pw.Alignment.centerRight,
                   child: pw.Text(
                     'Página ${context.pageNumber} de ${context.pagesCount}',
-                    style: pw.TextStyle(fontSize: 10, color: PdfColors.grey, font: nunito),
+                    style: pw.TextStyle(
+                        fontSize: 10, color: PdfColors.grey, font: nunito),
                   ),
                 ),
               ],
@@ -320,18 +342,15 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   void _onAnyChange() {
     if (!_hasStartedEditing) {
       // Solo activar después de la primera edición real
-      if (_titleController.text.isNotEmpty || _categoriaController.text.isNotEmpty || _hiddenController.text.isNotEmpty) {
+      if (_titleController.text.isNotEmpty ||
+          _categoriaController.text.isNotEmpty ||
+          _hiddenController.text.isNotEmpty) {
         _hasStartedEditing = true;
       } else {
         return;
       }
     }
-    if (!_hasUnsavedChanges) {
-      setState(() {
-        _hasUnsavedChanges = true;
-        _blinkController.forward();
-      });
-    }
+    setHasUnsavedChanges(true);
   }
 
   @override
@@ -382,10 +401,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   tooltip: 'Guardar',
                   onPressed: () {
                     _showSavedSnackbar = true;
-                    setState(() {
-                      _hasUnsavedChanges = false;
-                    });
-                    _blinkController.reset();
+                    setHasUnsavedChanges(false);
                     _saveNote(pop: false);
                   },
                 );
