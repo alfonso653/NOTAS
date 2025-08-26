@@ -541,6 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     skin: 'grid',
                     color: Colors.white,
                     titleFontSize: 22.0,
+                    contentFontSize: 18.0,
                     contentParts: [],
                   );
                   context.read<NoteProvider>().addNote(newNote);

@@ -303,13 +303,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // Acepta pop opcional para compatibilidad con las llamadas existentes
   void _saveNote({bool pop = false}) {
-    final note = widget.note;
+  final note = widget.note;
   note.title = _titleController.text;
   note.categoria = _categoriaController.text;
   // No modificar note.date aquí, así se conserva la fecha y hora de creación
   note.color = _noteColor;
   note.skin = _skin.isEmpty ? 'grid' : _skin;
   note.titleFontSize = _titleFontSize;
+  note.contentFontSize = _contentFontSize;
 
     List<_TextPart> partsToSave = List<_TextPart>.from(_contentParts);
     String pendingText = _hiddenController.text.trim();
@@ -375,8 +376,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _categoriaController = TextEditingController(text: widget.note.categoria);
     _noteColor = widget.note.color;
     _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
-    _titleFontSize = widget.note.titleFontSize;
-    _contentFormat = const TextFormatValue();
+  _titleFontSize = widget.note.titleFontSize;
+  _contentFontSize = widget.note.contentFontSize;
+  _contentFormat = const TextFormatValue();
 
     _contentParts =
         (widget.note.contentParts).map((e) => _TextPart.fromJson(e)).toList();

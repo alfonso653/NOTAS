@@ -8,6 +8,7 @@ class Note {
   String skin;
   Color color;
   double titleFontSize;
+  double contentFontSize;
   List<Map<String, dynamic>> contentParts; // [{text:..., bold:...}, ...]
 
 
@@ -19,7 +20,8 @@ class Note {
     required this.skin,
     required this.color,
     required this.titleFontSize,
-    required this.contentParts,
+  required this.contentFontSize,
+  required this.contentParts,
   });
 
   factory Note.fromJson(Map<String, dynamic> json) {
@@ -31,7 +33,8 @@ class Note {
       skin: json['skin'] ?? '',
       color: Color(json['color'] ?? 0xFFFFFFFF),
       titleFontSize: (json['titleFontSize'] ?? 18).toDouble(),
-      contentParts: (json['contentParts'] is List)
+  contentFontSize: (json['contentFontSize'] ?? 18).toDouble(),
+  contentParts: (json['contentParts'] is List)
           ? (json['contentParts'] as List).map((e) => Map<String, dynamic>.from(e)).toList()
           : [],
     );
@@ -46,6 +49,7 @@ class Note {
       'skin': skin,
       'color': color.value,
       'titleFontSize': titleFontSize,
+  'contentFontSize': contentFontSize,
       'contentParts': contentParts,
     };
   }
