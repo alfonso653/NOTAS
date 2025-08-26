@@ -1,3 +1,4 @@
+// (Declaración de _dropInsertIndex movida a la clase correspondiente)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -93,8 +94,8 @@ class NoteEditScreen extends StatefulWidget {
   State<NoteEditScreen> createState() => _NoteEditScreenState();
 }
 
-class _NoteEditScreenState extends State<NoteEditScreen>
-    with SingleTickerProviderStateMixin {
+class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProviderStateMixin {
+  int? _dropInsertIndex;
   // Eliminado: final ScreenshotController _screenshotController = ScreenshotController();
   // Para animación de parpadeo
   late AnimationController _blinkController;
@@ -841,6 +842,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     : FontWeight.normal,
                                 color: Colors.black87,
                               ),
+                              textAlign: TextAlign.left,
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(
@@ -887,31 +889,64 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               onAccept: (from) {
                                 setState(() {
                                   final moved = _contentParts.removeAt(from);
-                                  _contentParts.insert(i, moved);
+                                  _contentParts.insert(_dropInsertIndex ?? i, moved);
+                                  _dropInsertIndex = null;
                                   _saveNote();
                                 });
                               },
+                              onLeave: (_) {
+                                setState(() {
+                                  _dropInsertIndex = null;
+                                });
+                              },
                               builder: (context, candidateData, rejectedData) {
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _editingPartIndex = i;
-                                    });
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 2.0, horizontal: 4.0),
-                                    child: Text(
-                                      part.text,
-                                      style: TextStyle(
-                                        fontSize: _contentFontSize,
-                                        fontWeight: part.bold
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: Colors.black87,
+                                final isActive = candidateData.isNotEmpty;
+                                // Detectar si el mouse está en la mitad superior o inferior del bloque
+                                return Column(
+                                  children: [
+                                    AnimatedOpacity(
+                                      opacity: isActive ? 1.0 : 0.0,
+                                      duration: const Duration(milliseconds: 180),
+                                      child: Container(
+                                        height: 3,
+                                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.5),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _editingPartIndex = i;
+                                        });
+                                      },
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 2.0, horizontal: 4.0),
+                                          child: Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              part.text,
+                                              textAlign: TextAlign.left,
+                                              style: TextStyle(
+                                                fontSize: _contentFontSize,
+                                                fontWeight: part.bold
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 );
                               },
                             ),
@@ -951,6 +986,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           fillColor: Colors.transparent,
                           filled: true,
                         ),
+                        textAlign: TextAlign.left,
                         onChanged: (v) => _saveNote(),
                       ),
                     ),
