@@ -94,7 +94,8 @@ class NoteEditScreen extends StatefulWidget {
   State<NoteEditScreen> createState() => _NoteEditScreenState();
 }
 
-class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProviderStateMixin {
+class _NoteEditScreenState extends State<NoteEditScreen>
+    with SingleTickerProviderStateMixin {
   int? _dropInsertIndex;
   // Eliminado: final ScreenshotController _screenshotController = ScreenshotController();
   // Para animación de parpadeo
@@ -154,7 +155,11 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
 
   Future<void> _shareAsText() async {
     final note = widget.note;
-    final String fecha = DateTime.now().toLocal().toString().split('.')[0].replaceFirst('T', ' ');
+    final String fecha = DateTime.now()
+        .toLocal()
+        .toString()
+        .split('.')[0]
+        .replaceFirst('T', ' ');
     final buffer = StringBuffer();
     buffer.writeln('Fecha: $fecha');
     buffer.writeln();
@@ -171,7 +176,9 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
       }
       buffer.writeln();
     }
-    await Share.share(buffer.toString().trim().isEmpty ? 'Nota sin contenido' : buffer.toString().trim());
+    await Share.share(buffer.toString().trim().isEmpty
+        ? 'Nota sin contenido'
+        : buffer.toString().trim());
   }
 
   Future<void> _shareAsPdf() async {
@@ -206,7 +213,10 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
                     mainAxisAlignment: pw.MainAxisAlignment.end,
                     children: [
                       pw.Text('Fecha: $fecha',
-                          style: pw.TextStyle(font: nunito, fontSize: 12, color: PdfColors.grey)),
+                          style: pw.TextStyle(
+                              font: nunito,
+                              fontSize: 12,
+                              color: PdfColors.grey)),
                     ],
                   ),
                   pw.SizedBox(height: 12),
@@ -304,14 +314,14 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
 
   // Acepta pop opcional para compatibilidad con las llamadas existentes
   void _saveNote({bool pop = false}) {
-  final note = widget.note;
-  note.title = _titleController.text;
-  note.categoria = _categoriaController.text;
-  // No modificar note.date aquí, así se conserva la fecha y hora de creación
-  note.color = _noteColor;
-  note.skin = _skin.isEmpty ? 'grid' : _skin;
-  note.titleFontSize = _titleFontSize;
-  note.contentFontSize = _contentFontSize;
+    final note = widget.note;
+    note.title = _titleController.text;
+    note.categoria = _categoriaController.text;
+    // No modificar note.date aquí, así se conserva la fecha y hora de creación
+    note.color = _noteColor;
+    note.skin = _skin.isEmpty ? 'grid' : _skin;
+    note.titleFontSize = _titleFontSize;
+    note.contentFontSize = _contentFontSize;
 
     List<_TextPart> partsToSave = List<_TextPart>.from(_contentParts);
     String pendingText = _hiddenController.text.trim();
@@ -377,9 +387,9 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
     _categoriaController = TextEditingController(text: widget.note.categoria);
     _noteColor = widget.note.color;
     _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
-  _titleFontSize = widget.note.titleFontSize;
-  _contentFontSize = widget.note.contentFontSize;
-  _contentFormat = const TextFormatValue();
+    _titleFontSize = widget.note.titleFontSize;
+    _contentFontSize = widget.note.contentFontSize;
+    _contentFormat = const TextFormatValue();
 
     _contentParts =
         (widget.note.contentParts).map((e) => _TextPart.fromJson(e)).toList();
@@ -391,7 +401,7 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
   }
 
   void _onAnyChange() {
-  setHasUnsavedChanges(true);
+    setHasUnsavedChanges(true);
   }
 
   @override
@@ -636,25 +646,37 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
                         context: context,
                         position: const RelativeRect.fromLTRB(200, 80, 16, 0),
                         items: const [
-                          PopupMenuItem(
-                              value: 'Sermón', child: Text('📖  Sermón')),
-                          PopupMenuItem(
-                              value: 'Estudio Bíblico',
-                              child: Text('📚  Estudio Bíblico')),
-                          PopupMenuItem(
-                              value: 'Reflexión', child: Text('🤔  Reflexión')),
-                          PopupMenuItem(
-                              value: 'Devocional',
-                              child: Text('❤️  Devocional')),
-                          PopupMenuItem(
-                              value: 'Testimonio',
-                              child: Text('🌟  Testimonio')),
-                          PopupMenuItem(
-                              value: 'Apuntes Generales',
-                              child: Text('📓  Apuntes Generales')),
-                          PopupMenuItem(
-                              value: 'Discipulado',
-                              child: Text('🏫  Discipulado')),
+              PopupMenuItem(
+                value: 'Sermón', child: Text('📖  Sermón')),
+              PopupMenuItem(
+                value: 'Estudio Bíblico',
+                child: Text('📚  Estudio Bíblico')),
+              PopupMenuItem(
+                value: 'Reflexión', child: Text('🤔  Reflexión')),
+              PopupMenuItem(
+                value: 'Devocional',
+                child: Text('❤️  Devocional')),
+              PopupMenuItem(
+                value: 'Testimonio',
+                child: Text('🌟  Testimonio')),
+              PopupMenuItem(
+                value: 'Apuntes Generales',
+                child: Text('📓  Apuntes Generales')),
+              PopupMenuItem(
+                value: 'Discipulado',
+                child: Text('🏫  Discipulado')),
+              PopupMenuItem(
+                value: 'Conexion', child: Text('🔗  Conexion')),
+              PopupMenuItem(
+                value: 'Música', child: Text('🎵  Música')),
+              PopupMenuItem(
+                value: 'Cita', child: Text('💬  Cita')),
+              PopupMenuItem(
+                value: 'Versículo', child: Text('📜  Versículo')),
+              PopupMenuItem(
+                value: 'Oración', child: Text('🙏  Oración')),
+              PopupMenuItem(
+                value: 'Otro', child: Text('🌀  Otro')),
                         ],
                       );
                       if (selected != null) {
@@ -889,7 +911,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
                               onAccept: (from) {
                                 setState(() {
                                   final moved = _contentParts.removeAt(from);
-                                  _contentParts.insert(_dropInsertIndex ?? i, moved);
+                                  _contentParts.insert(
+                                      _dropInsertIndex ?? i, moved);
                                   _dropInsertIndex = null;
                                   _saveNote();
                                 });
@@ -906,13 +929,16 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
                                   children: [
                                     AnimatedOpacity(
                                       opacity: isActive ? 1.0 : 0.0,
-                                      duration: const Duration(milliseconds: 180),
+                                      duration:
+                                          const Duration(milliseconds: 180),
                                       child: Container(
                                         height: 3,
-                                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 12),
                                         decoration: BoxDecoration(
                                           color: Colors.blue.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                       ),
                                     ),
@@ -924,7 +950,8 @@ class _NoteEditScreenState extends State<NoteEditScreen> with SingleTickerProvid
                                       },
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
@@ -1482,6 +1509,18 @@ String _categoriaIconStr(String categoria) {
       return '📓';
     case 'Discipulado':
       return '🏫';
+    case 'Conexion':
+      return '🔗';
+    case 'Música':
+      return '🎵';
+    case 'Cita':
+      return '💬';
+    case 'Versículo':
+      return '📜';
+    case 'Oración':
+      return '🙏';
+    case 'Otro':
+      return '🌀';
     default:
       return '';
   }

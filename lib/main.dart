@@ -406,14 +406,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showSearchDialog() async {
     final categorias = [
-      '',
-      'Sermón',
-      'Estudio Bíblico',
-      'Reflexión',
-      'Devocional',
-      'Testimonio',
-      'Apuntes Generales',
-      'Discipulado',
+  '',
+  'Sermón',
+  'Estudio Bíblico',
+  'Reflexión',
+  'Devocional',
+  'Testimonio',
+  'Apuntes Generales',
+  'Discipulado',
+  'Conexion',
+  'Música',
+  'Cita',
+  'Versículo',
+  'Oración',
+  'Otro',
     ];
     String tempQuery = _searchQuery;
     String tempCategory = _searchCategory;
@@ -868,6 +874,12 @@ class NoteListScreen extends StatelessWidget {
           'Testimonio': Color(0xFFEAD6FF),
           'Apuntes Generales': Color(0xFFB2C7E2),
           'Discipulado': Color(0xFFFFD6D6), // Rosa claro, bien distinto
+          'Conexion': Color(0xFFB2FFD6), // Verde agua
+          'Música': Color(0xFFE0F7FA), // Celeste
+          'Cita': Color(0xFFFFF3E0), // Naranja claro
+          'Versículo': Color(0xFFE8F5E9), // Verde muy claro
+          'Oración': Color(0xFFF3E5F5), // Lila claro
+          'Otro': Color(0xFFD7CCC8), // Marrón claro
         };
 
         return ListView.builder(
@@ -1284,6 +1296,18 @@ String _categoriaAbreviatura(String categoria) {
       return 'APG';
     case 'Discipulado':
       return 'DIS';
+    case 'Conexion':
+      return 'CON';
+    case 'Música':
+      return 'MUS';
+    case 'Cita':
+      return 'CIT';
+    case 'Versículo':
+      return 'VER';
+    case 'Oración':
+      return 'ORA';
+    case 'Otro':
+      return 'OTR';
     default:
       return categoria.length >= 3
           ? categoria.substring(0, 3).toUpperCase()
