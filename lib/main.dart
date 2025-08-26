@@ -541,8 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   final newNote = Note(
                     id: DateTime.now().millisecondsSinceEpoch.toString(),
                     title: '',
-                    date:
-                        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+                    date: now.toIso8601String(),
                     categoria: '',
                     skin: 'grid',
                     color: Colors.white,
