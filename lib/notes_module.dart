@@ -398,6 +398,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _titleController.addListener(_onAnyChange);
     _categoriaController.addListener(_onAnyChange);
     _hiddenController.addListener(_onAnyChange);
+
+    // Guardar automáticamente al entrar
+    WidgetsBinding.instance.addPostFrameCallback((_) => _saveNote(pop: false));
   }
 
   void _onAnyChange() {
@@ -406,6 +409,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   @override
   void dispose() {
+    _saveNote(pop: false); // Guardar automáticamente al salir
     _blinkController.dispose();
     _titleController.removeListener(_onAnyChange);
     _categoriaController.removeListener(_onAnyChange);
