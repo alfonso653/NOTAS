@@ -28,11 +28,23 @@ bool _hasStartedEditing = false;
 class _TextPart {
   final String text;
   final bool bold;
-  _TextPart(this.text, this.bold);
+  final bool underline;
+  final int? underlineColor;
+  _TextPart(this.text, this.bold, [this.underline = false, this.underlineColor]);
 
-  Map<String, dynamic> toJson() => {'text': text, 'bold': bold};
+  Map<String, dynamic> toJson() => {
+    'text': text,
+    'bold': bold,
+    'underline': underline,
+    'underlineColor': underlineColor,
+  };
   factory _TextPart.fromJson(Map<String, dynamic> json) =>
-      _TextPart(json['text'] ?? '', json['bold'] ?? false);
+      _TextPart(
+        json['text'] ?? '',
+        json['bold'] ?? false,
+        json['underline'] ?? false,
+        json['underlineColor'] as int?,
+      );
 }
 
 /// =======================
@@ -327,7 +339,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     String pendingText = _hiddenController.text.trim();
     if (pendingText.isNotEmpty) {
       if (partsToSave.isEmpty || partsToSave.last.text != pendingText) {
-        partsToSave.add(_TextPart(pendingText, _contentFormat.bold));
+        partsToSave.add(_TextPart(
+          pendingText,
+          _contentFormat.bold,
+          _contentFormat.underline,
+          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+        ));
       }
     }
     note.contentParts = partsToSave.map((e) => e.toJson()).toList();
@@ -844,13 +861,30 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         if (_editingPartIndex == i) {
                           _partControllers[i] ??=
                               TextEditingController(text: part.text);
+                          // Sincronizar el panel con el formato del segmento al entrar en edición
+                          if (_contentFormat.bold != part.bold ||
+                              _contentFormat.underline != part.underline ||
+                              (_contentFormat.underline && part.underlineColor != null && _contentFormat.underlineColor.value != part.underlineColor)) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              setState(() {
+                                _contentFormat = TextFormatValue(
+                                  bold: part.bold,
+                                  underline: part.underline,
+                                  underlineColor: part.underlineColor != null ? Color(part.underlineColor!) : _contentFormat.underlineColor,
+                                );
+                              });
+                            });
+                          }
                           return Focus(
                             onFocusChange: (hasFocus) {
                               if (!hasFocus) {
                                 setState(() {
                                   _contentParts[i] = _TextPart(
-                                      _partControllers[i]?.text ?? part.text,
-                                      part.bold);
+                                    _partControllers[i]?.text ?? part.text,
+                                    _contentFormat.bold,
+                                    _contentFormat.underline,
+                                    _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                                  );
                                   _editingPartIndex = null;
                                   _partControllers.remove(i);
                                 });
@@ -861,20 +895,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               controller: _partControllers[i],
                               autofocus: true,
                               maxLines: null,
-                style: TextStyle(
-                fontSize: _contentFontSize,
-                fontWeight: part.bold
-                  ? FontWeight.bold
-                  : FontWeight.normal,
-                color: Colors.black87,
-                decoration: _contentFormat.underline
-                  ? TextDecoration.underline
-                  : TextDecoration.none,
-                decorationColor: _contentFormat.underline
-                  ? _contentFormat.underlineColor
-                  : null,
-                decorationThickness: _contentFormat.underline ? 2.5 : null,
-                ),
+                              style: TextStyle(
+                                fontSize: _contentFontSize,
+                                fontWeight: _contentFormat.bold
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: Colors.black87,
+                                decoration: _contentFormat.underline
+                                    ? TextDecoration.underline
+                                    : TextDecoration.none,
+                                decorationColor: _contentFormat.underline ? _contentFormat.underlineColor : null,
+                                decorationThickness: _contentFormat.underline ? 2.5 : null,
+                              ),
                               textAlign: TextAlign.left,
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
@@ -886,8 +918,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               },
                               onSubmitted: (value) {
                                 setState(() {
-                                  _contentParts[i] =
-                                      _TextPart(value, part.bold);
+                                  _contentParts[i] = _TextPart(
+                                    value,
+                                    _contentFormat.bold,
+                                    _contentFormat.underline,
+                                    _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                                  );
                                   _editingPartIndex = null;
                                   _partControllers.remove(i);
                                 });
@@ -911,6 +947,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         ? FontWeight.bold
                                         : FontWeight.normal,
                                     color: Colors.black54,
+                                    decoration: part.underline
+                                        ? TextDecoration.underline
+                                        : TextDecoration.none,
+                                    decorationColor: part.underline && part.underlineColor != null
+                                        ? Color(part.underlineColor!)
+                                        : null,
+                                    decorationThickness: part.underline ? 2.5 : null,
                                   ),
                                 ),
                               ),
@@ -978,6 +1021,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                                     ? FontWeight.bold
                                                     : FontWeight.normal,
                                                 color: Colors.black87,
+                                                decoration: part.underline
+                                                    ? TextDecoration.underline
+                                                    : TextDecoration.none,
+                                                decorationColor: part.underline && part.underlineColor != null
+                                                    ? Color(part.underlineColor!)
+                                                    : null,
+                                                decorationThickness: part.underline ? 2.5 : null,
                                               ),
                                             ),
                                           ),
@@ -1070,7 +1120,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   if (_hiddenController.text.isNotEmpty) {
                     setState(() {
                       _contentParts.add(
-                        _TextPart(_hiddenController.text, _contentFormat.bold),
+                        _TextPart(
+                          _hiddenController.text,
+                          _contentFormat.bold,
+                          _contentFormat.underline,
+                          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                        ),
                       );
                       _hiddenController.clear();
                     });
