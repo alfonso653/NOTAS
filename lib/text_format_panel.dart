@@ -1,5 +1,6 @@
 // lib/text_format_panel.dart
 import 'package:flutter/material.dart';
+import 'underline_button.dart';
 
 /// Estructura con el estado del formato.
 /// Úsala para conectar el panel con tu editor.
@@ -15,6 +16,7 @@ class TextFormatValue {
   final bool numbered;
   final int indent; // 0..N
   final Color inkColor;
+  final Color underlineColor;
 
   const TextFormatValue({
     this.tabIndex = 0,
@@ -28,6 +30,7 @@ class TextFormatValue {
     this.numbered = false,
     this.indent = 0,
     this.inkColor = const Color(0xFF00C853),
+    this.underlineColor = const Color(0xFFB39DDB), // pastel lila por defecto
   });
 
   TextFormatValue copyWith({
@@ -42,6 +45,7 @@ class TextFormatValue {
     bool? numbered,
     int? indent,
     Color? inkColor,
+    Color? underlineColor,
   }) {
     return TextFormatValue(
       tabIndex: tabIndex ?? this.tabIndex,
@@ -55,6 +59,7 @@ class TextFormatValue {
       numbered: numbered ?? this.numbered,
       indent: indent ?? this.indent,
       inkColor: inkColor ?? this.inkColor,
+      underlineColor: underlineColor ?? this.underlineColor,
     );
   }
 }
@@ -131,47 +136,59 @@ class _TextFormatPanelState extends State<TextFormatPanel>
             position: _offsetAnimation,
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: GestureDetector(
-                onTap: () => _set(v.copyWith(bold: !v.bold)),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 80, // doble de ancho
-                  height: 50, // doble de alto
-                  decoration: BoxDecoration(
-                    color: v.bold
-                        ? const Color(0xFFFFC107)
-                        : const Color(0xFFF6F7F9),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Botón Negrilla (B)
+                  GestureDetector(
+                    onTap: () => _set(v.copyWith(bold: !v.bold)),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 50,
+                      height: 50,
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: v.bold ? const Color(0xFFFFC107) : const Color(0xFFF6F7F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: v.bold ? Colors.amber.shade700 : Colors.grey.shade300,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                    border: Border.all(
-                      color:
-                          v.bold ? Colors.amber.shade700 : Colors.grey.shade300,
-                      width: 2,
+                      alignment: Alignment.center,
+                      child: Text(
+                        'B',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                          color: v.bold ? Colors.white : Colors.black87,
+                          letterSpacing: 2,
+                        ),
+                      ),
                     ),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'B',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22, // doble de tamaño
-                      color: v.bold ? Colors.white : Colors.black87,
-                      letterSpacing: 2,
-                    ),
+                  // Botón Subrayado (U) con selección de color
+                  UnderlineButton(
+                    selected: v.underline,
+                    color: v.underlineColor,
+                    onTap: () => _set(v.copyWith(underline: !v.underline)),
+                    onColorSelected: (color) => _set(v.copyWith(underline: true, underlineColor: color)),
                   ),
-                ),
+                ],
               ),
             ),
           ),
         ),
       ),
     );
+
     @override
     void dispose() {
       _controller.dispose();

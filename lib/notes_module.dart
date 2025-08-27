@@ -857,13 +857,20 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               controller: _partControllers[i],
                               autofocus: true,
                               maxLines: null,
-                              style: TextStyle(
-                                fontSize: _contentFontSize,
-                                fontWeight: part.bold
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: Colors.black87,
-                              ),
+                style: TextStyle(
+                fontSize: _contentFontSize,
+                fontWeight: part.bold
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+                color: Colors.black87,
+                decoration: _contentFormat.underline
+                  ? TextDecoration.underline
+                  : TextDecoration.none,
+                decorationColor: _contentFormat.underline
+                  ? _contentFormat.underlineColor
+                  : null,
+                decorationThickness: _contentFormat.underline ? 2.5 : null,
+                ),
                               textAlign: TextAlign.left,
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
@@ -996,13 +1003,20 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         keyboardType: TextInputType.multiline,
                         textInputAction: TextInputAction.newline,
                         cursorColor: Colors.amber,
-                        style: TextStyle(
-                          fontSize: _contentFontSize,
-                          fontWeight: _contentFormat.bold
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: Colors.black87,
-                        ),
+            style: TextStyle(
+              fontSize: _contentFontSize,
+              fontWeight: _contentFormat.bold
+                ? FontWeight.bold
+                : FontWeight.normal,
+              color: Colors.black87,
+              decoration: _contentFormat.underline
+                ? TextDecoration.underline
+                : TextDecoration.none,
+              decorationColor: _contentFormat.underline
+                ? _contentFormat.underlineColor
+                : null,
+              decorationThickness: _contentFormat.underline ? 2.5 : null,
+            ),
                         decoration: const InputDecoration(
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
