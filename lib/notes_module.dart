@@ -4,14 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:share_plus/share_plus.dart';
-import 'package:pdf/widgets.dart' as pw; // ✅ sin apóstrofo extra
+import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:auto_size_text/auto_size_text.dart';
-// Eliminado: import 'package:screenshot/screenshot.dart';
 import 'package:flutter/rendering.dart'; // Para RenderRepaintBoundary
 import 'dart:ui' as ui; // Para ui.Image y ImageByteFormat
-import 'dart:typed_data'; // ✅ ByteData
+import 'dart:typed_data';
 import 'dart:io';
 import 'dart:convert';
 
@@ -21,29 +20,42 @@ import 'note.dart';
 // Variable global para controlar el Snackbar solo en guardado manual
 bool _showSavedSnackbar = false;
 
-// Bandera para controlar el inicio de edición y evitar parpadeo inicial
-bool _hasStartedEditing = false;
-
-// Clase auxiliar para simular partes de texto con o sin negrita
+// =========================
+// Modelo de segmento (_TextPart)
+// =========================
+// ⛳ Añadí/aseguré highlight y highlightColor (int) y su (de)serialización.
 class _TextPart {
   final String text;
   final bool bold;
   final bool underline;
   final int? underlineColor;
-  _TextPart(this.text, this.bold, [this.underline = false, this.underlineColor]);
+  final bool highlight;
+  final int? highlightColor;
+  _TextPart(
+    this.text,
+    this.bold, [
+    this.underline = false,
+    this.underlineColor,
+    this.highlight = false,
+    this.highlightColor,
+  ]);
 
   Map<String, dynamic> toJson() => {
-    'text': text,
-    'bold': bold,
-    'underline': underline,
-    'underlineColor': underlineColor,
-  };
-  factory _TextPart.fromJson(Map<String, dynamic> json) =>
-      _TextPart(
+        'text': text,
+        'bold': bold,
+        'underline': underline,
+        'underlineColor': underlineColor,
+        'highlight': highlight,
+        'highlightColor': highlightColor,
+      };
+
+  factory _TextPart.fromJson(Map<String, dynamic> json) => _TextPart(
         json['text'] ?? '',
         json['bold'] ?? false,
         json['underline'] ?? false,
         json['underlineColor'] as int?,
+        json['highlight'] ?? false,
+        json['highlightColor'] as int?,
       );
 }
 
@@ -109,8 +121,8 @@ class NoteEditScreen extends StatefulWidget {
 class _NoteEditScreenState extends State<NoteEditScreen>
     with SingleTickerProviderStateMixin {
   int? _dropInsertIndex;
-  // Eliminado: final ScreenshotController _screenshotController = ScreenshotController();
-  // Para animación de parpadeo
+
+  // Blink del botón guardar
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
   bool _hasUnsavedChanges = false;
@@ -139,6 +151,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   double _contentFontSize = 18;
   static const double _minContentFontSize = 12;
   static const double _maxContentFontSize = 32;
+
+  // Estado de formato actual (para escribir o editar)
   TextFormatValue _contentFormat = const TextFormatValue();
 
   List<_TextPart> _contentParts = [];
@@ -160,7 +174,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
       final ampm = dt.hour < 12 ? 'AM' : 'PM';
       return "${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} $hour:${dt.minute.toString().padLeft(2, '0')} $ampm";
-    } catch (e) {
+    } catch (_) {
       return '';
     }
   }
@@ -176,21 +190,16 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     buffer.writeln('Fecha: $fecha');
     buffer.writeln();
     buffer.writeln('**${note.title.toUpperCase()}**');
-    if (note.categoria.isNotEmpty) {
-      buffer.writeln('_${note.categoria}_');
-    }
+    if (note.categoria.isNotEmpty) buffer.writeln('_${note.categoria}_');
     buffer.writeln();
     for (final part in _contentParts) {
-      if (part.bold) {
-        buffer.write('*${part.text}*');
-      } else {
-        buffer.write(part.text);
-      }
-      buffer.writeln();
+      buffer.writeln(part.bold ? '*${part.text}*' : part.text);
     }
-    await Share.share(buffer.toString().trim().isEmpty
-        ? 'Nota sin contenido'
-        : buffer.toString().trim());
+    await Share.share(
+      buffer.toString().trim().isEmpty
+          ? 'Nota sin contenido'
+          : buffer.toString().trim(),
+    );
   }
 
   Future<void> _shareAsPdf() async {
@@ -198,8 +207,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       final pdf = pw.Document();
       final note = widget.note;
 
-      final double baseMargin = 24.0;
-      final double textScaleFactor = 1.15;
+      const double baseMargin = 24.0;
+      const double textScaleFactor = 1.15;
       final pw.Font nunito = pw.Font.helvetica();
       final pw.Font nunitoBold = pw.Font.helveticaBold();
       final String fecha = DateTime.now()
@@ -226,9 +235,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     children: [
                       pw.Text('Fecha: $fecha',
                           style: pw.TextStyle(
-                              font: nunito,
-                              fontSize: 12,
-                              color: PdfColors.grey)),
+                            font: nunito,
+                            fontSize: 12,
+                            color: PdfColors.grey,
+                          )),
                     ],
                   ),
                   pw.SizedBox(height: 12),
@@ -253,16 +263,30 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   pw.SizedBox(height: 12),
                   pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
                   pw.SizedBox(height: 12),
-                  ...note.contentParts.map((e) => pw.Padding(
-                        padding: const pw.EdgeInsets.only(bottom: 8),
+                  ..._contentParts.map(
+                    (e) => pw.Padding(
+                      padding: const pw.EdgeInsets.only(bottom: 8),
+                      child: pw.Container(
+                        color: (e.highlight && e.highlightColor != null)
+                            ? PdfColor.fromInt(e.highlightColor!)
+                            : null,
                         child: pw.Text(
-                          e['text'] ?? '',
+                          e.text,
                           style: pw.TextStyle(
-                            font: (e['bold'] ?? false) ? nunitoBold : nunito,
+                            font: e.bold ? nunitoBold : nunito,
                             fontSize: 16 * textScaleFactor,
+                            decoration: e.underline
+                                ? pw.TextDecoration.underline
+                                : pw.TextDecoration.none,
+                            decorationColor:
+                                e.underline && e.underlineColor != null
+                                    ? PdfColor.fromInt(e.underlineColor!)
+                                    : null,
                           ),
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
                   pw.Spacer(),
                   pw.Align(
                     alignment: pw.Alignment.centerRight,
@@ -297,7 +321,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   Future<void> _shareAsImage() async {
     try {
-      // Captura usando RepaintBoundary (sin paquete screenshot)
       final boundary =
           _noteKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
@@ -324,29 +347,39 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
-  // Acepta pop opcional para compatibilidad con las llamadas existentes
+  // Guardado de la nota (incluye highlight)
   void _saveNote({bool pop = false}) {
     final note = widget.note;
     note.title = _titleController.text;
     note.categoria = _categoriaController.text;
-    // No modificar note.date aquí, así se conserva la fecha y hora de creación
     note.color = _noteColor;
     note.skin = _skin.isEmpty ? 'grid' : _skin;
     note.titleFontSize = _titleFontSize;
     note.contentFontSize = _contentFontSize;
 
-    List<_TextPart> partsToSave = List<_TextPart>.from(_contentParts);
-    String pendingText = _hiddenController.text.trim();
+    // Si hay texto pendiente en el TextField "oculto", lo anclamos como segmento
+    final List<_TextPart> partsToSave = List<_TextPart>.from(_contentParts);
+    final String pendingText = _hiddenController.text.trim();
     if (pendingText.isNotEmpty) {
       if (partsToSave.isEmpty || partsToSave.last.text != pendingText) {
-        partsToSave.add(_TextPart(
-          pendingText,
-          _contentFormat.bold,
-          _contentFormat.underline,
-          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-        ));
+        partsToSave.add(
+          _TextPart(
+            pendingText,
+            _contentFormat.bold,
+            _contentFormat.underline,
+            _contentFormat.underline
+                ? _contentFormat.underlineColor.value
+                : null,
+            _contentFormat.highlight,
+            _contentFormat.highlight
+                ? _contentFormat.highlightColor.value
+                : null,
+          ),
+        );
       }
     }
+
+    // Serializamos
     note.contentParts = partsToSave.map((e) => e.toJson()).toList();
     context.read<NoteProvider>().updateNote(note);
 
@@ -360,9 +393,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       );
       _showSavedSnackbar = false;
     }
-    if (pop) {
-      Navigator.pop(context);
-    }
+    if (pop) Navigator.pop(context);
   }
 
   Widget _buildIconBox({required Widget icon, required VoidCallback onTap}) {
@@ -400,12 +431,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       }
     });
     super.initState();
+
     _titleController = TextEditingController(text: widget.note.title);
     _categoriaController = TextEditingController(text: widget.note.categoria);
     _noteColor = widget.note.color;
     _skin = widget.note.skin.isEmpty ? 'grid' : widget.note.skin;
     _titleFontSize = widget.note.titleFontSize;
     _contentFontSize = widget.note.contentFontSize;
+
     _contentFormat = const TextFormatValue();
 
     _contentParts =
@@ -420,13 +453,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) => _saveNote(pop: false));
   }
 
-  void _onAnyChange() {
-    setHasUnsavedChanges(true);
-  }
+  void _onAnyChange() => setHasUnsavedChanges(true);
 
   @override
   void dispose() {
-    _saveNote(pop: false); // Guardar automáticamente al salir
+    _saveNote(pop: false);
     _blinkController.dispose();
     _titleController.removeListener(_onAnyChange);
     _categoriaController.removeListener(_onAnyChange);
@@ -626,16 +657,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         if (_categoriaController.text.isNotEmpty)
                           Row(
                             children: [
-                              Text(_categoriaIconStr(_categoriaController.text),
-                                  style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black54,
-                                      shadows: [
-                                        Shadow(
-                                            blurRadius: 1.5,
-                                            color: Colors.black12,
-                                            offset: Offset(0, 1))
-                                      ])),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
@@ -667,37 +688,35 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         context: context,
                         position: const RelativeRect.fromLTRB(200, 80, 16, 0),
                         items: const [
-              PopupMenuItem(
-                value: 'Sermón', child: Text('📖  Sermón')),
-              PopupMenuItem(
-                value: 'Estudio Bíblico',
-                child: Text('📚  Estudio Bíblico')),
-              PopupMenuItem(
-                value: 'Reflexión', child: Text('🤔  Reflexión')),
-              PopupMenuItem(
-                value: 'Devocional',
-                child: Text('❤️  Devocional')),
-              PopupMenuItem(
-                value: 'Testimonio',
-                child: Text('🌟  Testimonio')),
-              PopupMenuItem(
-                value: 'Apuntes Generales',
-                child: Text('📓  Apuntes Generales')),
-              PopupMenuItem(
-                value: 'Discipulado',
-                child: Text('🏫  Discipulado')),
-              PopupMenuItem(
-                value: 'Conexion', child: Text('🔗  Conexion')),
-              PopupMenuItem(
-                value: 'Música', child: Text('🎵  Música')),
-              PopupMenuItem(
-                value: 'Cita', child: Text('💬  Cita')),
-              PopupMenuItem(
-                value: 'Versículo', child: Text('📜  Versículo')),
-              PopupMenuItem(
-                value: 'Oración', child: Text('🙏  Oración')),
-              PopupMenuItem(
-                value: 'Otro', child: Text('🌀  Otro')),
+                          PopupMenuItem(
+                              value: 'Sermón', child: Text('📖  Sermón')),
+                          PopupMenuItem(
+                              value: 'Estudio Bíblico',
+                              child: Text('📚  Estudio Bíblico')),
+                          PopupMenuItem(
+                              value: 'Reflexión', child: Text('🤔  Reflexión')),
+                          PopupMenuItem(
+                              value: 'Devocional',
+                              child: Text('❤️  Devocional')),
+                          PopupMenuItem(
+                              value: 'Testimonio',
+                              child: Text('🌟  Testimonio')),
+                          PopupMenuItem(
+                              value: 'Apuntes Generales',
+                              child: Text('📓  Apuntes Generales')),
+                          PopupMenuItem(
+                              value: 'Discipulado',
+                              child: Text('🏫  Discipulado')),
+                          PopupMenuItem(
+                              value: 'Conexion', child: Text('🔗  Conexion')),
+                          PopupMenuItem(
+                              value: 'Música', child: Text('🎵  Música')),
+                          PopupMenuItem(value: 'Cita', child: Text('💬  Cita')),
+                          PopupMenuItem(
+                              value: 'Versículo', child: Text('📜  Versículo')),
+                          PopupMenuItem(
+                              value: 'Oración', child: Text('🙏  Oración')),
+                          PopupMenuItem(value: 'Otro', child: Text('🌀  Otro')),
                         ],
                       );
                       if (selected != null) {
@@ -811,7 +830,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 overlayRadius: 12),
                             thumbColor: Colors.blue,
                             activeTrackColor: Colors.blueAccent,
-                            inactiveTrackColor: Colors.blue[100],
+                            inactiveTrackColor:
+                                Colors.blueAccent.withOpacity(0.25),
                           ),
                           child: Slider(
                             min: _minContentFontSize,
@@ -834,259 +854,295 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               ),
             ),
 
-            // Contenido con transición + LISTVIEW SCROLL
+            // Contenido + LISTVIEW
             Expanded(
-              child: TileRevealColorTransition(
-                color: _noteColor,
-                duration: const Duration(milliseconds: 800),
-                rows: 24,
-                columns: 48,
-                curve: Curves.fastOutSlowIn,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    16,
-                    16,
-                    _bottomBarHeight +
-                        MediaQuery.of(context).padding.bottom +
-                        16,
-                  ),
-                  children: [
-                    // Texto ya fijado por partes
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: List.generate(_contentParts.length, (i) {
-                        final part = _contentParts[i];
-                        if (_editingPartIndex == i) {
-                          _partControllers[i] ??=
-                              TextEditingController(text: part.text);
-                          // Sincronizar el panel con el formato del segmento al entrar en edición
-                          if (_contentFormat.bold != part.bold ||
-                              _contentFormat.underline != part.underline ||
-                              (_contentFormat.underline && part.underlineColor != null && _contentFormat.underlineColor.value != part.underlineColor)) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              setState(() {
-                                _contentFormat = TextFormatValue(
-                                  bold: part.bold,
-                                  underline: part.underline,
-                                  underlineColor: part.underlineColor != null ? Color(part.underlineColor!) : _contentFormat.underlineColor,
-                                );
-                              });
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  _bottomBarHeight + MediaQuery.of(context).padding.bottom + 16,
+                ),
+                children: [
+                  // Texto fijado por partes
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(_contentParts.length, (i) {
+                      final part = _contentParts[i];
+                      if (_editingPartIndex == i) {
+                        _partControllers[i] ??=
+                            TextEditingController(text: part.text);
+
+                        // Sincroniza el panel con el formato del segmento al entrar en edición
+                        if (_contentFormat.bold != part.bold ||
+                            _contentFormat.underline != part.underline ||
+                            (_contentFormat.underline &&
+                                part.underlineColor != null &&
+                                _contentFormat.underlineColor.value !=
+                                    part.underlineColor) ||
+                            _contentFormat.highlight != part.highlight ||
+                            (_contentFormat.highlight &&
+                                part.highlightColor != null &&
+                                _contentFormat.highlightColor.value !=
+                                    part.highlightColor)) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            setState(() {
+                              _contentFormat = TextFormatValue(
+                                bold: part.bold,
+                                underline: part.underline,
+                                underlineColor: part.underlineColor != null
+                                    ? Color(part.underlineColor!)
+                                    : _contentFormat.underlineColor,
+                                highlight: part.highlight,
+                                highlightColor: part.highlightColor != null
+                                    ? Color(part.highlightColor!)
+                                    : _contentFormat.highlightColor,
+                              );
                             });
-                          }
-                          return Focus(
-                            onFocusChange: (hasFocus) {
-                              if (!hasFocus) {
-                                setState(() {
-                                  _contentParts[i] = _TextPart(
-                                    _partControllers[i]?.text ?? part.text,
-                                    _contentFormat.bold,
-                                    _contentFormat.underline,
-                                    _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-                                  );
-                                  _editingPartIndex = null;
-                                  _partControllers.remove(i);
-                                });
-                                _saveNote();
-                              }
-                            },
-                            child: TextField(
-                              controller: _partControllers[i],
-                              autofocus: true,
-                              maxLines: null,
-                              style: TextStyle(
-                                fontSize: _contentFontSize,
-                                fontWeight: _contentFormat.bold
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: Colors.black87,
-                                decoration: _contentFormat.underline
-                                    ? TextDecoration.underline
-                                    : TextDecoration.none,
-                                decorationColor: _contentFormat.underline ? _contentFormat.underlineColor : null,
-                                decorationThickness: _contentFormat.underline ? 2.5 : null,
-                              ),
-                              textAlign: TextAlign.left,
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                              ),
-                              onChanged: (value) {
-                                setHasUnsavedChanges(true);
-                              },
-                              onSubmitted: (value) {
-                                setState(() {
-                                  _contentParts[i] = _TextPart(
-                                    value,
-                                    _contentFormat.bold,
-                                    _contentFormat.underline,
-                                    _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-                                  );
-                                  _editingPartIndex = null;
-                                  _partControllers.remove(i);
-                                });
-                                _saveNote();
-                              },
+                          });
+                        }
+
+                        return Focus(
+                          onFocusChange: (hasFocus) {
+                            if (!hasFocus) {
+                              setState(() {
+                                _contentParts[i] = _TextPart(
+                                  _partControllers[i]?.text ?? part.text,
+                                  _contentFormat.bold,
+                                  _contentFormat.underline,
+                                  _contentFormat.underline
+                                      ? _contentFormat.underlineColor.value
+                                      : null,
+                                  _contentFormat.highlight,
+                                  _contentFormat.highlight
+                                      ? _contentFormat.highlightColor.value
+                                      : null,
+                                );
+                                _editingPartIndex = null;
+                                _partControllers.remove(i);
+                              });
+                              _saveNote();
+                            }
+                          },
+                          child: TextField(
+                            controller: _partControllers[i],
+                            autofocus: true,
+                            maxLines: null,
+                            style: TextStyle(
+                              fontSize: _contentFontSize,
+                              fontWeight: _contentFormat.bold
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: Colors.black87,
+                              decoration: _contentFormat.underline
+                                  ? TextDecoration.underline
+                                  : TextDecoration.none,
+                              decorationColor: _contentFormat.underline
+                                  ? _contentFormat.underlineColor
+                                  : null,
+                              decorationThickness:
+                                  _contentFormat.underline ? 2.5 : null,
+                              backgroundColor: _contentFormat.highlight
+                                  ? _contentFormat.highlightColor
+                                  : Colors.transparent,
                             ),
-                          );
-                        } else {
-                          return LongPressDraggable<int>(
-                            data: i,
-                            feedback: Material(
-                              color: Colors.transparent,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 2.0, horizontal: 4.0),
-                                child: Text(
-                                  part.text,
-                                  style: TextStyle(
-                                    fontSize: _contentFontSize,
-                                    fontWeight: part.bold
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: Colors.black54,
-                                    decoration: part.underline
-                                        ? TextDecoration.underline
-                                        : TextDecoration.none,
-                                    decorationColor: part.underline && part.underlineColor != null
-                                        ? Color(part.underlineColor!)
-                                        : null,
-                                    decorationThickness: part.underline ? 2.5 : null,
-                                  ),
+                            textAlign: TextAlign.left,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                            ),
+                            onChanged: (_) => setHasUnsavedChanges(true),
+                            onSubmitted: (value) {
+                              setState(() {
+                                _contentParts[i] = _TextPart(
+                                  value,
+                                  _contentFormat.bold,
+                                  _contentFormat.underline,
+                                  _contentFormat.underline
+                                      ? _contentFormat.underlineColor.value
+                                      : null,
+                                  _contentFormat.highlight,
+                                  _contentFormat.highlight
+                                      ? _contentFormat.highlightColor.value
+                                      : null,
+                                );
+                                _editingPartIndex = null;
+                                _partControllers.remove(i);
+                              });
+                              _saveNote();
+                            },
+                          ),
+                        );
+                      } else {
+                        // Vista del segmento (con underline + highlight aplicados)
+                        return LongPressDraggable<int>(
+                          data: i,
+                          feedback: Material(
+                            color: Colors.transparent,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 2.0, horizontal: 4.0),
+                              child: Text(
+                                part.text,
+                                style: TextStyle(
+                                  fontSize: _contentFontSize,
+                                  fontWeight: part.bold
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: Colors.black54,
+                                  decoration: part.underline
+                                      ? TextDecoration.underline
+                                      : TextDecoration.none,
+                                  decorationColor: part.underline &&
+                                          part.underlineColor != null
+                                      ? Color(part.underlineColor!)
+                                      : null,
+                                  decorationThickness:
+                                      part.underline ? 2.5 : null,
+                                  backgroundColor: part.highlight &&
+                                          part.highlightColor != null
+                                      ? Color(part.highlightColor!)
+                                      : Colors.transparent,
                                 ),
                               ),
                             ),
-                            childWhenDragging: const SizedBox.shrink(),
-                            onDragCompleted: () {},
-                            child: DragTarget<int>(
-                              onWillAccept: (from) => from != i,
-                              onAccept: (from) {
-                                setState(() {
-                                  final moved = _contentParts.removeAt(from);
-                                  _contentParts.insert(
-                                      _dropInsertIndex ?? i, moved);
-                                  _dropInsertIndex = null;
-                                  _saveNote();
-                                });
-                              },
-                              onLeave: (_) {
-                                setState(() {
-                                  _dropInsertIndex = null;
-                                });
-                              },
-                              builder: (context, candidateData, rejectedData) {
-                                final isActive = candidateData.isNotEmpty;
-                                // Detectar si el mouse está en la mitad superior o inferior del bloque
-                                return Column(
-                                  children: [
-                                    AnimatedOpacity(
-                                      opacity: isActive ? 1.0 : 0.0,
-                                      duration:
-                                          const Duration(milliseconds: 180),
-                                      child: Container(
-                                        height: 3,
-                                        margin: const EdgeInsets.symmetric(
-                                            horizontal: 12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.withOpacity(0.5),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
+                          ),
+                          childWhenDragging: const SizedBox.shrink(),
+                          onDragCompleted: () {},
+                          child: DragTarget<int>(
+                            onWillAccept: (from) => from != i,
+                            onAccept: (from) {
+                              setState(() {
+                                final moved = _contentParts.removeAt(from);
+                                _contentParts.insert(
+                                    _dropInsertIndex ?? i, moved);
+                                _dropInsertIndex = null;
+                                _saveNote();
+                              });
+                            },
+                            onLeave: (_) => setState(() {
+                              _dropInsertIndex = null;
+                            }),
+                            builder: (context, candidateData, rejectedData) {
+                              final isActive = candidateData.isNotEmpty;
+                              return Column(
+                                children: [
+                                  AnimatedOpacity(
+                                    opacity: isActive ? 1.0 : 0.0,
+                                    duration: const Duration(milliseconds: 180),
+                                    child: Container(
+                                      height: 3,
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.5),
+                                        borderRadius: BorderRadius.circular(4),
                                       ),
                                     ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _editingPartIndex = i;
-                                        });
-                                      },
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 2.0, horizontal: 4.0),
-                                          child: Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              part.text,
-                                              textAlign: TextAlign.left,
-                                              style: TextStyle(
-                                                fontSize: _contentFontSize,
-                                                fontWeight: part.bold
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                                color: Colors.black87,
-                                                decoration: part.underline
-                                                    ? TextDecoration.underline
-                                                    : TextDecoration.none,
-                                                decorationColor: part.underline && part.underlineColor != null
-                                                    ? Color(part.underlineColor!)
-                                                    : null,
-                                                decorationThickness: part.underline ? 2.5 : null,
-                                              ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _editingPartIndex = i;
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(6),
+                                        color: part.highlight &&
+                                                part.highlightColor != null
+                                            ? Color(part.highlightColor!)
+                                            : Colors.transparent,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 2.0, horizontal: 4.0),
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            part.text,
+                                            textAlign: TextAlign.left,
+                                            style: TextStyle(
+                                              fontSize: _contentFontSize,
+                                              fontWeight: part.bold
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: Colors.black87,
+                                              decoration: part.underline
+                                                  ? TextDecoration.underline
+                                                  : TextDecoration.none,
+                                              decorationColor: part.underline &&
+                                                      part.underlineColor !=
+                                                          null
+                                                  ? Color(part.underlineColor!)
+                                                  : null,
+                                              decorationThickness:
+                                                  part.underline ? 2.5 : null,
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ],
-                                );
-                              },
-                            ),
-                          );
-                        }
-                      }),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        );
+                      }
+                    }),
+                  ),
+                  const SizedBox(height: 8),
+                  // Campo de escritura continua (aplica formato actual)
+                  Container(
+                    decoration: const BoxDecoration(
+                      border: Border.fromBorderSide(BorderSide.none),
+                      color: Colors.transparent,
                     ),
-                    const SizedBox(height: 8),
-                    // Campo de escritura continua
-                    Container(
-                      decoration: const BoxDecoration(
-                        border: Border.fromBorderSide(BorderSide.none),
-                        color: Colors.transparent,
+                    child: TextField(
+                      controller: _hiddenController,
+                      focusNode: _hiddenFocus,
+                      maxLines: null,
+                      minLines: 1,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      cursorColor: Colors.amber,
+                      style: TextStyle(
+                        fontSize: _contentFontSize,
+                        fontWeight: _contentFormat.bold
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: Colors.black87,
+                        decoration: _contentFormat.underline
+                            ? TextDecoration.underline
+                            : TextDecoration.none,
+                        decorationColor: _contentFormat.underline
+                            ? _contentFormat.underlineColor
+                            : null,
+                        decorationThickness:
+                            _contentFormat.underline ? 2.5 : null,
+                        backgroundColor: _contentFormat.highlight
+                            ? _contentFormat.highlightColor
+                            : Colors.transparent,
                       ),
-                      child: TextField(
-                        controller: _hiddenController,
-                        focusNode: _hiddenFocus,
-                        maxLines: null,
-                        minLines: 1,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        cursorColor: Colors.amber,
-            style: TextStyle(
-              fontSize: _contentFontSize,
-              fontWeight: _contentFormat.bold
-                ? FontWeight.bold
-                : FontWeight.normal,
-              color: Colors.black87,
-              decoration: _contentFormat.underline
-                ? TextDecoration.underline
-                : TextDecoration.none,
-              decorationColor: _contentFormat.underline
-                ? _contentFormat.underlineColor
-                : null,
-              decorationThickness: _contentFormat.underline ? 2.5 : null,
-            ),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                          hintText: 'Escribe aquí... (Enter para nueva línea)',
-                          fillColor: Colors.transparent,
-                          filled: true,
-                        ),
-                        textAlign: TextAlign.left,
-                        onChanged: (v) => _saveNote(),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                        hintText: 'Escribe aquí... (Enter para nueva línea)',
+                        fillColor: Colors.transparent,
+                        filled: true,
                       ),
+                      textAlign: TextAlign.left,
+                      onChanged: (_) => _saveNote(),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1117,6 +1173,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               _buildIconBox(
                 icon: Image.asset('assets/abc.png', width: 32, height: 32),
                 onTap: () async {
+                  // Si hay texto escrito, lo "anclamos" como segmento con el formato actual
                   if (_hiddenController.text.isNotEmpty) {
                     setState(() {
                       _contentParts.add(
@@ -1124,13 +1181,27 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           _hiddenController.text,
                           _contentFormat.bold,
                           _contentFormat.underline,
-                          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                          _contentFormat.underline
+                              ? _contentFormat.underlineColor.value
+                              : null,
+                          _contentFormat.highlight,
+                          _contentFormat.highlight
+                              ? _contentFormat.highlightColor.value
+                              : null,
                         ),
                       );
                       _hiddenController.clear();
+                      // ⛳ Regla 4: reiniciar formato tras cada segmento
+                      _contentFormat = const TextFormatValue();
                     });
                     _saveNote();
+                  } else {
+                    // No hay texto: abrimos panel con formato reseteado
+                    setState(() {
+                      _contentFormat = const TextFormatValue();
+                    });
                   }
+
                   await showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
@@ -1139,12 +1210,20 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       padding: MediaQuery.of(ctx).viewInsets,
                       child: TextFormatPanel(
                         value: _contentFormat,
-                        onChanged: (val) =>
-                            setState(() => _contentFormat = val),
-                        onClose: () => Navigator.pop(ctx),
+                        onChanged: (val) => setState(() {
+                          _contentFormat = val;
+                        }),
+                        onClose: () {
+                          Navigator.pop(ctx);
+                          // Recupera el foco para seguir escribiendo
+                          FocusScope.of(context).requestFocus(_hiddenFocus);
+                        },
                       ),
                     ),
                   );
+
+                  // Asegura foco tras cerrar
+                  FocusScope.of(context).requestFocus(_hiddenFocus);
                 },
               ),
               _buildIconBox(
@@ -1188,171 +1267,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         ),
       ),
     );
-  }
-}
-
-/// =======================================================
-/// Widget para transición de color con CustomPainter
-/// =======================================================
-class TileRevealColorTransition extends StatefulWidget {
-  final Color color;
-  final Widget child;
-  final int rows;
-  final int columns;
-  final Duration duration;
-  final Curve curve;
-
-  const TileRevealColorTransition({
-    super.key,
-    required this.color,
-    required this.child,
-    this.rows = 16,
-    this.columns = 32,
-    this.duration = const Duration(milliseconds: 900),
-    this.curve = Curves.easeInOutCubic,
-  });
-
-  @override
-  State<TileRevealColorTransition> createState() =>
-      _TileRevealColorTransitionState();
-}
-
-class _TileRevealColorTransitionState extends State<TileRevealColorTransition>
-    with SingleTickerProviderStateMixin {
-  late Color _oldColor;
-  late Color _currentColor;
-  late AnimationController _controller;
-  bool _animating = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _oldColor = widget.color;
-    _currentColor = widget.color;
-    _controller = AnimationController(vsync: this, duration: widget.duration);
-  }
-
-  @override
-  void didUpdateWidget(covariant TileRevealColorTransition oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final changedColor = widget.color.value != _currentColor.value;
-    if (changedColor) {
-      _oldColor = _currentColor;
-      _currentColor = widget.color;
-      _animating = true;
-      _controller.duration = widget.duration;
-      _controller.forward(from: 0).whenComplete(() {
-        if (!mounted) return;
-        setState(() => _animating = false);
-      });
-      _controller.addListener(() {
-        if (mounted) setState(() {});
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              CustomPaint(
-                painter: _RevealPainter(
-                  progress: _controller.value,
-                  animating: _animating,
-                  oldColor: _oldColor,
-                  newColor: _currentColor,
-                  rows: widget.rows,
-                  cols: widget.columns,
-                  curve: widget.curve,
-                ),
-              ),
-              widget.child,
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _RevealPainter extends CustomPainter {
-  final double progress; // 0..1
-  final bool animating;
-  final Color oldColor;
-  final Color newColor;
-  final int rows;
-  final int cols;
-  final Curve curve;
-
-  _RevealPainter({
-    required this.progress,
-    required this.animating,
-    required this.oldColor,
-    required this.newColor,
-    required this.rows,
-    required this.cols,
-    required this.curve,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final basePaint = Paint()..color = animating ? oldColor : newColor;
-    canvas.drawRect(Offset.zero & size, basePaint);
-
-    if (!animating) return;
-
-    final tileW = size.width / cols;
-    final tileH = size.height / rows;
-    final maxR = (tileW > tileH ? tileW : tileH) * 0.9;
-    final paintNew = Paint()..color = newColor;
-
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        final delay = (r + c) / (rows + cols); // 0..1
-        final start = delay * 0.7;
-        final end = start + 0.3;
-
-        double t;
-        if (progress <= start) {
-          t = 0.0;
-        } else if (progress >= end) {
-          t = 1.0;
-        } else {
-          t = (progress - start) / (end - start);
-        }
-
-        final eased = curve.transform(t);
-
-        final cx = (c + 0.5) * tileW;
-        final cy = (r + 0.5) * tileH;
-        final radius = maxR * eased;
-
-        if (radius > 0) {
-          canvas.drawCircle(Offset(cx, cy), radius, paintNew);
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _RevealPainter old) {
-    return progress != old.progress ||
-        animating != old.animating ||
-        oldColor.value != old.oldColor.value ||
-        newColor.value != old.newColor.value ||
-        rows != old.rows ||
-        cols != old.cols ||
-        curve != old.curve;
   }
 }
 
