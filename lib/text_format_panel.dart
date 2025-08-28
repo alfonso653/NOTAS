@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'underline_button.dart';
 
@@ -48,7 +46,6 @@ class TextFormatValue {
   }
 }
 
-
 class TextFormatPanel extends StatefulWidget {
   final VoidCallback onClose;
   final TextFormatValue value;
@@ -72,8 +69,6 @@ class _TextFormatPanelState extends State<TextFormatPanel>
   late final Animation<double> _fadeAnimation;
 
   late TextFormatValue v;
-
-  // (Campos de estilo eliminados porque no se usan directamente)
 
   @override
   void initState() {
@@ -104,7 +99,7 @@ class _TextFormatPanelState extends State<TextFormatPanel>
 
   @override
   Widget build(BuildContext context) {
-    // Panel con animación de subida y fade
+    // Panel con animación de subida y fade (UI intacta)
     return Material(
       color: Colors.transparent,
       child: GestureDetector(
@@ -127,13 +122,17 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       height: 50,
                       margin: const EdgeInsets.symmetric(horizontal: 6),
                       decoration: BoxDecoration(
-                        color: v.bold ? const Color(0xFFFFC107) : const Color(0xFFF6F7F9),
+                        color: v.bold
+                            ? const Color(0xFFFFC107)
+                            : const Color(0xFFF6F7F9),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: v.bold ? Colors.amber.shade700 : Colors.grey.shade300,
+                          color: v.bold
+                              ? Colors.amber.shade700
+                              : Colors.grey.shade300,
                           width: 2,
                         ),
-                        boxShadow: [
+                        boxShadow: const [
                           BoxShadow(
                             color: Colors.black12,
                             blurRadius: 8,
@@ -153,19 +152,23 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       ),
                     ),
                   ),
-                  // Botón Subrayado (U) con selección de color
+                  // Botón Subrayado (U) con selección de color (ya existente)
                   UnderlineButton(
                     selected: v.underline,
                     color: v.underlineColor,
                     onTap: () => _set(v.copyWith(underline: !v.underline)),
-                    onColorSelected: (color) => _set(v.copyWith(underline: true, underlineColor: color)),
+                    onColorSelected: (color) => _set(
+                      v.copyWith(underline: true, underlineColor: color),
+                    ),
                   ),
                   // Botón Resaltado (Highlight) con selección de color pastel
                   HighlightButton(
                     selected: v.highlight,
                     color: v.highlightColor,
                     onTap: () => _set(v.copyWith(highlight: !v.highlight)),
-                    onColorSelected: (color) => _set(v.copyWith(highlight: true, highlightColor: color)),
+                    onColorSelected: (color) => _set(
+                      v.copyWith(highlight: true, highlightColor: color),
+                    ),
                   ),
                 ],
               ),
@@ -177,9 +180,7 @@ class _TextFormatPanelState extends State<TextFormatPanel>
   }
 }
 
-
-
-// Widget para el botón de resaltado con selección de color pastel
+// Widget para el botón de resaltado con selección de color pastel (UI intacta)
 class HighlightButton extends StatelessWidget {
   final bool selected;
   final Color color;
@@ -220,7 +221,7 @@ class HighlightButton extends StatelessWidget {
                 color: selected ? Colors.amber.shade700 : Colors.grey.shade300,
                 width: 2,
               ),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: Colors.black12,
                   blurRadius: 8,
@@ -239,22 +240,28 @@ class HighlightButton extends StatelessWidget {
         if (selected)
           Row(
             mainAxisSize: MainAxisSize.min,
-            children: pastelColors.map((c) => GestureDetector(
-              onTap: () => onColorSelected(c),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: c,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: color == c ? Colors.black87 : Colors.transparent,
-                    width: 2,
+            children: pastelColors
+                .map(
+                  (c) => GestureDetector(
+                    onTap: () => onColorSelected(c),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 2, vertical: 4),
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: c,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              color == c ? Colors.black87 : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            )).toList(),
+                )
+                .toList(),
           ),
       ],
     );
