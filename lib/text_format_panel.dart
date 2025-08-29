@@ -230,10 +230,12 @@ class HighlightButton extends StatelessWidget {
               ],
             ),
             alignment: Alignment.center,
-            child: Icon(
-              Icons.format_color_fill,
-              color: selected ? Colors.white : Colors.black54,
-              size: 26,
+            child: Text(
+              '🖍️',
+              style: TextStyle(
+                fontSize: 26,
+                color: selected ? Colors.white : Colors.black54,
+              ),
             ),
           ),
         ),
