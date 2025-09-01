@@ -977,7 +977,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           ),
                         );
                       } else {
-                        // Vista del segmento (con underline + highlight aplicados)
+                        // Vista del segmento (resaltado solo en el texto escrito, sin expandirse)
                         return LongPressDraggable<int>(
                           data: i,
                           feedback: Material(
@@ -985,27 +985,26 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
                                   vertical: 2.0, horizontal: 4.0),
-                              child: Text(
-                                part.text,
-                                style: TextStyle(
-                                  fontSize: _contentFontSize,
-                                  fontWeight: part.bold
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  color: Colors.black54,
-                                  decoration: part.underline
-                                      ? TextDecoration.underline
-                                      : TextDecoration.none,
-                                  decorationColor: part.underline &&
-                                          part.underlineColor != null
-                                      ? Color(part.underlineColor!)
-                                      : null,
-                                  decorationThickness:
-                                      part.underline ? 2.5 : null,
-                                  backgroundColor: part.highlight &&
-                                          part.highlightColor != null
-                                      ? Color(part.highlightColor!)
-                                      : Colors.transparent,
+                              child: RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: part.text,
+                                      style: TextStyle(
+                                        fontSize: _contentFontSize,
+                                        fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
+                                        color: Colors.black54,
+                                        decoration: part.underline ? TextDecoration.underline : TextDecoration.none,
+                                        decorationColor: part.underline && part.underlineColor != null
+                                            ? Color(part.underlineColor!)
+                                            : null,
+                                        decorationThickness: part.underline ? 2.5 : null,
+                                        backgroundColor: part.highlight && part.highlightColor != null
+                                            ? Color(part.highlightColor!)
+                                            : Colors.transparent,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -1049,39 +1048,31 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         _editingPartIndex = i;
                                       });
                                     },
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(6),
-                                        color: part.highlight &&
-                                                part.highlightColor != null
-                                            ? Color(part.highlightColor!)
-                                            : Colors.transparent,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 2.0, horizontal: 4.0),
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            part.text,
-                                            textAlign: TextAlign.left,
-                                            style: TextStyle(
-                                              fontSize: _contentFontSize,
-                                              fontWeight: part.bold
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                              color: Colors.black87,
-                                              decoration: part.underline
-                                                  ? TextDecoration.underline
-                                                  : TextDecoration.none,
-                                              decorationColor: part.underline &&
-                                                      part.underlineColor !=
-                                                          null
-                                                  ? Color(part.underlineColor!)
-                                                  : null,
-                                              decorationThickness:
-                                                  part.underline ? 2.5 : null,
-                                            ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 2.0, horizontal: 4.0),
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: RichText(
+                                          text: TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text: part.text,
+                                                style: TextStyle(
+                                                  fontSize: _contentFontSize,
+                                                  fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
+                                                  color: Colors.black87,
+                                                  decoration: part.underline ? TextDecoration.underline : TextDecoration.none,
+                                                  decorationColor: part.underline && part.underlineColor != null
+                                                      ? Color(part.underlineColor!)
+                                                      : null,
+                                                  decorationThickness: part.underline ? 2.5 : null,
+                                                  backgroundColor: part.highlight && part.highlightColor != null
+                                                      ? Color(part.highlightColor!)
+                                                      : Colors.transparent,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
