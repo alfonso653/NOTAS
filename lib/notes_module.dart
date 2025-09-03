@@ -1257,6 +1257,32 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ),
         ),
       ),
+      // ======= BOTÓN FLOTANTE MICRÓFONO =======
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'audio_mic',
+        backgroundColor: Colors.white,
+        child: Image.asset(
+          'assets/audio.gif',
+          width: 40,
+          height: 40,
+        ),
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Grabar audio'),
+              content: const Text('Función de grabar audio próximamente.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

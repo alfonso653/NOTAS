@@ -32,6 +32,7 @@ flutter:
     - assets/mas.png
     - assets/nota.gif
     - assets/pendientes.gif
+    - assets/audio.gif
     - assets/compartir.png
     - assets/fonts/Nunito-Bold.ttf
     - assets/fonts/Nunito-BoldItalic.ttf
