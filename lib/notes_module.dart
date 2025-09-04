@@ -14,8 +14,10 @@ import 'dart:typed_data';
 import 'dart:io';
 import 'dart:convert';
 
+
 import 'text_format_panel.dart';
 import 'note.dart';
+import 'audio_mic_fab.dart';
 
 // Variable global para controlar el Snackbar solo en guardado manual
 bool _showSavedSnackbar = false;
@@ -473,7 +475,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   Widget build(BuildContext context) {
     const double _bottomBarHeight = 72.0;
 
-    return Scaffold(
+  return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: _noteColor,
       appBar: AppBar(
@@ -1257,32 +1259,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ),
         ),
       ),
-      // ======= BOTÓN FLOTANTE MICRÓFONO =======
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'audio_mic',
-        backgroundColor: Colors.white,
-        child: Image.asset(
-          'assets/audio.gif',
-          width: 40,
-          height: 40,
-        ),
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Grabar audio'),
-              content: const Text('Función de grabar audio próximamente.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+  // ======= BOTÓN FLOTANTE MICRÓFONO =======
+  floatingActionButton: AudioMicFAB(),
+  floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
     );
   }
 }
