@@ -1259,8 +1259,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ),
         ),
       ),
-  // ======= BOTÓN FLOTANTE MICRÓFONO =======
-  floatingActionButton: AudioMicFAB(),
+  // ======= BOTÓN DE AUDIO =======
+  floatingActionButton: AudioButton(noteId: widget.note.id.toString()),
   floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
     );
