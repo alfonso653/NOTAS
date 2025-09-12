@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "NOTAS"
 include(":app")
+include(":app")
  

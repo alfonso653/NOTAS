@@ -100,9 +100,37 @@ class _AudioButtonState extends State<AudioButton> {
 							),
 						),
 				SizedBox(height: 8),
-				IconButton(
-					icon: Icon(Icons.more_vert),
-					onPressed: _showAudioList,
+				GestureDetector(
+					onTap: _showAudioList,
+					child: Container(
+						decoration: BoxDecoration(
+							color: Colors.white,
+							borderRadius: BorderRadius.circular(16),
+							boxShadow: [
+								BoxShadow(
+									color: Colors.black12,
+									blurRadius: 8,
+									offset: Offset(0, 2),
+								),
+							],
+						),
+						padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+						child: Text(
+							'🎼',
+							style: TextStyle(
+								fontSize: 32,
+								fontWeight: FontWeight.bold,
+								color: Colors.purpleAccent,
+								shadows: [
+									Shadow(
+										color: Colors.purpleAccent.withOpacity(0.3),
+										blurRadius: 6,
+										offset: Offset(0, 2),
+									),
+								],
+							),
+						),
+					),
 				),
 			],
 		);
