@@ -5,6 +5,19 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDuration(Duration d) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final m = two(d.inMinutes);
+    final s = two(d.inSeconds % 60);
+    return "$m:$s";
+  }
+
 /// Modelo de audio
 class _AudioInfo {
   final File file;
@@ -173,6 +186,7 @@ class _AudioButtonState extends State<AudioButton> {
       final metaFile = File(audio.file.path + '.json');
       if (await metaFile.exists()) await metaFile.delete();
       await _loadAudioFiles();
+      setState(() {});
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error eliminando audio: $e')),
@@ -184,149 +198,127 @@ class _AudioButtonState extends State<AudioButton> {
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
-        return Container(
-          color: const Color(0xFFF8F3E8),
-          child: ListView(
-            children: _audioFiles.map((audio) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              color: const Color(0xFFF8F3E8),
+              child: ListView(
+                children: _audioFiles.map((audio) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: ListTile(
-                    title: Text(
-                      "${_formatDate(audio.date)}   -   ${_formatDuration(audio.duration)}",
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // ▶️ / ⏸️ con emojis
-                        IconButton(
-                          icon: Text(
-                            audio.isPlaying ? '⏸️' : '▶️',
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                          onPressed: () => _playOrToggle(audio),
+                      child: ListTile(
+                        title: Text(
+                          "${_formatDate(audio.date)}   -   ${_formatDuration(audio.duration)}",
+                          style: const TextStyle(fontSize: 14),
                         ),
-                        // 🗑️ con emoji
-                        IconButton(
-                          icon: const Text(
-                            '🗑️',
-                            style: TextStyle(fontSize: 22),
-                          ),
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                title: const Text("¿Eliminar seguro?"),
-                                content: const Text(
-                                    "Esta acción no se puede deshacer."),
-                                actions: [
-                                  TextButton(
-                                    child: const Text("Cancelar"),
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(false),
-                                  ),
-                                  TextButton(
-                                    child: const Text("Eliminar",
-                                        style: TextStyle(color: Colors.red)),
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(true),
-                                  ),
-                                ],
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Text(
+                                audio.isPlaying ? '⏸️' : '▶️',
+                                style: const TextStyle(fontSize: 22),
                               ),
-                            );
-
-                            if (confirm == true) {
-                              Navigator.of(context).pop();
-                              await Future.delayed(
-                                  const Duration(milliseconds: 200));
-                              await _deleteAudio(audio);
-                            }
-                          },
+                              onPressed: () async {
+                                await _playOrToggle(audio);
+                                setModalState(() {});
+                              },
+                            ),
+                            IconButton(
+                              icon: const Text(
+                                '🗑️',
+                                style: TextStyle(fontSize: 22),
+                              ),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12)),
+                                    title: const Text("¿Eliminar seguro?"),
+                                    content: const Text(
+                                        "Esta acción no se puede deshacer."),
+                                    actions: [
+                                      TextButton(
+                                        child: const Text("Cancelar"),
+                                        onPressed: () => Navigator.of(ctx).pop(false),
+                                      ),
+                                      TextButton(
+                                        child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
+                                        onPressed: () => Navigator.of(ctx).pop(true),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  await _deleteAudio(audio);
+                                  setModalState(() {});
+                                }
+                              },
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
+                  );
+                }).toList(),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year} '
-        '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
-  }
-
-  String _formatDuration(Duration d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    final m = two(d.inMinutes);
-    final s = two(d.inSeconds % 60);
-    return "$m:$s";
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 80,
-      right: 16,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_isRecording)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Text(
-                _formatDuration(_recordDuration),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_isRecording)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4.0),
+            child: Text(
+              _formatDuration(_recordDuration),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
             ),
-          // 🔴 / 🟢
-          FloatingActionButton(
-            heroTag: "recorder_btn",
-            backgroundColor: Colors.white,
-            onPressed: _isRecording ? _stopRecording : _startRecording,
-            child: Text(
-              _isRecording ? '🔴' : '🟢',
-              style: const TextStyle(fontSize: 26),
-            ),
           ),
-          const SizedBox(height: 12),
-          // 🎼
-          FloatingActionButton(
-            heroTag: "list_btn",
-            backgroundColor: Colors.white,
-            onPressed: _showAudioList,
-            child: const Text(
-              '🎼',
-              style: TextStyle(fontSize: 24, color: Colors.purpleAccent),
-            ),
+        FloatingActionButton(
+          heroTag: "recorder_btn",
+          backgroundColor: Colors.white,
+          onPressed: _isRecording ? _stopRecording : _startRecording,
+          child: Text(
+            _isRecording ? '🔴' : '🟢',
+            style: const TextStyle(fontSize: 26),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 12),
+        FloatingActionButton(
+          heroTag: "list_btn",
+          backgroundColor: Colors.white,
+          onPressed: _showAudioList,
+          child: const Text(
+            '🎼',
+            style: TextStyle(fontSize: 24, color: Colors.purpleAccent),
+          ),
+        ),
+      ],
     );
   }
 }
