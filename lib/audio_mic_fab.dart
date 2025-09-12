@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+
+Duration _recordDuration = Duration.zero;
+late DateTime _recordStart;
+Timer? _timer;
 
 class AudioButton extends StatefulWidget {
 	final String noteId;
@@ -39,7 +44,16 @@ class _AudioButtonState extends State<AudioButton> {
 	}
 
 		Future<void> _startRecording() async {
-			setState(() { _isRecording = true; }); // Cambia a rojo antes de iniciar grabación
+			setState(() {
+				_isRecording = true;
+				_recordDuration = Duration.zero;
+			});
+			_recordStart = DateTime.now();
+			_timer = Timer.periodic(Duration(seconds: 1), (timer) {
+				setState(() {
+					_recordDuration = DateTime.now().difference(_recordStart);
+				});
+			});
 			final dir = await getApplicationDocumentsDirectory();
 			final noteDir = Directory('${dir.path}/audio_${widget.noteId}');
 			if (!await noteDir.exists()) await noteDir.create();
@@ -48,9 +62,10 @@ class _AudioButtonState extends State<AudioButton> {
 		}
 
 	Future<void> _stopRecording() async {
-		await _recorder.stopRecorder();
-		setState(() { _isRecording = false; });
-		await _loadAudioFiles();
+	await _recorder.stopRecorder();
+	_timer?.cancel();
+	setState(() { _isRecording = false; });
+	await _loadAudioFiles();
 	}
 
 	Future<void> _playAudio(File file) async {
@@ -86,6 +101,9 @@ class _AudioButtonState extends State<AudioButton> {
 		return Column(
 			mainAxisSize: MainAxisSize.min,
 			children: [
+				Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
 						AnimatedScale(
 							scale: _isRecording ? 1.2 : 1.0,
 							duration: Duration(milliseconds: 300),
@@ -99,6 +117,20 @@ class _AudioButtonState extends State<AudioButton> {
 								onPressed: _isRecording ? _stopRecording : _startRecording,
 							),
 						),
+						if (_isRecording)
+							Padding(
+								padding: const EdgeInsets.only(left: 8.0),
+								child: Text(
+									_formatDuration(_recordDuration),
+									style: TextStyle(
+										fontSize: 20,
+										fontWeight: FontWeight.bold,
+										color: Colors.black87,
+									),
+								),
+							),
+					],
+				),
 				SizedBox(height: 8),
 				GestureDetector(
 					onTap: _showAudioList,
@@ -134,5 +166,13 @@ class _AudioButtonState extends State<AudioButton> {
 				),
 			],
 		);
+
+	}
+
+	String _formatDuration(Duration d) {
+		String twoDigits(int n) => n.toString().padLeft(2, '0');
+		final m = twoDigits(d.inMinutes);
+		final s = twoDigits(d.inSeconds % 60);
+		return "$m:$s";
 	}
 }
