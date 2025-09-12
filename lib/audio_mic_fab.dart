@@ -1,8 +1,17 @@
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+
+// Modelo para guardar info de audio
+class _AudioInfo {
+	final File file;
+	final DateTime date;
+	final Duration duration;
+	_AudioInfo({required this.file, required this.date, required this.duration});
+}
 
 Duration _recordDuration = Duration.zero;
 late DateTime _recordStart;
@@ -19,7 +28,8 @@ class _AudioButtonState extends State<AudioButton> {
 	final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
 	final FlutterSoundPlayer _player = FlutterSoundPlayer();
 	bool _isRecording = false;
-	List<File> _audioFiles = [];
+	List<_AudioInfo> _audioFiles = [];
+
 
 	@override
 	void initState() {
@@ -36,14 +46,44 @@ class _AudioButtonState extends State<AudioButton> {
 	Future<void> _loadAudioFiles() async {
 		final dir = await getApplicationDocumentsDirectory();
 		final noteDir = Directory('${dir.path}/audio_${widget.noteId}');
+		List<_AudioInfo> audios = [];
 		if (await noteDir.exists()) {
+			for (var file in noteDir.listSync().whereType<File>()) {
+				if (file.path.endsWith('.aac')) {
+					// Buscar archivo de metadata
+					final metaFile = File(file.path + '.json');
+					if (await metaFile.exists()) {
+						final meta = await metaFile.readAsString();
+						final data = meta.split('|');
+						audios.add(_AudioInfo(
+							file: file,
+							date: DateTime.tryParse(data[0]) ?? DateTime.now(),
+							duration: Duration(seconds: int.tryParse(data[1]) ?? 0),
+						));
+					} else {
+						audios.add(_AudioInfo(
+							file: file,
+							date: file.lastModifiedSync(),
+							duration: Duration.zero,
+						));
+					}
+				}
+			}
 			setState(() {
-				_audioFiles = noteDir.listSync().whereType<File>().toList();
+				_audioFiles = audios;
 			});
 		}
 	}
 
 		Future<void> _startRecording() async {
+			// Solicitar permiso de micrófono
+			var status = await Permission.microphone.request();
+			if (!status.isGranted) {
+				ScaffoldMessenger.of(context).showSnackBar(
+					SnackBar(content: Text('Permiso de micrófono denegado')),
+				);
+				return;
+			}
 			setState(() {
 				_isRecording = true;
 				_recordDuration = Duration.zero;
@@ -62,10 +102,22 @@ class _AudioButtonState extends State<AudioButton> {
 		}
 
 	Future<void> _stopRecording() async {
-	await _recorder.stopRecorder();
-	_timer?.cancel();
-	setState(() { _isRecording = false; });
-	await _loadAudioFiles();
+		await _recorder.stopRecorder();
+		_timer?.cancel();
+		setState(() { _isRecording = false; });
+		// Guardar metadata
+		final dir = await getApplicationDocumentsDirectory();
+		final noteDir = Directory('${dir.path}/audio_${widget.noteId}');
+		if (await noteDir.exists()) {
+			// Buscar el último archivo .aac creado
+			final files = noteDir.listSync().whereType<File>().where((f) => f.path.endsWith('.aac')).toList();
+			if (files.isNotEmpty) {
+				final lastFile = files.reduce((a, b) => a.lastModifiedSync().isAfter(b.lastModifiedSync()) ? a : b);
+				final metaFile = File(lastFile.path + '.json');
+				await metaFile.writeAsString('${DateTime.now().toIso8601String()}|${_recordDuration.inSeconds}');
+			}
+		}
+		await _loadAudioFiles();
 	}
 
 	Future<void> _playAudio(File file) async {
@@ -84,17 +136,21 @@ class _AudioButtonState extends State<AudioButton> {
 			context: context,
 			builder: (ctx) {
 				return ListView(
-					children: _audioFiles.map((file) => ListTile(
-						title: Text(file.path.split('/').last),
-						trailing: IconButton(
-							icon: Icon(Icons.play_arrow),
-							onPressed: () => _playAudio(file),
-						),
+					children: _audioFiles.map((audio) => ListTile(
+						title: Text(_formatDate(audio.date)),
+						subtitle: Text('Duración: ${_formatDuration(audio.duration)}'),
+									trailing: IconButton(
+										icon: Text('🔊', style: TextStyle(fontSize: 24)),
+										onPressed: () => _playAudio(audio.file),
+									),
 					)).toList(),
 				);
 			},
 		);
 	}
+String _formatDate(DateTime date) {
+	return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+}
 
 	@override
 	Widget build(BuildContext context) {
