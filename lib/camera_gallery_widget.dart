@@ -56,6 +56,13 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
                 onTap: () => _pickImage(ImageSource.gallery),
                 color: theme.primaryColor,
               ),
+              if (_image != null) ...[
+                const SizedBox(height: 22),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(_image!, height: 120, fit: BoxFit.cover),
+                ),
+              ],
             ],
           ),
         ),
