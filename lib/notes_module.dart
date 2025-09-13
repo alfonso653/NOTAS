@@ -18,6 +18,7 @@ import 'dart:convert';
 import 'text_format_panel.dart';
 import 'note.dart';
 import 'audio_mic_fab.dart';
+import 'camera_gallery_widget.dart';
 
 // Variable global para controlar el Snackbar solo en guardado manual
 bool _showSavedSnackbar = false;
@@ -1221,21 +1222,16 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               ),
               _buildIconBox(
                 icon: Image.asset('assets/camara.png', width: 32, height: 32),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Foto'),
-                      content:
-                          const Text('Función de añadir foto próximamente.'),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK')),
-                      ],
-                    ),
-                  );
-                },
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      ),
+                      builder: (ctx) => CameraGalleryWidget(),
+                    );
+                  },
               ),
               _buildIconBox(
                 icon: Image.asset('assets/IA.png', width: 32, height: 32),
