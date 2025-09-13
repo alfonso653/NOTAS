@@ -874,39 +874,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     children: List.generate(_contentParts.length, (i) {
                       final part = _contentParts[i];
                       if (_editingPartIndex == i) {
-                        _partControllers[i] ??=
-                            TextEditingController(text: part.text);
-
-                        // Sincroniza el panel con el formato del segmento al entrar en edición
-                        if (_contentFormat.bold != part.bold ||
-                            _contentFormat.underline != part.underline ||
-                            (_contentFormat.underline &&
-                                part.underlineColor != null &&
-                                _contentFormat.underlineColor.value !=
-                                    part.underlineColor) ||
-                            _contentFormat.highlight != part.highlight ||
-                            (_contentFormat.highlight &&
-                                part.highlightColor != null &&
-                                _contentFormat.highlightColor.value !=
-                                    part.highlightColor)) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (!mounted) return;
-                            setState(() {
-                              _contentFormat = TextFormatValue(
-                                bold: part.bold,
-                                underline: part.underline,
-                                underlineColor: part.underlineColor != null
-                                    ? Color(part.underlineColor!)
-                                    : _contentFormat.underlineColor,
-                                highlight: part.highlight,
-                                highlightColor: part.highlightColor != null
-                                    ? Color(part.highlightColor!)
-                                    : _contentFormat.highlightColor,
-                              );
-                            });
-                          });
-                        }
-
+                        _partControllers[i] ??= TextEditingController(text: part.text);
                         return Focus(
                           onFocusChange: (hasFocus) {
                             if (!hasFocus) {
@@ -935,27 +903,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             maxLines: null,
                             style: TextStyle(
                               fontSize: _contentFontSize,
-                              fontWeight: _contentFormat.bold
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                              fontWeight: _contentFormat.bold ? FontWeight.bold : FontWeight.normal,
                               color: Colors.black87,
-                              decoration: _contentFormat.underline
-                                  ? TextDecoration.underline
-                                  : TextDecoration.none,
-                              decorationColor: _contentFormat.underline
-                                  ? _contentFormat.underlineColor
-                                  : null,
-                              decorationThickness:
-                                  _contentFormat.underline ? 2.5 : null,
-                              backgroundColor: _contentFormat.highlight
-                                  ? _contentFormat.highlightColor
-                                  : Colors.transparent,
+                              decoration: _contentFormat.underline ? TextDecoration.underline : TextDecoration.none,
+                              decorationColor: _contentFormat.underline ? _contentFormat.underlineColor : null,
+                              decorationThickness: _contentFormat.underline ? 2.5 : null,
+                              backgroundColor: _contentFormat.highlight ? _contentFormat.highlightColor : Colors.transparent,
                             ),
                             textAlign: TextAlign.left,
                             decoration: const InputDecoration(
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             ),
                             onChanged: (_) => setHasUnsavedChanges(true),
                             onSubmitted: (value) {
@@ -964,13 +922,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   value,
                                   _contentFormat.bold,
                                   _contentFormat.underline,
-                                  _contentFormat.underline
-                                      ? _contentFormat.underlineColor.value
-                                      : null,
+                                  _contentFormat.underline ? _contentFormat.underlineColor.value : null,
                                   _contentFormat.highlight,
-                                  _contentFormat.highlight
-                                      ? _contentFormat.highlightColor.value
-                                      : null,
+                                  _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
                                 );
                                 _editingPartIndex = null;
                                 _partControllers.remove(i);
@@ -980,14 +934,29 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           ),
                         );
                       } else {
+                        // Si el segmento es una ruta de imagen, mostrar preview
+                        final isImage = part.text.startsWith('/data/') || part.text.startsWith('C:/') || part.text.startsWith('D:/');
+                        final isImageFile = part.text.endsWith('.jpg') || part.text.endsWith('.jpeg') || part.text.endsWith('.png');
+                        if (isImage && isImageFile) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                File(part.text),
+                                height: 160,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          );
+                        }
                         // Vista del segmento (resaltado solo en el texto escrito, sin expandirse)
                         return LongPressDraggable<int>(
                           data: i,
                           feedback: Material(
                             color: Colors.transparent,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 2.0, horizontal: 4.0),
+                              padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
                               child: RichText(
                                 text: TextSpan(
                                   children: [
@@ -998,13 +967,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
                                         color: Colors.black54,
                                         decoration: part.underline ? TextDecoration.underline : TextDecoration.none,
-                                        decorationColor: part.underline && part.underlineColor != null
-                                            ? Color(part.underlineColor!)
-                                            : null,
+                                        decorationColor: part.underline && part.underlineColor != null ? Color(part.underlineColor!) : null,
                                         decorationThickness: part.underline ? 2.5 : null,
-                                        backgroundColor: part.highlight && part.highlightColor != null
-                                            ? Color(part.highlightColor!)
-                                            : Colors.transparent,
+                                        backgroundColor: part.highlight && part.highlightColor != null ? Color(part.highlightColor!) : Colors.transparent,
                                       ),
                                     ),
                                   ],
@@ -1019,8 +984,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             onAccept: (from) {
                               setState(() {
                                 final moved = _contentParts.removeAt(from);
-                                _contentParts.insert(
-                                    _dropInsertIndex ?? i, moved);
+                                _contentParts.insert(_dropInsertIndex ?? i, moved);
                                 _dropInsertIndex = null;
                                 _saveNote();
                               });
@@ -1037,8 +1001,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     duration: const Duration(milliseconds: 180),
                                     child: Container(
                                       height: 3,
-                                      margin: const EdgeInsets.symmetric(
-                                          horizontal: 12),
+                                      margin: const EdgeInsets.symmetric(horizontal: 12),
                                       decoration: BoxDecoration(
                                         color: Colors.blue.withOpacity(0.5),
                                         borderRadius: BorderRadius.circular(4),
@@ -1052,8 +1015,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                       });
                                     },
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 2.0, horizontal: 4.0),
+                                      padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
                                       child: Align(
                                         alignment: Alignment.centerLeft,
                                         child: RichText(
@@ -1066,13 +1028,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                                   fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
                                                   color: Colors.black87,
                                                   decoration: part.underline ? TextDecoration.underline : TextDecoration.none,
-                                                  decorationColor: part.underline && part.underlineColor != null
-                                                      ? Color(part.underlineColor!)
-                                                      : null,
+                                                  decorationColor: part.underline && part.underlineColor != null ? Color(part.underlineColor!) : null,
                                                   decorationThickness: part.underline ? 2.5 : null,
-                                                  backgroundColor: part.highlight && part.highlightColor != null
-                                                      ? Color(part.highlightColor!)
-                                                      : Colors.transparent,
+                                                  backgroundColor: part.highlight && part.highlightColor != null ? Color(part.highlightColor!) : Colors.transparent,
                                                 ),
                                               ),
                                             ],
@@ -1223,14 +1181,26 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               _buildIconBox(
                 icon: Image.asset('assets/camara.png', width: 32, height: 32),
                   onTap: () {
-                    showModalBottomSheet(
+                    showModalBottomSheet<File?>(
                       context: context,
                       isScrollControlled: true,
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                       ),
                       builder: (ctx) => CameraGalleryWidget(),
-                    );
+                    ).then((selectedImage) {
+                      if (selectedImage != null) {
+                        setState(() {
+                          _contentParts.add(
+                            _TextPart(
+                              selectedImage.path,
+                              false,
+                            ),
+                          );
+                        });
+                        _saveNote();
+                      }
+                    });
                   },
               ),
               _buildIconBox(

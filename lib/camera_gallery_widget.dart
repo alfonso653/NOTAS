@@ -19,6 +19,8 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
       setState(() {
         _image = File(pickedFile.path);
       });
+      // Devuelve la imagen al cerrar el modal
+      Navigator.of(context).pop(_image);
     }
   }
 
