@@ -40,14 +40,6 @@ class NotesApp extends StatelessWidget {
 
 class HomeScreen extends StatefulWidget {
   /// Formatea la fecha guardada en el campo [date] para mostrar fecha y hora sin milisegundos.
-  String _formatDateTime(String dateStr) {
-    try {
-      final dt = DateTime.parse(dateStr);
-      return "${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
-    } catch (_) {
-      return dateStr;
-    }
-  }
 
   const HomeScreen({super.key});
 
@@ -406,20 +398,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showSearchDialog() async {
     final categorias = [
-  '',
-  'Sermón',
-  'Estudio Bíblico',
-  'Reflexión',
-  'Devocional',
-  'Testimonio',
-  'Apuntes Generales',
-  'Discipulado',
-  'Conexion',
-  'Música',
-  'Cita',
-  'Versículo',
-  'Oración',
-  'Otro',
+      '',
+      'Sermón',
+      'Estudio Bíblico',
+      'Reflexión',
+      'Devocional',
+      'Testimonio',
+      'Apuntes Generales',
+      'Discipulado',
+      'Conexion',
+      'Música',
+      'Cita',
+      'Versículo',
+      'Oración',
+      'Otro',
     ];
     String tempQuery = _searchQuery;
     String tempCategory = _searchCategory;
@@ -508,17 +500,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  List<Widget> get _pages => [
-        NoteListScreen(
-          searchQuery: _searchQuery,
-          searchCategory: _searchCategory,
-          selectedDate: _selectedDate,
-          selectedTimeFrom: _selectedTimeFrom,
-          selectedTimeTo: _selectedTimeTo,
-        ),
-        PendingScreen(
-            searchQuery: _searchQuery, searchCategory: _searchCategory),
-      ];
 
   void _onItemTapped(int index) {
     setState(() {

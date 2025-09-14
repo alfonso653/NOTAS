@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class CameraGalleryWidget extends StatefulWidget {
   const CameraGalleryWidget({Key? key}) : super(key: key);
@@ -14,61 +14,46 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await _picker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-      // Devuelve la imagen al cerrar el modal
+    final picked = await _picker.pickImage(source: source);
+    if (picked != null) {
+      _image = File(picked.path);
+      // Devolvemos la imagen seleccionada y cerramos el modal
       Navigator.of(context).pop(_image);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-      final theme = Theme.of(context);
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.80),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 24,
-              offset: Offset(0, -8),
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _IconTextButton(
+              icon: Icons.camera_alt,
+              label: 'Tomar foto',
+              onTap: () => _pickImage(ImageSource.camera),
+              color: theme.primaryColor,
             ),
+            const SizedBox(height: 14),
+            _IconTextButton(
+              icon: Icons.photo_library,
+              label: 'Elegir de galería',
+              onTap: () => _pickImage(ImageSource.gallery),
+              color: theme.primaryColor,
+            ),
+            const SizedBox(height: 8),
           ],
         ),
-        child: IntrinsicHeight(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _IconTextButton(
-                icon: Icons.camera_alt,
-                label: 'Tomar Foto',
-                onTap: () => _pickImage(ImageSource.camera),
-                color: theme.primaryColor,
-              ),
-              const SizedBox(height: 18),
-              _IconTextButton(
-                icon: Icons.photo_library,
-                label: 'Galería',
-                onTap: () => _pickImage(ImageSource.gallery),
-                color: theme.primaryColor,
-              ),
-              if (_image != null) ...[
-                const SizedBox(height: 22),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(_image!, height: 120, fit: BoxFit.cover),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
+      ),
+    );
   }
 }
 
@@ -89,19 +74,25 @@ class _IconTextButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color.withOpacity(0.12),
-      borderRadius: BorderRadius.circular(32),
+      color: color.withOpacity(0.10),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: color, size: 26),
+              Icon(icon, color: color),
               const SizedBox(width: 10),
-              Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 16)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),

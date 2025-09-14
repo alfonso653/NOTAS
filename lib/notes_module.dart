@@ -14,7 +14,6 @@ import 'dart:typed_data';
 import 'dart:io';
 import 'dart:convert';
 
-
 import 'text_format_panel.dart';
 import 'note.dart';
 import 'audio_mic_fab.dart';
@@ -27,6 +26,7 @@ bool _showSavedSnackbar = false;
 // Modelo de segmento (_TextPart)
 // =========================
 // ⛳ Añadí/aseguré highlight y highlightColor (int) y su (de)serialización.
+// ⛳ Ahora soporta segmentos de imagen con tamaño persistente.
 class _TextPart {
   final String text;
   final bool bold;
@@ -34,6 +34,12 @@ class _TextPart {
   final int? underlineColor;
   final bool highlight;
   final int? highlightColor;
+
+  // NUEVO: marca si es imagen y sus dimensiones
+  final bool isImage;
+  final double? imageWidth;
+  final double? imageHeight;
+
   _TextPart(
     this.text,
     this.bold, [
@@ -41,6 +47,9 @@ class _TextPart {
     this.underlineColor,
     this.highlight = false,
     this.highlightColor,
+    this.isImage = false,
+    this.imageWidth,
+    this.imageHeight,
   ]);
 
   Map<String, dynamic> toJson() => {
@@ -50,6 +59,9 @@ class _TextPart {
         'underlineColor': underlineColor,
         'highlight': highlight,
         'highlightColor': highlightColor,
+        'isImage': isImage,
+        'imageWidth': imageWidth,
+        'imageHeight': imageHeight,
       };
 
   factory _TextPart.fromJson(Map<String, dynamic> json) => _TextPart(
@@ -59,12 +71,12 @@ class _TextPart {
         json['underlineColor'] as int?,
         json['highlight'] ?? false,
         json['highlightColor'] as int?,
+        json['isImage'] ?? false,
+        (json['imageWidth'] as num?)?.toDouble(),
+        (json['imageHeight'] as num?)?.toDouble(),
       );
 }
 
-/// =======================
-/// PROVIDER: Notas
-/// =======================
 class NoteProvider extends ChangeNotifier {
   List<Note> notes = [];
 
@@ -170,6 +182,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   final GlobalKey _noteKey = GlobalKey();
   bool _editingTitle = false;
 
+  /// selección de imagen activa (para mostrar handles afuera)
+  int? _activeImageIndex;
+
   /// Fecha y hora legible
   String _formatDateTime(String dateStr) {
     try {
@@ -196,6 +211,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     if (note.categoria.isNotEmpty) buffer.writeln('_${note.categoria}_');
     buffer.writeln();
     for (final part in _contentParts) {
+      if (part.isImage) continue; // no volcamos binarios
       buffer.writeln(part.bold ? '*${part.text}*' : part.text);
     }
     await Share.share(
@@ -266,8 +282,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   pw.SizedBox(height: 12),
                   pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
                   pw.SizedBox(height: 12),
-                  ..._contentParts.map(
-                    (e) => pw.Padding(
+                  ..._contentParts.map((e) {
+                    if (e.isImage) {
+                      // En PDF omitimos (o podrías incrustar imagen leyendo bytes)
+                      return pw.SizedBox(height: 0);
+                    }
+                    return pw.Padding(
                       padding: const pw.EdgeInsets.only(bottom: 8),
                       child: pw.Container(
                         color: (e.highlight && e.highlightColor != null)
@@ -288,8 +308,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                   pw.Spacer(),
                   pw.Align(
                     alignment: pw.Alignment.centerRight,
@@ -350,7 +370,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
-  // Guardado de la nota (incluye highlight)
+  // Guardado de la nota (incluye highlight e imágenes)
   void _saveNote({bool pop = false}) {
     final note = widget.note;
     note.title = _titleController.text;
@@ -377,6 +397,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             _contentFormat.highlight
                 ? _contentFormat.highlightColor.value
                 : null,
+            false, // isImage
           ),
         );
       }
@@ -476,7 +497,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   Widget build(BuildContext context) {
     const double _bottomBarHeight = 72.0;
 
-  return Scaffold(
+    return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: _noteColor,
       appBar: AppBar(
@@ -788,6 +809,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           ),
                         ),
                   const SizedBox(height: 6),
+
                   // Slider para el título
                   Row(
                     children: [
@@ -820,6 +842,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       ),
                     ],
                   ),
+
                   // Slider para el contenido
                   Row(
                     children: [
@@ -868,13 +891,56 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   _bottomBarHeight + MediaQuery.of(context).padding.bottom + 16,
                 ),
                 children: [
-                  // Texto fijado por partes
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: List.generate(_contentParts.length, (i) {
                       final part = _contentParts[i];
+
+                      // Migración suave: si no tiene flag pero es ruta a imagen, trátalo como imagen
+                      final looksLikeImagePath =
+                          (part.text.startsWith('/data/') ||
+                                  part.text.startsWith('C:/') ||
+                                  part.text.startsWith('D:/')) &&
+                              (part.text.toLowerCase().endsWith('.jpg') ||
+                                  part.text.toLowerCase().endsWith('.jpeg') ||
+                                  part.text.toLowerCase().endsWith('.png'));
+                      final isImg = part.isImage || looksLikeImagePath;
+
+                      if (isImg) {
+                        final double defaultW = part.imageWidth ?? 240;
+                        final double defaultH = part.imageHeight ?? 160;
+                        return _ResizableImage(
+                          filePath: part.text,
+                          width: defaultW,
+                          height: defaultH,
+                          selected: _activeImageIndex == i,
+                          onSelect: () {
+                            setState(() => _activeImageIndex =
+                                _activeImageIndex == i ? null : i);
+                          },
+                          onResize: (w, h) {
+                            setState(() {
+                              _contentParts[i] = _TextPart(
+                                part.text,
+                                false, // bold no aplica a imagen
+                                false,
+                                null,
+                                false,
+                                null,
+                                true, // isImage
+                                w,
+                                h,
+                              );
+                            });
+                            _saveNote();
+                          },
+                        );
+                      }
+
+                      // --- TEXTO ---
                       if (_editingPartIndex == i) {
-                        _partControllers[i] ??= TextEditingController(text: part.text);
+                        _partControllers[i] ??=
+                            TextEditingController(text: part.text);
                         return Focus(
                           onFocusChange: (hasFocus) {
                             if (!hasFocus) {
@@ -890,6 +956,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   _contentFormat.highlight
                                       ? _contentFormat.highlightColor.value
                                       : null,
+                                  false,
                                 );
                                 _editingPartIndex = null;
                                 _partControllers.remove(i);
@@ -903,17 +970,27 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             maxLines: null,
                             style: TextStyle(
                               fontSize: _contentFontSize,
-                              fontWeight: _contentFormat.bold ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: _contentFormat.bold
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               color: Colors.black87,
-                              decoration: _contentFormat.underline ? TextDecoration.underline : TextDecoration.none,
-                              decorationColor: _contentFormat.underline ? _contentFormat.underlineColor : null,
-                              decorationThickness: _contentFormat.underline ? 2.5 : null,
-                              backgroundColor: _contentFormat.highlight ? _contentFormat.highlightColor : Colors.transparent,
+                              decoration: _contentFormat.underline
+                                  ? TextDecoration.underline
+                                  : TextDecoration.none,
+                              decorationColor: _contentFormat.underline
+                                  ? _contentFormat.underlineColor
+                                  : null,
+                              decorationThickness:
+                                  _contentFormat.underline ? 2.5 : null,
+                              backgroundColor: _contentFormat.highlight
+                                  ? _contentFormat.highlightColor
+                                  : Colors.transparent,
                             ),
                             textAlign: TextAlign.left,
                             decoration: const InputDecoration(
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                             ),
                             onChanged: (_) => setHasUnsavedChanges(true),
                             onSubmitted: (value) {
@@ -922,9 +999,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   value,
                                   _contentFormat.bold,
                                   _contentFormat.underline,
-                                  _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                                  _contentFormat.underline
+                                      ? _contentFormat.underlineColor.value
+                                      : null,
                                   _contentFormat.highlight,
-                                  _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+                                  _contentFormat.highlight
+                                      ? _contentFormat.highlightColor.value
+                                      : null,
+                                  false,
                                 );
                                 _editingPartIndex = null;
                                 _partControllers.remove(i);
@@ -934,29 +1016,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           ),
                         );
                       } else {
-                        // Si el segmento es una ruta de imagen, mostrar preview
-                        final isImage = part.text.startsWith('/data/') || part.text.startsWith('C:/') || part.text.startsWith('D:/');
-                        final isImageFile = part.text.endsWith('.jpg') || part.text.endsWith('.jpeg') || part.text.endsWith('.png');
-                        if (isImage && isImageFile) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.file(
-                                File(part.text),
-                                height: 160,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          );
-                        }
-                        // Vista del segmento (resaltado solo en el texto escrito, sin expandirse)
+                        // Vista de texto
                         return LongPressDraggable<int>(
                           data: i,
                           feedback: Material(
                             color: Colors.transparent,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 2.0, horizontal: 4.0),
                               child: RichText(
                                 text: TextSpan(
                                   children: [
@@ -964,12 +1031,23 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                       text: part.text,
                                       style: TextStyle(
                                         fontSize: _contentFontSize,
-                                        fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
+                                        fontWeight: part.bold
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                         color: Colors.black54,
-                                        decoration: part.underline ? TextDecoration.underline : TextDecoration.none,
-                                        decorationColor: part.underline && part.underlineColor != null ? Color(part.underlineColor!) : null,
-                                        decorationThickness: part.underline ? 2.5 : null,
-                                        backgroundColor: part.highlight && part.highlightColor != null ? Color(part.highlightColor!) : Colors.transparent,
+                                        decoration: part.underline
+                                            ? TextDecoration.underline
+                                            : TextDecoration.none,
+                                        decorationColor: part.underline &&
+                                                part.underlineColor != null
+                                            ? Color(part.underlineColor!)
+                                            : null,
+                                        decorationThickness:
+                                            part.underline ? 2.5 : null,
+                                        backgroundColor: part.highlight &&
+                                                part.highlightColor != null
+                                            ? Color(part.highlightColor!)
+                                            : Colors.transparent,
                                       ),
                                     ),
                                   ],
@@ -980,11 +1058,15 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           childWhenDragging: const SizedBox.shrink(),
                           onDragCompleted: () {},
                           child: DragTarget<int>(
-                            onWillAccept: (from) => from != i,
+                            onWillAccept: (from) {
+                              // ✅ Siempre devolvemos bool, manejando null
+                              return from != null && from != i;
+                            },
                             onAccept: (from) {
                               setState(() {
                                 final moved = _contentParts.removeAt(from);
-                                _contentParts.insert(_dropInsertIndex ?? i, moved);
+                                _contentParts.insert(
+                                    _dropInsertIndex ?? i, moved);
                                 _dropInsertIndex = null;
                                 _saveNote();
                               });
@@ -1001,7 +1083,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     duration: const Duration(milliseconds: 180),
                                     child: Container(
                                       height: 3,
-                                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 12),
                                       decoration: BoxDecoration(
                                         color: Colors.blue.withOpacity(0.5),
                                         borderRadius: BorderRadius.circular(4),
@@ -1015,7 +1098,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                       });
                                     },
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 2.0, horizontal: 4.0),
                                       child: Align(
                                         alignment: Alignment.centerLeft,
                                         child: RichText(
@@ -1025,12 +1109,31 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                                 text: part.text,
                                                 style: TextStyle(
                                                   fontSize: _contentFontSize,
-                                                  fontWeight: part.bold ? FontWeight.bold : FontWeight.normal,
+                                                  fontWeight: part.bold
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
                                                   color: Colors.black87,
-                                                  decoration: part.underline ? TextDecoration.underline : TextDecoration.none,
-                                                  decorationColor: part.underline && part.underlineColor != null ? Color(part.underlineColor!) : null,
-                                                  decorationThickness: part.underline ? 2.5 : null,
-                                                  backgroundColor: part.highlight && part.highlightColor != null ? Color(part.highlightColor!) : Colors.transparent,
+                                                  decoration: part.underline
+                                                      ? TextDecoration.underline
+                                                      : TextDecoration.none,
+                                                  decorationColor: part
+                                                              .underline &&
+                                                          part.underlineColor !=
+                                                              null
+                                                      ? Color(
+                                                          part.underlineColor!)
+                                                      : null,
+                                                  decorationThickness:
+                                                      part.underline
+                                                          ? 2.5
+                                                          : null,
+                                                  backgroundColor: part
+                                                              .highlight &&
+                                                          part.highlightColor !=
+                                                              null
+                                                      ? Color(
+                                                          part.highlightColor!)
+                                                      : Colors.transparent,
                                                 ),
                                               ),
                                             ],
@@ -1048,6 +1151,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     }),
                   ),
                   const SizedBox(height: 8),
+
                   // Campo de escritura continua (aplica formato actual)
                   Container(
                     decoration: const BoxDecoration(
@@ -1140,15 +1244,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           _contentFormat.highlight
                               ? _contentFormat.highlightColor.value
                               : null,
+                          false,
                         ),
                       );
                       _hiddenController.clear();
-                      // ⛳ Regla 4: reiniciar formato tras cada segmento
                       _contentFormat = const TextFormatValue();
                     });
                     _saveNote();
                   } else {
-                    // No hay texto: abrimos panel con formato reseteado
                     setState(() {
                       _contentFormat = const TextFormatValue();
                     });
@@ -1167,41 +1270,50 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         }),
                         onClose: () {
                           Navigator.pop(ctx);
-                          // Recupera el foco para seguir escribiendo
                           FocusScope.of(context).requestFocus(_hiddenFocus);
                         },
                       ),
                     ),
                   );
 
-                  // Asegura foco tras cerrar
                   FocusScope.of(context).requestFocus(_hiddenFocus);
                 },
               ),
               _buildIconBox(
                 icon: Image.asset('assets/camara.png', width: 32, height: 32),
-                  onTap: () {
-                    showModalBottomSheet<File?>(
-                      context: context,
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                      ),
-                      builder: (ctx) => CameraGalleryWidget(),
-                    ).then((selectedImage) {
-                      if (selectedImage != null) {
-                        setState(() {
-                          _contentParts.add(
-                            _TextPart(
-                              selectedImage.path,
-                              false,
-                            ),
-                          );
-                        });
-                        _saveNote();
-                      }
-                    });
-                  },
+                onTap: () {
+                  showModalBottomSheet<File?>(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    builder: (ctx) => const CameraGalleryWidget(),
+                  ).then((selectedImage) {
+                    if (selectedImage != null) {
+                      // Insertamos como segmento de imagen con tamaño inicial
+                      setState(() {
+                        _contentParts.add(
+                          _TextPart(
+                            selectedImage.path,
+                            false, // bold
+                            false, // underline
+                            null,
+                            false, // highlight
+                            null,
+                            true, // isImage
+                            240, // imageWidth
+                            160, // imageHeight
+                          ),
+                        );
+                        _activeImageIndex = _contentParts.length -
+                            1; // seleccionar recién añadida
+                      });
+                      _saveNote();
+                    }
+                  });
+                },
               ),
               _buildIconBox(
                 icon: Image.asset('assets/IA.png', width: 32, height: 32),
@@ -1225,10 +1337,153 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ),
         ),
       ),
-  // ======= BOTÓN DE AUDIO =======
-  floatingActionButton: AudioButton(noteId: widget.note.id.toString()),
-  floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
+      // ======= BOTÓN DE AUDIO =======
+      floatingActionButton: AudioButton(noteId: widget.note.id.toString()),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+}
+
+/// ===================
+/// Imagen con handles (afuera del picker)
+/// ===================
+class _ResizableImage extends StatefulWidget {
+  final String filePath;
+  final double width;
+  final double height;
+  final bool selected;
+  final VoidCallback onSelect;
+  final void Function(double w, double h) onResize;
+
+  const _ResizableImage({
+    Key? key,
+    required this.filePath,
+    required this.width,
+    required this.height,
+    required this.selected,
+    required this.onSelect,
+    required this.onResize,
+  }) : super(key: key);
+
+  @override
+  State<_ResizableImage> createState() => _ResizableImageState();
+}
+
+class _ResizableImageState extends State<_ResizableImage> {
+  late double _w;
+  late double _h;
+  final double _handle = 24;
+  Offset? _start;
+  late double _startW;
+  late double _startH;
+
+  @override
+  void initState() {
+    super.initState();
+    _w = widget.width;
+    _h = widget.height;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ResizableImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.width != widget.width || oldWidget.height != widget.height) {
+      _w = widget.width;
+      _h = widget.height;
+    }
+  }
+
+  Widget _handleAt(int idx) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: (d) {
+        _start = d.localPosition;
+        _startW = _w;
+        _startH = _h;
+      },
+      onPanUpdate: (d) {
+        final delta = d.localPosition - (_start ?? d.localPosition);
+        setState(() {
+          switch (idx) {
+            case 0: // top-left
+              _w = (_startW - delta.dx).clamp(60, 600);
+              _h = (_startH - delta.dy).clamp(60, 600);
+              break;
+            case 1: // top-right
+              _w = (_startW + delta.dx).clamp(60, 600);
+              _h = (_startH - delta.dy).clamp(60, 600);
+              break;
+            case 2: // bottom-left
+              _w = (_startW - delta.dx).clamp(60, 600);
+              _h = (_startH + delta.dy).clamp(60, 600);
+              break;
+            case 3: // bottom-right
+              _w = (_startW + delta.dx).clamp(60, 600);
+              _h = (_startH + delta.dy).clamp(60, 600);
+              break;
+          }
+        });
+        widget.onResize(_w, _h);
+      },
+      child: Container(
+        width: _handle,
+        height: _handle,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.blueAccent, width: 2),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: SizedBox(
+        width: _w + _handle,
+        height: _h + _handle,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: _handle / 2,
+              top: _handle / 2,
+              child: GestureDetector(
+                onTap: widget.onSelect,
+                child: Container(
+                  width: _w,
+                  height: _h,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: widget.selected
+                        ? Border.all(color: Colors.blueAccent, width: 2)
+                        : null,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(widget.filePath),
+                      width: _w,
+                      height: _h,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (widget.selected) ...[
+              Positioned(left: 0, top: 0, child: _handleAt(0)),
+              Positioned(right: 0, top: 0, child: _handleAt(1)),
+              Positioned(left: 0, bottom: 0, child: _handleAt(2)),
+              Positioned(right: 0, bottom: 0, child: _handleAt(3)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1442,36 +1697,3 @@ class SkinPanel extends StatelessWidget {
   }
 }
 
-// Devuelve el emoji de la categoría como string
-String _categoriaIconStr(String categoria) {
-  switch (categoria) {
-    case 'Sermón':
-      return '📖';
-    case 'Estudio Bíblico':
-      return '📚';
-    case 'Reflexión':
-      return '🤔';
-    case 'Devocional':
-      return '❤️';
-    case 'Testimonio':
-      return '🌟';
-    case 'Apuntes Generales':
-      return '📓';
-    case 'Discipulado':
-      return '🏫';
-    case 'Conexion':
-      return '🔗';
-    case 'Música':
-      return '🎵';
-    case 'Cita':
-      return '💬';
-    case 'Versículo':
-      return '📜';
-    case 'Oración':
-      return '🙏';
-    case 'Otro':
-      return '🌀';
-    default:
-      return '';
-  }
-}
