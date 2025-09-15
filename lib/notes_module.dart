@@ -1465,12 +1465,12 @@ class _ResizableImageState extends State<_ResizableImage> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      File(widget.filePath),
-                      width: _w,
-                      height: _h,
-                      fit: BoxFit.cover,
-                    ),
+                      child: Image.file(
+                        File(widget.filePath),
+                        width: _w,
+                        height: _h,
+                        fit: BoxFit.contain,
+                      ),
                   ),
                 ),
               ),
