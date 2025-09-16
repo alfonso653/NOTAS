@@ -23,6 +23,8 @@ class MindMapBoard extends StatefulWidget {
 class _MindMapBoardState extends State<MindMapBoard> {
   String? _draggingNodeId;
   Offset? _dragStartNodePosition;
+  bool _isDraggingNode = false;
+  String? _selectedNodeId;
   final double _minZoom = 0.4;
   final double _maxZoom = 2.5;
   late double _zoom;
@@ -78,64 +80,87 @@ class _MindMapBoardState extends State<MindMapBoard> {
         ),
         // Área interactiva del mapa mental
         Expanded(
-          child: Listener(
-            onPointerSignal: (_) {},
-            child: InteractiveViewer(
-              minScale: _minZoom,
-              maxScale: _maxZoom,
-              panEnabled: true,
-              scaleEnabled: true,
-              transformationController: _transformationController,
-              onInteractionUpdate: (details) {
-                setState(() {
-                  _zoom = _transformationController.value.getMaxScaleOnAxis();
-                });
-              },
-              panAxis: PanAxis.free,
-              boundaryMargin: const EdgeInsets.all(double.infinity),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Dibuja las conexiones
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _ConnectionsPainter(widget.nodes, widget.connections),
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              setState(() {
+                _selectedNodeId = null;
+              });
+            },
+            child: Listener(
+              onPointerSignal: (_) {},
+              child: StatefulBuilder(
+                builder: (context, setSB) {
+                  return InteractiveViewer(
+                    minScale: _minZoom,
+                    maxScale: _maxZoom,
+                    panEnabled: !_isDraggingNode && _selectedNodeId == null,
+                    scaleEnabled: true,
+                    transformationController: _transformationController,
+                    onInteractionUpdate: (details) {
+                      setState(() {
+                        _zoom = _transformationController.value.getMaxScaleOnAxis();
+                      });
+                    },
+                    panAxis: PanAxis.free,
+                    boundaryMargin: const EdgeInsets.all(double.infinity),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Dibuja las conexiones
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: _ConnectionsPainter(widget.nodes, widget.connections),
+                          ),
+                        ),
+                        // Dibuja los nodos
+                        ...widget.nodes.map((node) {
+                          final isSelected = node.id == _selectedNodeId;
+                          return Positioned(
+                            left: node.position.dx,
+                            top: node.position.dy,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onTap: () {
+                                setState(() {
+                                  _selectedNodeId = node.id;
+                                });
+                              },
+                              onPanStart: (details) {
+                                if (_selectedNodeId == node.id) {
+                                  setState(() {
+                                    _draggingNodeId = node.id;
+                                    _dragStartNodePosition = node.position;
+                                    _isDraggingNode = true;
+                                  });
+                                }
+                              },
+                              onPanUpdate: (details) {
+                                if (_draggingNodeId == node.id && _dragStartNodePosition != null && _selectedNodeId == node.id) {
+                                  setState(() {
+                                    node.position = _dragStartNodePosition! + details.delta / _zoom;
+                                    _dragStartNodePosition = node.position;
+                                  });
+                                  if (widget.onNodeMoved != null) {
+                                    widget.onNodeMoved!(node);
+                                  }
+                                }
+                              },
+                              onPanEnd: (_) {
+                                setState(() {
+                                  _draggingNodeId = null;
+                                  _dragStartNodePosition = null;
+                                  _isDraggingNode = false;
+                                });
+                              },
+                              child: _MindMapNodeWidget(node: node, selected: isSelected),
+                            ),
+                          );
+                        }).toList(),
+                      ],
                     ),
-                  ),
-                  // Dibuja los nodos
-                  ...widget.nodes.map((node) {
-                    return Positioned(
-                      left: node.position.dx,
-                      top: node.position.dy,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onLongPressStart: (details) {
-                          setState(() {
-                            _draggingNodeId = node.id;
-                            _dragStartNodePosition = node.position;
-                          });
-                        },
-                        onLongPressMoveUpdate: (details) {
-                          if (_draggingNodeId == node.id && _dragStartNodePosition != null) {
-                            setState(() {
-                              node.position = _dragStartNodePosition! + details.offsetFromOrigin / _zoom;
-                            });
-                            if (widget.onNodeMoved != null) {
-                              widget.onNodeMoved!(node);
-                            }
-                          }
-                        },
-                        onLongPressEnd: (_) {
-                          setState(() {
-                            _draggingNodeId = null;
-                            _dragStartNodePosition = null;
-                          });
-                        },
-                        child: _MindMapNodeWidget(node: node),
-                      ),
-                    );
-                  }).toList(),
-                ],
+                  );
+                },
               ),
             ),
           ),
@@ -147,13 +172,14 @@ class _MindMapBoardState extends State<MindMapBoard> {
 
 class _MindMapNodeWidget extends StatelessWidget {
   final MindMapNode node;
-  const _MindMapNodeWidget({required this.node});
+  final bool selected;
+  const _MindMapNodeWidget({required this.node, this.selected = false});
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      elevation: 2,
+      elevation: selected ? 8 : 2,
       borderRadius: BorderRadius.circular(16),
       child: IntrinsicWidth(
         child: Container(
@@ -161,11 +187,21 @@ class _MindMapNodeWidget extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade300, width: 1.2),
+            border: Border.all(
+              color: selected ? Colors.blueAccent : Colors.grey.shade300,
+              width: selected ? 2.5 : 1.2,
+            ),
+            boxShadow: selected
+                ? [BoxShadow(color: Colors.blueAccent.withOpacity(0.18), blurRadius: 16, spreadRadius: 2)]
+                : [BoxShadow(color: Colors.black12, blurRadius: 6)],
           ),
           child: Text(
             node.text,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: selected ? Colors.blueAccent : Colors.black87,
+            ),
             softWrap: true,
             overflow: TextOverflow.visible,
             maxLines: 4,

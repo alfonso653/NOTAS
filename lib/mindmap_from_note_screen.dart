@@ -29,6 +29,33 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
         position: Offset((e['x'] as num).toDouble(), (e['y'] as num).toDouble()),
         children: (e['children'] as List?)?.map((c) => c.toString()).toList() ?? [],
       )).toList();
+
+      // --- Agregar nuevos segmentos de texto de la nota como nodos hijos si no existen ---
+      final root = nodes.first;
+      final existingIds = nodes.map((n) => n.id).toSet();
+      // IDs únicos: buscar el mayor índice actual y continuar desde ahí
+      final existingNIds = nodes.where((n) => n.id.startsWith('n')).map((n) {
+        final numPart = int.tryParse(n.id.substring(1));
+        return numPart ?? 0;
+      }).toList();
+      int nextIdx = existingNIds.isEmpty ? 0 : (existingNIds.reduce((a, b) => a > b ? a : b) + 1);
+      for (final part in widget.note.contentParts) {
+        if ((part['isImage'] ?? false) == true) continue;
+        final text = (part['text'] ?? '').toString().trim();
+        if (text.isEmpty) continue;
+        final alreadyExists = nodes.any((n) => n.text == text);
+        if (!alreadyExists) {
+          final id = 'n$nextIdx';
+          nodes.add(MindMapNode(
+            id: id,
+            text: text.length > 40 ? text.substring(0, 40) + '...' : text,
+            position: root.position + Offset(60.0 * (nextIdx + 1), 120.0),
+            children: [],
+          ));
+          root.children.add(id);
+          nextIdx++;
+        }
+      }
     } else {
       nodes = _generateNodesFromNote();
     }
@@ -38,6 +65,13 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
         toId: e['toId'],
         color: Colors.indigo,
       )).toList();
+      // --- Agregar conexiones para nuevos nodos hijos si faltan ---
+      final root = nodes.first;
+      for (final id in root.children) {
+        if (!connections.any((c) => c.fromId == root.id && c.toId == id)) {
+          connections.add(MindMapConnection(fromId: root.id, toId: id, color: Colors.indigo));
+        }
+      }
     } else {
       connections = _generateConnections(nodes);
     }
