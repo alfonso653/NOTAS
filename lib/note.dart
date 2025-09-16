@@ -31,36 +31,36 @@ class Note {
   }) : floatingImages = floatingImages ?? [];
 
   factory Note.fromJson(Map<String, dynamic> json) {
-  return Note(
-    id: json['id'] ?? '',
-    title: json['title'] ?? '',
-    date: json['date'] ?? '',
-    categoria: json['categoria'] ?? '',
-    skin: json['skin'] ?? '',
-    color: Color(json['color'] ?? 0xFFFFFFFF),
-    titleFontSize: (json['titleFontSize'] ?? 18).toDouble(),
-    contentFontSize: (json['contentFontSize'] ?? 18).toDouble(),
-    contentParts: (json['contentParts'] is List)
-      ? (json['contentParts'] as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList()
-      : [],
-    floatingImages: (json['floatingImages'] is List)
-      ? (json['floatingImages'] as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList()
-      : [],
-    mindMapNodes: (json['mindMapNodes'] is List)
-      ? (json['mindMapNodes'] as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList()
-      : null,
-    mindMapConnections: (json['mindMapConnections'] is List)
-      ? (json['mindMapConnections'] as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList()
-      : null,
-  );
+    return Note(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      date: json['date'] ?? '',
+      categoria: json['categoria'] ?? '',
+      skin: json['skin'] ?? '',
+      color: Color(json['color'] ?? 0xFFFFFFFF),
+      titleFontSize: (json['titleFontSize'] ?? 18).toDouble(),
+      contentFontSize: (json['contentFontSize'] ?? 18).toDouble(),
+      contentParts: (json['contentParts'] is List)
+          ? (json['contentParts'] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : [],
+      floatingImages: (json['floatingImages'] is List)
+          ? (json['floatingImages'] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : [],
+      mindMapNodes: (json['mindMapNodes'] is List)
+          ? (json['mindMapNodes'] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : null,
+      mindMapConnections: (json['mindMapConnections'] is List)
+          ? (json['mindMapConnections'] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : null,
+    );
   }
 
   Map<String, dynamic> toJson() {

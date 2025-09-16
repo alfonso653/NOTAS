@@ -15,6 +15,7 @@ class MindMapNode {
       children: children ?? List<String>.from(this.children),
     );
   }
+
   String id;
   String text;
   Offset position;

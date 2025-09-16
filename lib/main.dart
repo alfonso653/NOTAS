@@ -9,7 +9,6 @@ import 'note.dart';
 import 'note_provider.dart';
 import 'pending.dart';
 
-
 void main() {
   runApp(const NotesApp());
 }
@@ -65,8 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
       defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.linux;
-
-
 
   /// Diferir mutaciones al próximo frame para evitar re-entrancia.
   void _defer(VoidCallback fn) {
