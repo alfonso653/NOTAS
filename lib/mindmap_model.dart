@@ -2,6 +2,19 @@ import 'package:flutter/material.dart';
 
 /// Nodo de mapa mental
 class MindMapNode {
+  MindMapNode copyWith({
+    String? id,
+    String? text,
+    Offset? position,
+    List<String>? children,
+  }) {
+    return MindMapNode(
+      id: id ?? this.id,
+      text: text ?? this.text,
+      position: position ?? this.position,
+      children: children ?? List<String>.from(this.children),
+    );
+  }
   String id;
   String text;
   Offset position;

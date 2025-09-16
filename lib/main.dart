@@ -8,7 +8,7 @@ import 'notes_module.dart';
 import 'note.dart';
 import 'note_provider.dart';
 import 'pending.dart';
-import 'mindmap_test_screen.dart';
+
 
 void main() {
   runApp(const NotesApp());
@@ -66,11 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
       defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.linux;
 
-  void _openMindMapTestScreen() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const MindMapTestScreen()),
-    );
-  }
+
 
   /// Diferir mutaciones al próximo frame para evitar re-entrancia.
   void _defer(VoidCallback fn) {
@@ -569,12 +565,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         actions: [
-          // Ícono de ramas/conexiones para abrir la pantalla de prueba del mapa mental
-          IconButton(
-            icon: const Icon(Icons.device_hub, color: Colors.blueGrey),
-            tooltip: 'Mapa mental (prueba)',
-            onPressed: _openMindMapTestScreen,
-          ),
           IconButton(
             icon: Image.asset('assets/lupa.png', width: 28, height: 28),
             onPressed: _showSearchDialog,

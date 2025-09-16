@@ -23,6 +23,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
     super.initState();
     // Restaurar nodos y conexiones si existen en la nota
     if (widget.note.mindMapNodes != null && widget.note.mindMapNodes!.isNotEmpty) {
+      // Restaurar nodos existentes
       nodes = widget.note.mindMapNodes!.map((e) => MindMapNode(
         id: e['id'],
         text: e['text'],
@@ -30,32 +31,41 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
         children: (e['children'] as List?)?.map((c) => c.toString()).toList() ?? [],
       )).toList();
 
-      // --- Agregar nuevos segmentos de texto de la nota como nodos hijos si no existen ---
+      // Sincronizar el nodo principal (root) con el título de la nota
       final root = nodes.first;
-      final existingIds = nodes.map((n) => n.id).toSet();
-      // IDs únicos: buscar el mayor índice actual y continuar desde ahí
-      final existingNIds = nodes.where((n) => n.id.startsWith('n')).map((n) {
-        final numPart = int.tryParse(n.id.substring(1));
-        return numPart ?? 0;
-      }).toList();
-      int nextIdx = existingNIds.isEmpty ? 0 : (existingNIds.reduce((a, b) => a > b ? a : b) + 1);
+      final newRootText = widget.note.title.isEmpty ? 'Nota' : widget.note.title;
+      if (root.text != newRootText) {
+        nodes[0] = root.copyWith(text: newRootText);
+      }
+
+      // Buscar nodos hijos (no root) y mapear por índice
+      int idx = 0;
       for (final part in widget.note.contentParts) {
         if ((part['isImage'] ?? false) == true) continue;
         final text = (part['text'] ?? '').toString().trim();
         if (text.isEmpty) continue;
-        final alreadyExists = nodes.any((n) => n.text == text);
-        if (!alreadyExists) {
-          final id = 'n$nextIdx';
-          nodes.add(MindMapNode(
-            id: id,
+        final nodeId = 'n$idx';
+        final nodeIdx = nodes.indexWhere((n) => n.id == nodeId);
+        if (nodeIdx != -1) {
+          // Si existe, actualizar el texto
+          nodes[nodeIdx] = nodes[nodeIdx].copyWith(
             text: text.length > 40 ? text.substring(0, 40) + '...' : text,
-            position: root.position + Offset(60.0 * (nextIdx + 1), 120.0),
+          );
+        } else {
+          // Si no existe, crear el nodo
+          nodes.add(MindMapNode(
+            id: nodeId,
+            text: text.length > 40 ? text.substring(0, 40) + '...' : text,
+            position: root.position + Offset(60.0 * (idx + 1), 120.0),
             children: [],
           ));
-          root.children.add(id);
-          nextIdx++;
+          nodes[0].children.add(nodeId);
         }
+        idx++;
       }
+      // Opcional: eliminar nodos huérfanos si algún segmento fue borrado
+      nodes.removeWhere((n) => n.id.startsWith('n') && int.tryParse(n.id.substring(1)) != null && int.parse(n.id.substring(1)) >= idx);
+      nodes[0].children.removeWhere((id) => id.startsWith('n') && int.tryParse(id.substring(1)) != null && int.parse(id.substring(1)) >= idx);
     } else {
       nodes = _generateNodesFromNote();
     }
