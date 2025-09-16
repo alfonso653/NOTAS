@@ -1,32 +1,65 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:provider/provider.dart';
 import 'note.dart';
+import 'note_provider.dart';
 import 'mindmap_model.dart';
 import 'mindmap_board.dart';
 
-class MindMapFromNoteScreen extends StatelessWidget {
+class MindMapFromNoteScreen extends StatefulWidget {
   final Note note;
   const MindMapFromNoteScreen({Key? key, required this.note}) : super(key: key);
 
-  List<MindMapNode> _generateNodes() {
-    // Nodo central: título
+  @override
+  State<MindMapFromNoteScreen> createState() => _MindMapFromNoteScreenState();
+}
+
+class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
+  late List<MindMapNode> nodes;
+  late List<MindMapConnection> connections;
+
+  @override
+  void initState() {
+    super.initState();
+    // Restaurar nodos y conexiones si existen en la nota
+    if (widget.note.mindMapNodes != null && widget.note.mindMapNodes!.isNotEmpty) {
+      nodes = widget.note.mindMapNodes!.map((e) => MindMapNode(
+        id: e['id'],
+        text: e['text'],
+        position: Offset((e['x'] as num).toDouble(), (e['y'] as num).toDouble()),
+        children: (e['children'] as List?)?.map((c) => c.toString()).toList() ?? [],
+      )).toList();
+    } else {
+      nodes = _generateNodesFromNote();
+    }
+    if (widget.note.mindMapConnections != null && widget.note.mindMapConnections!.isNotEmpty) {
+      connections = widget.note.mindMapConnections!.map((e) => MindMapConnection(
+        fromId: e['fromId'],
+        toId: e['toId'],
+        color: Colors.indigo,
+      )).toList();
+    } else {
+      connections = _generateConnections(nodes);
+    }
+  }
+
+  List<MindMapNode> _generateNodesFromNote() {
     final nodes = <MindMapNode>[];
     final rootId = 'root';
     nodes.add(MindMapNode(
       id: rootId,
-      text: note.title.isEmpty ? 'Nota' : note.title,
+      text: widget.note.title.isEmpty ? 'Nota' : widget.note.title,
       position: const Offset(180, 200),
       children: [],
     ));
-    // Nodos hijos: cada parte de texto (sin imágenes)
     final double radius = 140;
     int idx = 0;
-    for (final part in note.contentParts) {
+    for (final part in widget.note.contentParts) {
       if ((part['isImage'] ?? false) == true) continue;
       final text = (part['text'] ?? '').toString().trim();
       if (text.isEmpty) continue;
       final id = 'n$idx';
-      final angle = 2 * math.pi * idx / (note.contentParts.length == 0 ? 1 : note.contentParts.length);
+      final angle = 2 * math.pi * idx / (widget.note.contentParts.length == 0 ? 1 : widget.note.contentParts.length);
       nodes.add(MindMapNode(
         id: id,
         text: text.length > 40 ? text.substring(0, 40) + '...' : text,
@@ -49,17 +82,36 @@ class MindMapFromNoteScreen extends StatelessWidget {
         .toList();
   }
 
+  void _saveMindMap() {
+    // Guardar nodos y conexiones en la nota y persistir
+    widget.note.mindMapNodes = nodes.map((n) => {
+      'id': n.id,
+      'text': n.text,
+      'x': n.position.dx,
+      'y': n.position.dy,
+      'children': n.children,
+    }).toList();
+    widget.note.mindMapConnections = connections.map((c) => {
+      'fromId': c.fromId,
+      'toId': c.toId,
+    }).toList();
+    final provider = Provider.of<NoteProvider>(context, listen: false);
+    provider.updateNote(widget.note);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final nodes = _generateNodes();
-    final connections = _generateConnections(nodes);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mapa Mental de la Nota'),
       ),
       body: Container(
         color: const Color(0xFFF8F8F8),
-        child: MindMapBoard(nodes: nodes, connections: connections),
+        child: MindMapBoard(
+          nodes: nodes,
+          connections: connections,
+          onNodeMoved: (_) => _saveMindMap(),
+        ),
       ),
     );
   }
