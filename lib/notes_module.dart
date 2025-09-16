@@ -1,7 +1,7 @@
 // (Declaración de _dropInsertIndex movida a la clase correspondiente)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -12,21 +12,17 @@ import 'package:flutter/rendering.dart'; // Para RenderRepaintBoundary
 import 'dart:ui' as ui; // Para ui.Image y ImageByteFormat
 import 'dart:typed_data';
 import 'dart:io';
-import 'dart:convert';
+// import 'dart:convert';
 
 import 'text_format_panel.dart';
 import 'note.dart';
+import 'note_provider.dart';
 import 'audio_mic_fab.dart';
 import 'camera_gallery_widget.dart';
 
-// Variable global para controlar el Snackbar solo en guardado manual
-bool _showSavedSnackbar = false;
-
-// =========================
-// Modelo de segmento (_TextPart)
-// =========================
-// ⛳ Añadí/aseguré highlight y highlightColor (int) y su (de)serialización.
-// ⛳ Ahora soporta segmentos de imagen con tamaño persistente.
+/// =========================
+/// Modelo de segmento (_TextPart)
+/// =========================
 class _TextPart {
   final String text;
   final bool bold;
@@ -35,12 +31,12 @@ class _TextPart {
   final bool highlight;
   final int? highlightColor;
 
-  // NUEVO: marca si es imagen y sus dimensiones
+  // Extensiones para imágenes incrustadas (ya no se usan para pintar)
   final bool isImage;
   final double? imageWidth;
   final double? imageHeight;
 
-  _TextPart(
+  const _TextPart(
     this.text,
     this.bold, [
     this.underline = false,
@@ -65,69 +61,66 @@ class _TextPart {
       };
 
   factory _TextPart.fromJson(Map<String, dynamic> json) => _TextPart(
-        json['text'] ?? '',
-        json['bold'] ?? false,
-        json['underline'] ?? false,
-        json['underlineColor'] as int?,
-        json['highlight'] ?? false,
-        json['highlightColor'] as int?,
-        json['isImage'] ?? false,
-        (json['imageWidth'] as num?)?.toDouble(),
-        (json['imageHeight'] as num?)?.toDouble(),
+        (json['text'] ?? '') as String,
+        (json['bold'] ?? false) as bool,
+        (json['underline'] ?? false) as bool,
+        json['underlineColor'] == null
+            ? null
+            : (json['underlineColor'] as num).toInt(),
+        (json['highlight'] ?? false) as bool,
+        json['highlightColor'] == null
+            ? null
+            : (json['highlightColor'] as num).toInt(),
+        (json['isImage'] ?? false) as bool,
+        json['imageWidth'] == null
+            ? null
+            : (json['imageWidth'] as num).toDouble(),
+        json['imageHeight'] == null
+            ? null
+            : (json['imageHeight'] as num).toDouble(),
       );
 }
 
-class NoteProvider extends ChangeNotifier {
-  List<Note> notes = [];
+/// Imágenes flotantes (superpuestas al contenido)
+class FloatingImage {
+  String filePath;
+  double x;
+  double y;
+  double width;
+  double height;
 
-  NoteProvider() {
-    _loadNotes();
-  }
+  FloatingImage({
+    required this.filePath,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+  });
 
-  Future<void> _loadNotes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString('notes') ?? '[]';
-    final List<dynamic> list = json.decode(data);
-    notes = list.map((e) => Note.fromJson(e as Map<String, dynamic>)).toList();
-    notifyListeners();
-  }
+  Map<String, dynamic> toJson() => {
+        'filePath': filePath,
+        'x': x,
+        'y': y,
+        'width': width,
+        'height': height,
+      };
 
-  Future<void> saveNotes() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'notes',
-      json.encode(notes.map((e) => e.toJson()).toList()),
-    );
-  }
-
-  void addNote(Note note) {
-    notes.insert(0, note);
-    saveNotes();
-    notifyListeners();
-  }
-
-  void updateNote(Note note) {
-    final index = notes.indexWhere((n) => n.id == note.id);
-    if (index != -1) {
-      notes[index] = note;
-      saveNotes();
-      notifyListeners();
-    }
-  }
-
-  void deleteNote(Note note) {
-    notes.removeWhere((n) => n.id == note.id);
-    saveNotes();
-    notifyListeners();
-  }
+  factory FloatingImage.fromJson(Map<String, dynamic> json) => FloatingImage(
+        filePath: (json['filePath'] ?? '') as String,
+        x: (json['x'] as num).toDouble(),
+        y: (json['y'] as num).toDouble(),
+        width: (json['width'] as num).toDouble(),
+        height: (json['height'] as num).toDouble(),
+      );
 }
 
-/// ========================================
-/// PANTALLA: Edición de nota
-/// ========================================
+/// =========================
+/// PANTALLA DE EDICIÓN DE NOTA
+/// =========================
 class NoteEditScreen extends StatefulWidget {
   final Note note;
-  NoteEditScreen({Key? key, required this.note}) : super(key: key);
+
+  const NoteEditScreen({super.key, required this.note});
 
   @override
   State<NoteEditScreen> createState() => _NoteEditScreenState();
@@ -135,193 +128,168 @@ class NoteEditScreen extends StatefulWidget {
 
 class _NoteEditScreenState extends State<NoteEditScreen>
     with SingleTickerProviderStateMixin {
-  int? _dropInsertIndex;
-
-  // Blink del botón guardar
+  // Estado UI
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
+
   bool _hasUnsavedChanges = false;
+  bool _editingTitle = false;
 
-  void setHasUnsavedChanges(bool value) {
-    if (_hasUnsavedChanges != value) {
-      setState(() {
-        _hasUnsavedChanges = value;
-        if (_hasUnsavedChanges) {
-          if (!_blinkController.isAnimating) {
-            _blinkController.repeat(reverse: true);
-          }
-        } else {
-          _blinkController.reset();
-          _blinkController.stop();
-        }
-      });
-    }
-  }
-
-  int? _editingPartIndex;
-  final Map<int, TextEditingController> _partControllers = {};
-  double _titleFontSize = 22;
-  static const double _minTitleFontSize = 14;
-  static const double _maxTitleFontSize = 38;
-  double _contentFontSize = 18;
-  static const double _minContentFontSize = 12;
-  static const double _maxContentFontSize = 32;
-
-  // Estado de formato actual (para escribir o editar)
-  TextFormatValue _contentFormat = const TextFormatValue();
-
-  List<_TextPart> _contentParts = [];
+  // Controladores
+  late TextEditingController _titleController;
+  late TextEditingController _categoriaController;
   final TextEditingController _hiddenController = TextEditingController();
   final FocusNode _hiddenFocus = FocusNode();
 
-  late TextEditingController _titleController;
-  late TextEditingController _categoriaController;
-  late Color _noteColor;
-  late String _skin;
+  // Apariencia
+  Color _noteColor = Colors.white;
+  String _skin = 'grid';
+  double _titleFontSize = 24;
+  double _contentFontSize = 16;
 
-  final GlobalKey _noteKey = GlobalKey();
-  bool _editingTitle = false;
+  // Límites
+  final double _minTitleFontSize = 18;
+  final double _maxTitleFontSize = 64;
+  final double _minContentFontSize = 12;
+  final double _maxContentFontSize = 28;
 
-  /// selección de imagen activa (para mostrar handles afuera)
+  // Contenido
+  List<_TextPart> _contentParts = <_TextPart>[];
+  final Map<int, TextEditingController> _partControllers = {};
+  int? _editingPartIndex;
+
+  // Selección (se usará para imágenes flotantes)
   int? _activeImageIndex;
 
-  /// Fecha y hora legible
-  String _formatDateTime(String dateStr) {
-    try {
-      final dt = DateTime.parse(dateStr);
-      final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-      final ampm = dt.hour < 12 ? 'AM' : 'PM';
-      return "${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} $hour:${dt.minute.toString().padLeft(2, '0')} $ampm";
-    } catch (_) {
-      return '';
+  // Control de inserciones por drag de texto
+  int? _dropInsertIndex;
+
+  // Imágenes flotantes superpuestas
+  final List<FloatingImage> _floatingImages = <FloatingImage>[];
+
+  // Formato actual de escritura continua
+  TextFormatValue _contentFormat = const TextFormatValue();
+
+  // RepaintBoundary para compartir imagen
+  final GlobalKey _noteKey = GlobalKey();
+
+  // Snackbar manual
+  bool _showSavedSnackbar = false;
+
+  // ========= Helpers =========
+  void setHasUnsavedChanges(bool v) {
+    if (_hasUnsavedChanges == v) return;
+    setState(() {
+      _hasUnsavedChanges = v;
+    });
+    if (v) {
+      if (!_blinkController.isAnimating) _blinkController.forward();
+    } else {
+      if (_blinkController.isAnimating) _blinkController.stop();
     }
   }
 
-  Future<void> _shareAsText() async {
-    final note = widget.note;
-    final String fecha = DateTime.now()
-        .toLocal()
-        .toString()
-        .split('.')[0]
-        .replaceFirst('T', ' ');
-    final buffer = StringBuffer();
-    buffer.writeln('Fecha: $fecha');
-    buffer.writeln();
-    buffer.writeln('**${note.title.toUpperCase()}**');
-    if (note.categoria.isNotEmpty) buffer.writeln('_${note.categoria}_');
-    buffer.writeln();
-    for (final part in _contentParts) {
-      if (part.isImage) continue; // no volcamos binarios
-      buffer.writeln(part.bold ? '*${part.text}*' : part.text);
+  // Acepta DateTime? o String (evita error de tipos)
+  String _formatDateTime(dynamic value) {
+    DateTime? dt;
+    if (value is DateTime) {
+      dt = value;
+    } else if (value is String) {
+      dt = DateTime.tryParse(value);
     }
-    await Share.share(
-      buffer.toString().trim().isEmpty
-          ? 'Nota sin contenido'
-          : buffer.toString().trim(),
-    );
+    if (dt == null) return value?.toString() ?? '';
+    String two(int x) => x.toString().padLeft(2, '0');
+    return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
+  }
+
+  Future<void> _shareAsText() async {
+    final buffer = StringBuffer();
+    buffer.writeln(widget.note.title);
+    if (widget.note.categoria.isNotEmpty) {
+      buffer.writeln('# ${widget.note.categoria}');
+    }
+    buffer.writeln('');
+    for (final e in _contentParts) {
+      if (!e.isImage) {
+        buffer.writeln(e.text);
+        buffer.writeln('');
+      }
+    }
+    final textOut = buffer.toString().trim();
+    if (textOut.isEmpty) return;
+    await Share.share(textOut);
   }
 
   Future<void> _shareAsPdf() async {
     try {
       final pdf = pw.Document();
-      final note = widget.note;
-
-      const double baseMargin = 24.0;
-      const double textScaleFactor = 1.15;
-      final pw.Font nunito = pw.Font.helvetica();
-      final pw.Font nunitoBold = pw.Font.helveticaBold();
-      final String fecha = DateTime.now()
-          .toLocal()
-          .toString()
-          .split('.')[0]
-          .replaceFirst('T', ' ');
+      final nunito = pw.Font.helvetica();
+      final nunitoBold = pw.Font.helveticaBold();
 
       pdf.addPage(
-        pw.Page(
-          margin: pw.EdgeInsets.all(baseMargin),
-          build: (pw.Context context) {
-            return pw.Container(
-              padding: pw.EdgeInsets.all(16),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.blueGrey, width: 1.2),
-                borderRadius: pw.BorderRadius.circular(12),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                children: [
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.end,
-                    children: [
-                      pw.Text('Fecha: $fecha',
-                          style: pw.TextStyle(
-                            font: nunito,
-                            fontSize: 12,
-                            color: PdfColors.grey,
-                          )),
-                    ],
+        pw.MultiPage(
+          pageTheme: pw.PageTheme(
+            theme: pw.ThemeData.withFont(base: nunito, bold: nunitoBold),
+            margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+          ),
+          build: (context) {
+            return <pw.Widget>[
+              pw.SizedBox(height: 12),
+              pw.Text(widget.note.title,
+                  style: pw.TextStyle(
+                    font: nunitoBold,
+                    fontSize: 28,
+                    fontWeight: pw.FontWeight.bold,
                   ),
-                  pw.SizedBox(height: 12),
-                  pw.Text(note.title,
+                  textAlign: pw.TextAlign.center),
+              if (widget.note.categoria.isNotEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
+                  child: pw.Text(widget.note.categoria,
                       style: pw.TextStyle(
-                        font: nunitoBold,
-                        fontSize: 28,
-                        fontWeight: pw.FontWeight.bold,
+                        font: nunito,
+                        fontSize: 16,
+                        color: PdfColors.blueGrey,
                       ),
                       textAlign: pw.TextAlign.center),
-                  if (note.categoria.isNotEmpty)
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
-                      child: pw.Text(note.categoria,
-                          style: pw.TextStyle(
-                            font: nunito,
-                            fontSize: 16,
-                            color: PdfColors.blueGrey,
-                          ),
-                          textAlign: pw.TextAlign.center),
-                    ),
-                  pw.SizedBox(height: 12),
-                  pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
-                  pw.SizedBox(height: 12),
-                  ..._contentParts.map((e) {
-                    if (e.isImage) {
-                      // En PDF omitimos (o podrías incrustar imagen leyendo bytes)
-                      return pw.SizedBox(height: 0);
-                    }
-                    return pw.Padding(
-                      padding: const pw.EdgeInsets.only(bottom: 8),
-                      child: pw.Container(
-                        color: (e.highlight && e.highlightColor != null)
-                            ? PdfColor.fromInt(e.highlightColor!)
-                            : null,
-                        child: pw.Text(
-                          e.text,
-                          style: pw.TextStyle(
-                            font: e.bold ? nunitoBold : nunito,
-                            fontSize: 16 * textScaleFactor,
-                            decoration: e.underline
-                                ? pw.TextDecoration.underline
-                                : pw.TextDecoration.none,
-                            decorationColor:
-                                e.underline && e.underlineColor != null
-                                    ? PdfColor.fromInt(e.underlineColor!)
-                                    : null,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                  pw.Spacer(),
-                  pw.Align(
-                    alignment: pw.Alignment.centerRight,
+                ),
+              pw.SizedBox(height: 12),
+              pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
+              pw.SizedBox(height: 12),
+              ..._contentParts.map((e) {
+                if (e.isImage) return pw.SizedBox(height: 0);
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 8),
+                  child: pw.Container(
+                    color: (e.highlight && e.highlightColor != null)
+                        ? PdfColor.fromInt(e.highlightColor!)
+                        : null,
                     child: pw.Text(
-                      'Página ${context.pageNumber} de ${context.pagesCount}',
+                      e.text,
                       style: pw.TextStyle(
-                          fontSize: 10, color: PdfColors.grey, font: nunito),
+                        font: e.bold ? nunitoBold : nunito,
+                        fontSize: 16,
+                        decoration: e.underline
+                            ? pw.TextDecoration.underline
+                            : pw.TextDecoration.none,
+                        decorationColor: e.underline && e.underlineColor != null
+                            ? PdfColor.fromInt(e.underlineColor!)
+                            : null,
+                      ),
                     ),
                   ),
-                ],
+                );
+              }).toList(),
+              pw.Spacer(),
+              pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Text(
+                  'Página ${context.pageNumber} de ${context.pagesCount}',
+                  style: pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey, font: nunito),
+                ),
               ),
-            );
+            ];
           },
         ),
       );
@@ -370,7 +338,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
-  // Guardado de la nota (incluye highlight e imágenes)
   void _saveNote({bool pop = false}) {
     final note = widget.note;
     note.title = _titleController.text;
@@ -380,7 +347,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     note.titleFontSize = _titleFontSize;
     note.contentFontSize = _contentFontSize;
 
-    // Si hay texto pendiente en el TextField "oculto", lo anclamos como segmento
     final List<_TextPart> partsToSave = List<_TextPart>.from(_contentParts);
     final String pendingText = _hiddenController.text.trim();
     if (pendingText.isNotEmpty) {
@@ -397,14 +363,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             _contentFormat.highlight
                 ? _contentFormat.highlightColor.value
                 : null,
-            false, // isImage
+            false,
           ),
         );
       }
     }
 
-    // Serializamos
+    // Guardar SOLO texto (ignorando imágenes incrustadas antiguas si existieran)
     note.contentParts = partsToSave.map((e) => e.toJson()).toList();
+
+    // Guardar imágenes flotantes en la nota
+    note.floatingImages = _floatingImages.map((img) => img.toJson()).toList();
+
     context.read<NoteProvider>().updateNote(note);
 
     if (_showSavedSnackbar) {
@@ -440,6 +410,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   @override
   void initState() {
+    super.initState();
+
     _blinkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -454,7 +426,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         _blinkController.forward();
       }
     });
-    super.initState();
 
     _titleController = TextEditingController(text: widget.note.title);
     _categoriaController = TextEditingController(text: widget.note.categoria);
@@ -465,13 +436,23 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     _contentFormat = const TextFormatValue();
 
-    _contentParts =
-        (widget.note.contentParts).map((e) => _TextPart.fromJson(e)).toList();
+    _contentParts = (widget.note.contentParts)
+        .map<_TextPart>(
+          (e) => _TextPart.fromJson((e as Map).cast<String, dynamic>()),
+        )
+        .toList();
     _hiddenController.clear();
 
     _titleController.addListener(_onAnyChange);
     _categoriaController.addListener(_onAnyChange);
     _hiddenController.addListener(_onAnyChange);
+
+    // Restaurar imágenes flotantes guardadas en la nota
+    _floatingImages.clear();
+    for (final img in widget.note.floatingImages) {
+      _floatingImages
+          .add(FloatingImage.fromJson((img as Map).cast<String, dynamic>()));
+    }
 
     // Guardar automáticamente al entrar
     WidgetsBinding.instance.addPostFrameCallback((_) => _saveNote(pop: false));
@@ -636,571 +617,610 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         ],
       ),
 
-      // ======= BODY =======
+      // ======= BODY: Stack con contenido principal + imágenes flotantes =======
       body: RepaintBoundary(
         key: _noteKey,
-        child: Column(
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            // Cabecera (fecha/categoría)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
+            // ---- Contenido principal (debajo) ----
+            Column(
+              children: [
+                // Cabecera (fecha/categoría)
+                Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 6,
+                          offset: Offset(0, 2)),
+                    ],
                   ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text('⏳',
-                        style: TextStyle(fontSize: 16, color: Colors.black)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _formatDateTime(widget.note.date),
-                          style: const TextStyle(
-                              color: Colors.black54, fontSize: 13.5),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        if (_categoriaController.text.isNotEmpty)
-                          Row(
-                            children: [
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  _categoriaController.text,
-                                  style: const TextStyle(
-                                    color: Colors.black54,
-                                    fontWeight: FontWeight.normal,
-                                    fontSize: 13.5,
-                                    shadows: [
-                                      Shadow(
-                                          blurRadius: 1.5,
-                                          color: Colors.black12,
-                                          offset: Offset(0, 1))
-                                    ],
+                        child: const Text('⏳',
+                            style:
+                                TextStyle(fontSize: 16, color: Colors.black)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _formatDateTime(widget.note.date),
+                              style: const TextStyle(
+                                  color: Colors.black54, fontSize: 13.5),
+                            ),
+                            if (_categoriaController.text.isNotEmpty)
+                              Row(
+                                children: [
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      _categoriaController.text,
+                                      style: const TextStyle(
+                                        color: Colors.black54,
+                                        fontWeight: FontWeight.normal,
+                                        fontSize: 13.5,
+                                        shadows: [
+                                          Shadow(
+                                            blurRadius: 1.5,
+                                            color: Colors.black12,
+                                            offset: Offset(0, 1),
+                                          )
+                                        ],
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                ],
                               ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Text('📂',
+                            style:
+                                TextStyle(fontSize: 18, color: Colors.black)),
+                        onPressed: () async {
+                          final selected = await showMenu<String>(
+                            context: context,
+                            position:
+                                const RelativeRect.fromLTRB(200, 80, 16, 0),
+                            items: const [
+                              PopupMenuItem(
+                                  value: 'Sermón', child: Text('📖  Sermón')),
+                              PopupMenuItem(
+                                  value: 'Estudio Bíblico',
+                                  child: Text('📚  Estudio Bíblico')),
+                              PopupMenuItem(
+                                  value: 'Reflexión',
+                                  child: Text('🤔  Reflexión')),
+                              PopupMenuItem(
+                                  value: 'Devocional',
+                                  child: Text('❤️  Devocional')),
+                              PopupMenuItem(
+                                  value: 'Testimonio',
+                                  child: Text('🌟  Testimonio')),
+                              PopupMenuItem(
+                                  value: 'Apuntes Generales',
+                                  child: Text('📓  Apuntes Generales')),
+                              PopupMenuItem(
+                                  value: 'Discipulado',
+                                  child: Text('🏫  Discipulado')),
+                              PopupMenuItem(
+                                  value: 'Conexion',
+                                  child: Text('🔗  Conexion')),
+                              PopupMenuItem(
+                                  value: 'Música', child: Text('🎵  Música')),
+                              PopupMenuItem(
+                                  value: 'Cita', child: Text('💬  Cita')),
+                              PopupMenuItem(
+                                  value: 'Versículo',
+                                  child: Text('📜  Versículo')),
+                              PopupMenuItem(
+                                  value: 'Oración', child: Text('🙏  Oración')),
+                              PopupMenuItem(
+                                  value: 'Otro', child: Text('🌀  Otro')),
                             ],
-                          ),
-                      ],
-                    ),
+                          );
+                          if (selected != null) {
+                            setState(() {
+                              _categoriaController.text = selected;
+                            });
+                          }
+                        },
+                        tooltip: 'Seleccionar categoría',
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: const Text('📂',
-                        style: TextStyle(fontSize: 18, color: Colors.black)),
-                    onPressed: () async {
-                      final selected = await showMenu<String>(
-                        context: context,
-                        position: const RelativeRect.fromLTRB(200, 80, 16, 0),
-                        items: const [
-                          PopupMenuItem(
-                              value: 'Sermón', child: Text('📖  Sermón')),
-                          PopupMenuItem(
-                              value: 'Estudio Bíblico',
-                              child: Text('📚  Estudio Bíblico')),
-                          PopupMenuItem(
-                              value: 'Reflexión', child: Text('🤔  Reflexión')),
-                          PopupMenuItem(
-                              value: 'Devocional',
-                              child: Text('❤️  Devocional')),
-                          PopupMenuItem(
-                              value: 'Testimonio',
-                              child: Text('🌟  Testimonio')),
-                          PopupMenuItem(
-                              value: 'Apuntes Generales',
-                              child: Text('📓  Apuntes Generales')),
-                          PopupMenuItem(
-                              value: 'Discipulado',
-                              child: Text('🏫  Discipulado')),
-                          PopupMenuItem(
-                              value: 'Conexion', child: Text('🔗  Conexion')),
-                          PopupMenuItem(
-                              value: 'Música', child: Text('🎵  Música')),
-                          PopupMenuItem(value: 'Cita', child: Text('💬  Cita')),
-                          PopupMenuItem(
-                              value: 'Versículo', child: Text('📜  Versículo')),
-                          PopupMenuItem(
-                              value: 'Oración', child: Text('🙏  Oración')),
-                          PopupMenuItem(value: 'Otro', child: Text('🌀  Otro')),
-                        ],
-                      );
-                      if (selected != null) {
-                        setState(() {
-                          _categoriaController.text = selected;
-                        });
-                      }
-                    },
-                    tooltip: 'Seleccionar categoría',
-                  ),
-                ],
-              ),
-            ),
+                ),
 
-            // Título y sliders
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
-              child: Column(
-                children: [
-                  _editingTitle
-                      ? TextField(
-                          controller: _titleController,
-                          autofocus: true,
-                          textAlign: TextAlign.center,
-                          maxLines: null,
-                          minLines: 1,
-                          decoration: const InputDecoration(
-                            hintText: 'Encabezado',
-                            border: InputBorder.none,
-                            isCollapsed: true,
-                            contentPadding: EdgeInsets.zero,
-                            counterText: '',
-                          ),
-                          style: TextStyle(
-                            fontSize: _titleFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                          keyboardType: TextInputType.multiline,
-                          textInputAction: TextInputAction.done,
-                          onChanged: (v) => _saveNote(pop: false),
-                          onEditingComplete: () {
-                            setState(() => _editingTitle = false);
-                            _saveNote(pop: false);
-                          },
-                        )
-                      : GestureDetector(
-                          onTap: () {
-                            setState(() => _editingTitle = true);
-                          },
-                          child: Center(
-                            child: AutoSizeText(
-                              _titleController.text.isEmpty
-                                  ? 'Encabezado'
-                                  : _titleController.text,
+                // Título y sliders
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
+                  child: Column(
+                    children: [
+                      _editingTitle
+                          ? TextField(
+                              controller: _titleController,
+                              autofocus: true,
                               textAlign: TextAlign.center,
+                              maxLines: null,
+                              minLines: 1,
+                              decoration: const InputDecoration(
+                                hintText: 'Encabezado',
+                                border: InputBorder.none,
+                                isCollapsed: true,
+                                contentPadding: EdgeInsets.zero,
+                                counterText: '',
+                              ),
                               style: TextStyle(
                                 fontSize: _titleFontSize,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
                               ),
-                              maxLines: 10,
-                              minFontSize: 10,
-                              overflow: TextOverflow.visible,
-                            ),
-                          ),
-                        ),
-                  const SizedBox(height: 6),
-
-                  // Slider para el título
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            trackHeight: 2,
-                            thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 6),
-                            overlayShape: const RoundSliderOverlayShape(
-                                overlayRadius: 12),
-                            thumbColor: Colors.black,
-                            activeTrackColor: Colors.black54,
-                            inactiveTrackColor: Colors.black26,
-                          ),
-                          child: Slider(
-                            min: _minTitleFontSize,
-                            max: _maxTitleFontSize,
-                            value: _titleFontSize.clamp(
-                                _minTitleFontSize, _maxTitleFontSize),
-                            onChanged: (v) {
-                              setState(() {
-                                _titleFontSize = v.clamp(
-                                    _minTitleFontSize, _maxTitleFontSize);
-                              });
-                              _saveNote();
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Slider para el contenido
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            trackHeight: 2,
-                            thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 6),
-                            overlayShape: const RoundSliderOverlayShape(
-                                overlayRadius: 12),
-                            thumbColor: Colors.blue,
-                            activeTrackColor: Colors.blueAccent,
-                            inactiveTrackColor:
-                                Colors.blueAccent.withOpacity(0.25),
-                          ),
-                          child: Slider(
-                            min: _minContentFontSize,
-                            max: _maxContentFontSize,
-                            value: _contentFontSize.clamp(
-                                _minContentFontSize, _maxContentFontSize),
-                            onChanged: (v) {
-                              setState(() {
-                                _contentFontSize = v.clamp(
-                                    _minContentFontSize, _maxContentFontSize);
-                              });
-                              _saveNote();
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Contenido + LISTVIEW
-            Expanded(
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  16,
-                  16,
-                  _bottomBarHeight + MediaQuery.of(context).padding.bottom + 16,
-                ),
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(_contentParts.length, (i) {
-                      final part = _contentParts[i];
-
-                      // Migración suave: si no tiene flag pero es ruta a imagen, trátalo como imagen
-                      final looksLikeImagePath =
-                          (part.text.startsWith('/data/') ||
-                                  part.text.startsWith('C:/') ||
-                                  part.text.startsWith('D:/')) &&
-                              (part.text.toLowerCase().endsWith('.jpg') ||
-                                  part.text.toLowerCase().endsWith('.jpeg') ||
-                                  part.text.toLowerCase().endsWith('.png'));
-                      final isImg = part.isImage || looksLikeImagePath;
-
-                      if (isImg) {
-                        final double defaultW = part.imageWidth ?? 240;
-                        final double defaultH = part.imageHeight ?? 160;
-                        return _ResizableImage(
-                          filePath: part.text,
-                          width: defaultW,
-                          height: defaultH,
-                          selected: _activeImageIndex == i,
-                          onSelect: () {
-                            setState(() => _activeImageIndex =
-                                _activeImageIndex == i ? null : i);
-                          },
-                          onResize: (w, h) {
-                            setState(() {
-                              _contentParts[i] = _TextPart(
-                                part.text,
-                                false, // bold no aplica a imagen
-                                false,
-                                null,
-                                false,
-                                null,
-                                true, // isImage
-                                w,
-                                h,
-                              );
-                            });
-                            _saveNote();
-                          },
-                        );
-                      }
-
-                      // --- TEXTO ---
-                      if (_editingPartIndex == i) {
-                        _partControllers[i] ??=
-                            TextEditingController(text: part.text);
-                        return Focus(
-                          onFocusChange: (hasFocus) {
-                            if (!hasFocus) {
-                              setState(() {
-                                _contentParts[i] = _TextPart(
-                                  _partControllers[i]?.text ?? part.text,
-                                  _contentFormat.bold,
-                                  _contentFormat.underline,
-                                  _contentFormat.underline
-                                      ? _contentFormat.underlineColor.value
-                                      : null,
-                                  _contentFormat.highlight,
-                                  _contentFormat.highlight
-                                      ? _contentFormat.highlightColor.value
-                                      : null,
-                                  false,
-                                );
-                                _editingPartIndex = null;
-                                _partControllers.remove(i);
-                              });
-                              _saveNote();
-                            }
-                          },
-                          child: TextField(
-                            controller: _partControllers[i],
-                            autofocus: true,
-                            maxLines: null,
-                            style: TextStyle(
-                              fontSize: _contentFontSize,
-                              fontWeight: _contentFormat.bold
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: Colors.black87,
-                              decoration: _contentFormat.underline
-                                  ? TextDecoration.underline
-                                  : TextDecoration.none,
-                              decorationColor: _contentFormat.underline
-                                  ? _contentFormat.underlineColor
-                                  : null,
-                              decorationThickness:
-                                  _contentFormat.underline ? 2.5 : null,
-                              backgroundColor: _contentFormat.highlight
-                                  ? _contentFormat.highlightColor
-                                  : Colors.transparent,
-                            ),
-                            textAlign: TextAlign.left,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                            ),
-                            onChanged: (_) => setHasUnsavedChanges(true),
-                            onSubmitted: (value) {
-                              setState(() {
-                                _contentParts[i] = _TextPart(
-                                  value,
-                                  _contentFormat.bold,
-                                  _contentFormat.underline,
-                                  _contentFormat.underline
-                                      ? _contentFormat.underlineColor.value
-                                      : null,
-                                  _contentFormat.highlight,
-                                  _contentFormat.highlight
-                                      ? _contentFormat.highlightColor.value
-                                      : null,
-                                  false,
-                                );
-                                _editingPartIndex = null;
-                                _partControllers.remove(i);
-                              });
-                              _saveNote();
-                            },
-                          ),
-                        );
-                      } else {
-                        // Vista de texto
-                        return LongPressDraggable<int>(
-                          data: i,
-                          feedback: Material(
-                            color: Colors.transparent,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 2.0, horizontal: 4.0),
-                              child: RichText(
-                                text: TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: part.text,
-                                      style: TextStyle(
-                                        fontSize: _contentFontSize,
-                                        fontWeight: part.bold
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: Colors.black54,
-                                        decoration: part.underline
-                                            ? TextDecoration.underline
-                                            : TextDecoration.none,
-                                        decorationColor: part.underline &&
-                                                part.underlineColor != null
-                                            ? Color(part.underlineColor!)
-                                            : null,
-                                        decorationThickness:
-                                            part.underline ? 2.5 : null,
-                                        backgroundColor: part.highlight &&
-                                                part.highlightColor != null
-                                            ? Color(part.highlightColor!)
-                                            : Colors.transparent,
-                                      ),
-                                    ),
-                                  ],
+                              keyboardType: TextInputType.multiline,
+                              textInputAction: TextInputAction.done,
+                              onChanged: (v) => _saveNote(pop: false),
+                              onEditingComplete: () {
+                                setState(() => _editingTitle = false);
+                                _saveNote(pop: false);
+                              },
+                            )
+                          : GestureDetector(
+                              onTap: () => setState(() => _editingTitle = true),
+                              child: Center(
+                                child: AutoSizeText(
+                                  _titleController.text.isEmpty
+                                      ? 'Encabezado'
+                                      : _titleController.text,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: _titleFontSize,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                  maxLines: 10,
+                                  minFontSize: 10,
+                                  overflow: TextOverflow.visible,
                                 ),
                               ),
                             ),
+                      const SizedBox(height: 6),
+
+                      // Slider para el título
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 2,
+                                thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6),
+                                overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 12),
+                                thumbColor: Colors.black,
+                                activeTrackColor: Colors.black54,
+                                inactiveTrackColor: Colors.black26,
+                              ),
+                              child: Slider(
+                                min: _minTitleFontSize,
+                                max: _maxTitleFontSize,
+                                value: _titleFontSize.clamp(
+                                    _minTitleFontSize, _maxTitleFontSize),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _titleFontSize = v.clamp(
+                                        _minTitleFontSize, _maxTitleFontSize);
+                                  });
+                                  _saveNote();
+                                },
+                              ),
+                            ),
                           ),
-                          childWhenDragging: const SizedBox.shrink(),
-                          onDragCompleted: () {},
-                          child: DragTarget<int>(
-                            onWillAccept: (from) {
-                              // ✅ Siempre devolvemos bool, manejando null
-                              return from != null && from != i;
-                            },
-                            onAccept: (from) {
-                              setState(() {
-                                final moved = _contentParts.removeAt(from);
-                                _contentParts.insert(
-                                    _dropInsertIndex ?? i, moved);
-                                _dropInsertIndex = null;
-                                _saveNote();
-                              });
-                            },
-                            onLeave: (_) => setState(() {
-                              _dropInsertIndex = null;
-                            }),
-                            builder: (context, candidateData, rejectedData) {
-                              final isActive = candidateData.isNotEmpty;
-                              return Column(
-                                children: [
-                                  AnimatedOpacity(
-                                    opacity: isActive ? 1.0 : 0.0,
-                                    duration: const Duration(milliseconds: 180),
-                                    child: Container(
-                                      height: 3,
-                                      margin: const EdgeInsets.symmetric(
-                                          horizontal: 12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.5),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
+                        ],
+                      ),
+
+                      // Slider para el contenido
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 2,
+                                thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6),
+                                overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 12),
+                                thumbColor: Colors.blue,
+                                activeTrackColor: Colors.blueAccent,
+                                inactiveTrackColor:
+                                    Colors.blueAccent.withOpacity(0.25),
+                              ),
+                              child: Slider(
+                                min: _minContentFontSize,
+                                max: _maxContentFontSize,
+                                value: _contentFontSize.clamp(
+                                    _minContentFontSize, _maxContentFontSize),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _contentFontSize = v.clamp(
+                                        _minContentFontSize,
+                                        _maxContentFontSize);
+                                  });
+                                  _saveNote();
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Contenido + LISTVIEW (llenará el resto)
+                Expanded(
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      16,
+                      16,
+                      _bottomBarHeight +
+                          MediaQuery.of(context).padding.bottom +
+                          16,
+                    ),
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: List.generate(_contentParts.length, (i) {
+                          final part = _contentParts[i];
+
+                          // 🔒 Importante: NO pintar imágenes incrustadas.
+                          if (part.isImage) {
+                            return const SizedBox.shrink();
+                          }
+
+                          // ---- TEXTO ----
+                          if (_editingPartIndex == i) {
+                            _partControllers[i] ??=
+                                TextEditingController(text: part.text);
+                            return Focus(
+                              onFocusChange: (hasFocus) {
+                                if (!hasFocus) {
+                                  setState(() {
+                                    _contentParts[i] = _TextPart(
+                                      _partControllers[i]?.text ?? part.text,
+                                      _contentFormat.bold,
+                                      _contentFormat.underline,
+                                      _contentFormat.underline
+                                          ? _contentFormat.underlineColor.value
+                                          : null,
+                                      _contentFormat.highlight,
+                                      _contentFormat.highlight
+                                          ? _contentFormat.highlightColor.value
+                                          : null,
+                                      false,
+                                    );
+                                    _editingPartIndex = null;
+                                    _partControllers.remove(i);
+                                  });
+                                  _saveNote();
+                                }
+                              },
+                              child: TextField(
+                                controller: _partControllers[i],
+                                autofocus: true,
+                                maxLines: null,
+                                style: TextStyle(
+                                  fontSize: _contentFontSize,
+                                  fontWeight: _contentFormat.bold
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: Colors.black87,
+                                  decoration: _contentFormat.underline
+                                      ? TextDecoration.underline
+                                      : TextDecoration.none,
+                                  decorationColor: _contentFormat.underline
+                                      ? _contentFormat.underlineColor
+                                      : null,
+                                  decorationThickness:
+                                      _contentFormat.underline ? 2.5 : null,
+                                  backgroundColor: _contentFormat.highlight
+                                      ? _contentFormat.highlightColor
+                                      : Colors.transparent,
+                                ),
+                                textAlign: TextAlign.left,
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                ),
+                                onChanged: (_) => setHasUnsavedChanges(true),
+                                onSubmitted: (value) {
+                                  setState(() {
+                                    _contentParts[i] = _TextPart(
+                                      value,
+                                      _contentFormat.bold,
+                                      _contentFormat.underline,
+                                      _contentFormat.underline
+                                          ? _contentFormat.underlineColor.value
+                                          : null,
+                                      _contentFormat.highlight,
+                                      _contentFormat.highlight
+                                          ? _contentFormat.highlightColor.value
+                                          : null,
+                                      false,
+                                    );
+                                    _editingPartIndex = null;
+                                    _partControllers.remove(i);
+                                  });
+                                  _saveNote();
+                                },
+                              ),
+                            );
+                          } else {
+                            // Vista de texto no editable
+                            return LongPressDraggable<int>(
+                              data: i,
+                              feedback: Material(
+                                color: Colors.transparent,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 2.0, horizontal: 4.0),
+                                  child: RichText(
+                                    text: TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: part.text,
+                                          style: TextStyle(
+                                            fontSize: _contentFontSize,
+                                            fontWeight: part.bold
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            color: Colors.black54,
+                                            decoration: part.underline
+                                                ? TextDecoration.underline
+                                                : TextDecoration.none,
+                                            decorationColor: part.underline &&
+                                                    part.underlineColor != null
+                                                ? Color(part.underlineColor!)
+                                                : null,
+                                            decorationThickness:
+                                                part.underline ? 2.5 : null,
+                                            backgroundColor: part.highlight &&
+                                                    part.highlightColor != null
+                                                ? Color(part.highlightColor!)
+                                                : Colors.transparent,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _editingPartIndex = i;
-                                      });
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 2.0, horizontal: 4.0),
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: RichText(
-                                          text: TextSpan(
-                                            children: [
-                                              TextSpan(
-                                                text: part.text,
-                                                style: TextStyle(
-                                                  fontSize: _contentFontSize,
-                                                  fontWeight: part.bold
-                                                      ? FontWeight.bold
-                                                      : FontWeight.normal,
-                                                  color: Colors.black87,
-                                                  decoration: part.underline
-                                                      ? TextDecoration.underline
-                                                      : TextDecoration.none,
-                                                  decorationColor: part
-                                                              .underline &&
-                                                          part.underlineColor !=
-                                                              null
-                                                      ? Color(
-                                                          part.underlineColor!)
-                                                      : null,
-                                                  decorationThickness:
-                                                      part.underline
-                                                          ? 2.5
-                                                          : null,
-                                                  backgroundColor: part
-                                                              .highlight &&
-                                                          part.highlightColor !=
-                                                              null
-                                                      ? Color(
-                                                          part.highlightColor!)
-                                                      : Colors.transparent,
-                                                ),
-                                              ),
-                                            ],
+                                ),
+                              ),
+                              childWhenDragging: const SizedBox.shrink(),
+                              onDragCompleted: () {},
+                              child: DragTarget<int>(
+                                onWillAccept: (from) =>
+                                    from != null && from != i,
+                                onAccept: (from) {
+                                  setState(() {
+                                    final moved = _contentParts.removeAt(from);
+                                    _contentParts.insert(
+                                        _dropInsertIndex ?? i, moved);
+                                    _dropInsertIndex = null;
+                                    _saveNote();
+                                  });
+                                },
+                                onLeave: (_) => setState(() {
+                                  _dropInsertIndex = null;
+                                }),
+                                builder:
+                                    (context, candidateData, rejectedData) {
+                                  final isActive = candidateData.isNotEmpty;
+                                  return Column(
+                                    children: [
+                                      AnimatedOpacity(
+                                        opacity: isActive ? 1.0 : 0.0,
+                                        duration:
+                                            const Duration(milliseconds: 180),
+                                        child: Container(
+                                          height: 3,
+                                          margin: const EdgeInsets.symmetric(
+                                              horizontal: 12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withOpacity(0.5),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        );
-                      }
-                    }),
-                  ),
-                  const SizedBox(height: 8),
+                                      GestureDetector(
+                                        onTap: () => setState(() {
+                                          _editingPartIndex = i;
+                                        }),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 2.0, horizontal: 4.0),
+                                          child: Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: RichText(
+                                              text: TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text: part.text,
+                                                    style: TextStyle(
+                                                      fontSize:
+                                                          _contentFontSize,
+                                                      fontWeight: part.bold
+                                                          ? FontWeight.bold
+                                                          : FontWeight.normal,
+                                                      color: Colors.black87,
+                                                      decoration: part.underline
+                                                          ? TextDecoration
+                                                              .underline
+                                                          : TextDecoration.none,
+                                                      decorationColor: part
+                                                                  .underline &&
+                                                              part.underlineColor !=
+                                                                  null
+                                                          ? Color(part
+                                                              .underlineColor!)
+                                                          : null,
+                                                      decorationThickness:
+                                                          part.underline
+                                                              ? 2.5
+                                                              : null,
+                                                      backgroundColor: part
+                                                                  .highlight &&
+                                                              part.highlightColor !=
+                                                                  null
+                                                          ? Color(part
+                                                              .highlightColor!)
+                                                          : Colors.transparent,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            );
+                          }
+                        }),
+                      ),
+                      const SizedBox(height: 8),
 
-                  // Campo de escritura continua (aplica formato actual)
-                  Container(
-                    decoration: const BoxDecoration(
-                      border: Border.fromBorderSide(BorderSide.none),
-                      color: Colors.transparent,
-                    ),
-                    child: TextField(
-                      controller: _hiddenController,
-                      focusNode: _hiddenFocus,
-                      maxLines: null,
-                      minLines: 1,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      cursorColor: Colors.amber,
-                      style: TextStyle(
-                        fontSize: _contentFontSize,
-                        fontWeight: _contentFormat.bold
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: Colors.black87,
-                        decoration: _contentFormat.underline
-                            ? TextDecoration.underline
-                            : TextDecoration.none,
-                        decorationColor: _contentFormat.underline
-                            ? _contentFormat.underlineColor
-                            : null,
-                        decorationThickness:
-                            _contentFormat.underline ? 2.5 : null,
-                        backgroundColor: _contentFormat.highlight
-                            ? _contentFormat.highlightColor
-                            : Colors.transparent,
+                      // Campo de escritura continua
+                      Container(
+                        decoration: const BoxDecoration(
+                          border: Border.fromBorderSide(BorderSide.none),
+                          color: Colors.transparent,
+                        ),
+                        child: TextField(
+                          controller: _hiddenController,
+                          focusNode: _hiddenFocus,
+                          maxLines: null,
+                          minLines: 1,
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.newline,
+                          cursorColor: Colors.amber,
+                          style: TextStyle(
+                            fontSize: _contentFontSize,
+                            fontWeight: _contentFormat.bold
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: Colors.black87,
+                            decoration: _contentFormat.underline
+                                ? TextDecoration.underline
+                                : TextDecoration.none,
+                            decorationColor: _contentFormat.underline
+                                ? _contentFormat.underlineColor
+                                : null,
+                            decorationThickness:
+                                _contentFormat.underline ? 2.5 : null,
+                            backgroundColor: _contentFormat.highlight
+                                ? _contentFormat.highlightColor
+                                : Colors.transparent,
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 10),
+                            hintText:
+                                'Escribe aquí... (Enter para nueva línea)',
+                            fillColor: Colors.transparent,
+                            filled: true,
+                          ),
+                          textAlign: TextAlign.left,
+                          onChanged: (_) => _saveNote(),
+                        ),
                       ),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                        hintText: 'Escribe aquí... (Enter para nueva línea)',
-                        fillColor: Colors.transparent,
-                        filled: true,
-                      ),
-                      textAlign: TextAlign.left,
-                      onChanged: (_) => _saveNote(),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+
+            // ---- Imágenes flotantes (encima del contenido) ----
+            ..._floatingImages.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final img = entry.value;
+
+              double startX = img.x;
+              double startY = img.y;
+
+              return Positioned(
+                key: ValueKey('floating_${idx}_${img.filePath}'),
+                left: img.x,
+                top: img.y,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() {
+                      _activeImageIndex = _activeImageIndex == idx ? null : idx;
+                    });
+                  },
+                  onPanStart: (_) {
+                    startX = _floatingImages[idx].x;
+                    startY = _floatingImages[idx].y;
+                  },
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _floatingImages[idx].x += details.delta.dx;
+                      _floatingImages[idx].y += details.delta.dy;
+                    });
+                  },
+                  onPanEnd: (_) {
+                    _saveNote(pop: false);
+                  },
+                  child: _ResizableImage(
+                    filePath: img.filePath,
+                    width: img.width,
+                    height: img.height,
+                    selected: _activeImageIndex == idx,
+                    onSelect: () {
+                      setState(() {
+                        _activeImageIndex =
+                            _activeImageIndex == idx ? null : idx;
+                      });
+                    },
+                    onResize: (w, h) {
+                      setState(() {
+                        _floatingImages[idx].width = w;
+                        _floatingImages[idx].height = h;
+                      });
+                      _saveNote(pop: false);
+                    },
+                  ),
+                ),
+              );
+            }),
           ],
         ),
       ),
@@ -1217,10 +1237,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             borderRadius: BorderRadius.circular(12),
             boxShadow: const [
               BoxShadow(
-                color: Colors.black12,
-                blurRadius: 6,
-                offset: Offset(0, 2),
-              ),
+                  color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
             ],
           ),
           child: Row(
@@ -1229,7 +1246,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               _buildIconBox(
                 icon: Image.asset('assets/abc.png', width: 32, height: 32),
                 onTap: () async {
-                  // Si hay texto escrito, lo "anclamos" como segmento con el formato actual
                   if (_hiddenController.text.isNotEmpty) {
                     setState(() {
                       _contentParts.add(
@@ -1292,23 +1308,25 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     builder: (ctx) => const CameraGalleryWidget(),
                   ).then((selectedImage) {
                     if (selectedImage != null) {
-                      // Insertamos como segmento de imagen con tamaño inicial
+                      final defaultW = 240.0;
+                      final defaultH = 160.0;
+                      final size = MediaQuery.of(context).size;
+                      final startX = (size.width - defaultW) / 2;
+                      // Ubicación inicial razonable bajo el encabezado
+                      final startY = 220.0;
+
                       setState(() {
-                        _contentParts.add(
-                          _TextPart(
-                            selectedImage.path,
-                            false, // bold
-                            false, // underline
-                            null,
-                            false, // highlight
-                            null,
-                            true, // isImage
-                            240, // imageWidth
-                            160, // imageHeight
+                        // 🔵 Agregar SIEMPRE como imagen flotante
+                        _floatingImages.add(
+                          FloatingImage(
+                            filePath: selectedImage.path,
+                            x: startX,
+                            y: startY,
+                            width: defaultW,
+                            height: defaultH,
                           ),
                         );
-                        _activeImageIndex = _contentParts.length -
-                            1; // seleccionar recién añadida
+                        _activeImageIndex = _floatingImages.length - 1;
                       });
                       _saveNote();
                     }
@@ -1326,8 +1344,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           const Text('Función de mapa mental próximamente.'),
                       actions: [
                         TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('OK')),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('OK'),
+                        ),
                       ],
                     ),
                   );
@@ -1465,12 +1484,12 @@ class _ResizableImageState extends State<_ResizableImage> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(widget.filePath),
-                        width: _w,
-                        height: _h,
-                        fit: BoxFit.contain,
-                      ),
+                    child: Image.file(
+                      File(widget.filePath),
+                      width: _w,
+                      height: _h,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
@@ -1696,4 +1715,3 @@ class SkinPanel extends StatelessWidget {
     );
   }
 }
-

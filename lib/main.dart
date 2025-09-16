@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart'
 import 'package:provider/provider.dart';
 import 'notes_module.dart';
 import 'note.dart';
+import 'note_provider.dart';
 import 'pending.dart';
 
 void main() {
@@ -19,7 +20,7 @@ class NotesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => NoteProvider()),
+        ChangeNotifierProvider<NoteProvider>(create: (_) => NoteProvider()),
         ChangeNotifierProvider(create: (_) => PendingProvider()),
       ],
       child: MaterialApp(
@@ -499,7 +500,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
-
 
   void _onItemTapped(int index) {
     setState(() {

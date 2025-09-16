@@ -10,7 +10,7 @@ class Note {
   double titleFontSize;
   double contentFontSize;
   List<Map<String, dynamic>> contentParts; // [{text:..., bold:...}, ...]
-
+  List<Map<String, dynamic>> floatingImages;
 
   Note({
     required this.id,
@@ -20,9 +20,10 @@ class Note {
     required this.skin,
     required this.color,
     required this.titleFontSize,
-  required this.contentFontSize,
-  required this.contentParts,
-  });
+    required this.contentFontSize,
+    required this.contentParts,
+    List<Map<String, dynamic>>? floatingImages,
+  }) : floatingImages = floatingImages ?? [];
 
   factory Note.fromJson(Map<String, dynamic> json) {
     return Note(
@@ -33,9 +34,16 @@ class Note {
       skin: json['skin'] ?? '',
       color: Color(json['color'] ?? 0xFFFFFFFF),
       titleFontSize: (json['titleFontSize'] ?? 18).toDouble(),
-  contentFontSize: (json['contentFontSize'] ?? 18).toDouble(),
-  contentParts: (json['contentParts'] is List)
-          ? (json['contentParts'] as List).map((e) => Map<String, dynamic>.from(e)).toList()
+      contentFontSize: (json['contentFontSize'] ?? 18).toDouble(),
+      contentParts: (json['contentParts'] is List)
+          ? (json['contentParts'] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : [],
+      floatingImages: (json['floatingImages'] is List)
+          ? (json['floatingImages'] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
           : [],
     );
   }
@@ -49,8 +57,9 @@ class Note {
       'skin': skin,
       'color': color.value,
       'titleFontSize': titleFontSize,
-  'contentFontSize': contentFontSize,
+      'contentFontSize': contentFontSize,
       'contentParts': contentParts,
+      'floatingImages': floatingImages,
     };
   }
 }
