@@ -1,10 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'note.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
-
 
 class NoteProvider extends ChangeNotifier {
   List<Note> notes = [];
@@ -51,7 +49,6 @@ class NoteProvider extends ChangeNotifier {
     }
   }
 
-
   void updateNote(Note note) {
     final idx = notes.indexWhere((n) => n.id == note.id);
     if (idx != -1) {
@@ -61,13 +58,11 @@ class NoteProvider extends ChangeNotifier {
     }
   }
 
-
   void addNote(Note note) {
     notes.add(note);
     saveNotes();
     notifyListeners();
   }
-
 
   void deleteNote(Note note) {
     notes.removeWhere((n) => n.id == note.id);

@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
-
 import 'package:provider/provider.dart';
+
 import 'notes_module.dart';
 import 'note.dart';
 import 'note_provider.dart';
 import 'pending.dart';
+import 'mindmap_test_screen.dart';
 
 void main() {
   runApp(const NotesApp());
@@ -21,7 +22,8 @@ class NotesApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<NoteProvider>(create: (_) => NoteProvider()),
-        ChangeNotifierProvider(create: (_) => PendingProvider()),
+        ChangeNotifierProvider<PendingProvider>(
+            create: (_) => PendingProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -40,8 +42,6 @@ class NotesApp extends StatelessWidget {
 }
 
 class HomeScreen extends StatefulWidget {
-  /// Formatea la fecha guardada en el campo [date] para mostrar fecha y hora sin milisegundos.
-
   const HomeScreen({super.key});
 
   @override
@@ -49,24 +49,27 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Estado de navegación
   int _selectedIndex = 0;
-  String _searchQuery = '';
-  String _searchCategory = '';
+
+  // Filtros
   DateTime? _selectedDate;
   TimeOfDay? _selectedTimeFrom;
   TimeOfDay? _selectedTimeTo;
   String _timeText = '';
+  String _searchQuery = '';
+  String _searchCategory = '';
 
   bool get _isDesktopLike =>
       kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux ||
-      defaultTargetPlatform == TargetPlatform.macOS;
+      defaultTargetPlatform == TargetPlatform.linux;
 
-  @override
-  void initState() {
-    super.initState();
-    _searchQuery = '';
+  void _openMindMapTestScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const MindMapTestScreen()),
+    );
   }
 
   /// Diferir mutaciones al próximo frame para evitar re-entrancia.
@@ -528,13 +531,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.white,
                     titleFontSize: 22.0,
                     contentFontSize: 18.0,
-                    contentParts: [],
+                    contentParts: const [],
+                    floatingImages: const [],
                   );
                   context.read<NoteProvider>().addNote(newNote);
                   Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => NoteEditScreen(note: newNote)));
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NoteEditScreen(note: newNote),
+                    ),
+                  );
                 },
                 tooltip: 'Nueva enseñanza',
               )
@@ -546,21 +552,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 Tween<Offset>(begin: const Offset(0.0, 0.5), end: Offset.zero)
                     .animate(animation);
             return SlideTransition(
-                position: offsetAnimation,
-                child: FadeTransition(opacity: animation, child: child));
+              position: offsetAnimation,
+              child: FadeTransition(opacity: animation, child: child),
+            );
           },
           child: Text(
             _selectedIndex == 0 ? 'Enseñanzas' : 'Pendientes',
             key: ValueKey(_selectedIndex),
             style: const TextStyle(
-                fontFamily: 'Nunito',
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 28),
+              fontFamily: 'Nunito',
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 28,
+            ),
           ),
         ),
         centerTitle: true,
         actions: [
+          // Ícono de ramas/conexiones para abrir la pantalla de prueba del mapa mental
+          IconButton(
+            icon: const Icon(Icons.device_hub, color: Colors.blueGrey),
+            tooltip: 'Mapa mental (prueba)',
+            onPressed: _openMindMapTestScreen,
+          ),
           IconButton(
             icon: Image.asset('assets/lupa.png', width: 28, height: 28),
             onPressed: _showSearchDialog,
@@ -709,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             )
-          : PendingScreen(),
+          : const PendingScreen(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -734,12 +748,27 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-// ...existing code...
 }
 
 // --- Pantalla de notas ---
-
 class NoteListScreen extends StatelessWidget {
+  const NoteListScreen({
+    Key? key,
+    this.searchQuery = '',
+    this.searchCategory = '',
+    this.selectedDate,
+    this.selectedTimeFrom,
+    this.selectedTimeTo,
+    this.timeText = '',
+  }) : super(key: key);
+
+  final String searchQuery;
+  final String searchCategory;
+  final DateTime? selectedDate;
+  final TimeOfDay? selectedTimeFrom;
+  final TimeOfDay? selectedTimeTo;
+  final String timeText;
+
   String _formatDateTime(String dateStr) {
     try {
       final dt = DateTime.parse(dateStr);
@@ -775,23 +804,6 @@ class NoteListScreen extends StatelessWidget {
     } catch (_) {}
     return null;
   }
-
-  final String searchQuery;
-  final String searchCategory;
-  final DateTime? selectedDate;
-  final TimeOfDay? selectedTimeFrom;
-  final TimeOfDay? selectedTimeTo;
-  final String timeText;
-
-  const NoteListScreen({
-    Key? key,
-    this.searchQuery = '',
-    this.searchCategory = '',
-    this.selectedDate,
-    this.selectedTimeFrom,
-    this.selectedTimeTo,
-    this.timeText = '',
-  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -850,16 +862,16 @@ class NoteListScreen extends StatelessWidget {
           'Sermón': Color(0xFFD6FFF0),
           'Estudio Bíblico': Color(0xFFD6EFFF),
           'Reflexión': Color(0xFFFFF9D6),
-          'Devocional': Color(0xFFB2E2B2), // Verde claro
+          'Devocional': Color(0xFFB2E2B2),
           'Testimonio': Color(0xFFEAD6FF),
           'Apuntes Generales': Color(0xFFB2C7E2),
-          'Discipulado': Color(0xFFFFD6D6), // Rosa claro, bien distinto
-          'Conexion': Color(0xFFB2FFD6), // Verde agua
-          'Música': Color(0xFFE0F7FA), // Celeste
-          'Cita': Color(0xFFFFF3E0), // Naranja claro
-          'Versículo': Color(0xFFE8F5E9), // Verde muy claro
-          'Oración': Color(0xFFF3E5F5), // Lila claro
-          'Otro': Color(0xFFD7CCC8), // Marrón claro
+          'Discipulado': Color(0xFFFFD6D6),
+          'Conexion': Color(0xFFB2FFD6),
+          'Música': Color(0xFFE0F7FA),
+          'Cita': Color(0xFFFFF3E0),
+          'Versículo': Color(0xFFE8F5E9),
+          'Oración': Color(0xFFF3E5F5),
+          'Otro': Color(0xFFD7CCC8),
         };
 
         return ListView.builder(
@@ -931,9 +943,9 @@ class NoteListScreen extends StatelessWidget {
                 trailing: PopupMenuButton<String>(
                   icon: const Text('🗑️', style: TextStyle(fontSize: 15)),
                   onSelected: (value) {
-                    if (value == 'delete')
-                      // ignore: curly_braces_in_flow_control_structures
+                    if (value == 'delete') {
                       context.read<NoteProvider>().deleteNote(note);
+                    }
                   },
                   itemBuilder: (ctx) => const [
                     PopupMenuItem(value: 'delete', child: Text('Eliminar')),
@@ -949,13 +961,13 @@ class NoteListScreen extends StatelessWidget {
 }
 
 // --- Pantalla de pendientes ---
-
 class PendingScreen extends StatelessWidget {
-  final String searchQuery;
-  final String searchCategory;
   const PendingScreen(
       {Key? key, this.searchQuery = '', this.searchCategory = ''})
       : super(key: key);
+
+  final String searchQuery;
+  final String searchCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -1040,10 +1052,10 @@ class PendingScreen extends StatelessWidget {
 }
 
 // --- Formulario para agregar tarea ---
-
 class AddTaskForm extends StatefulWidget {
-  final PendingProvider pendingProvider;
   const AddTaskForm({required this.pendingProvider, super.key});
+
+  final PendingProvider pendingProvider;
 
   @override
   State<AddTaskForm> createState() => _AddTaskFormState();
@@ -1172,13 +1184,7 @@ class _AddTaskFormState extends State<AddTaskForm> {
 }
 
 // --- Tarjeta de tarea ---
-
 class TaskCard extends StatelessWidget {
-  final PendingTask task;
-  final void Function(String id)? onComplete;
-  final void Function(String id) onDelete;
-  final bool completed;
-
   const TaskCard({
     required this.task,
     this.onComplete,
@@ -1186,6 +1192,11 @@ class TaskCard extends StatelessWidget {
     this.completed = false,
     super.key,
   });
+
+  final PendingTask task;
+  final void Function(String id)? onComplete;
+  final void Function(String id) onDelete;
+  final bool completed;
 
   @override
   Widget build(BuildContext context) {

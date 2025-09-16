@@ -19,6 +19,8 @@ import 'note.dart';
 import 'note_provider.dart';
 import 'audio_mic_fab.dart';
 import 'camera_gallery_widget.dart';
+import 'mindmap_test_screen.dart';
+import 'mindmap_from_note_screen.dart';
 
 /// =========================
 /// Modelo de segmento (_TextPart)
@@ -1336,18 +1338,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               _buildIconBox(
                 icon: Image.asset('assets/IA.png', width: 32, height: 32),
                 onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Mapa mental/conceptual'),
-                      content:
-                          const Text('Función de mapa mental próximamente.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('OK'),
-                        ),
-                      ],
+                  // Abrir el mapa mental generado desde la nota actual
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => MindMapFromNoteScreen(note: widget.note),
                     ),
                   );
                 },
