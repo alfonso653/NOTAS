@@ -23,10 +23,17 @@ class MindMapBoard extends StatefulWidget {
 class _MindMapBoardState extends State<MindMapBoard> {
   String? _draggingNodeId;
   Offset? _dragStartNodePosition;
-  double _zoom = 1.0;
-  final TransformationController _transformationController = TransformationController();
   final double _minZoom = 0.4;
   final double _maxZoom = 2.5;
+  late double _zoom;
+  late final TransformationController _transformationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoom = _minZoom;
+    _transformationController = TransformationController(Matrix4.identity()..scale(_zoom));
+  }
 
   @override
   void dispose() {
@@ -72,7 +79,7 @@ class _MindMapBoardState extends State<MindMapBoard> {
         // Área interactiva del mapa mental
         Expanded(
           child: Listener(
-            onPointerSignal: (_) {}, // Permite scroll con mouse en desktop
+            onPointerSignal: (_) {},
             child: InteractiveViewer(
               minScale: _minZoom,
               maxScale: _maxZoom,
@@ -84,9 +91,10 @@ class _MindMapBoardState extends State<MindMapBoard> {
                   _zoom = _transformationController.value.getMaxScaleOnAxis();
                 });
               },
-              // Permitir pan con un dedo en móvil
               panAxis: PanAxis.free,
+              boundaryMargin: const EdgeInsets.all(double.infinity),
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   // Dibuja las conexiones
                   Positioned.fill(
@@ -147,15 +155,21 @@ class _MindMapNodeWidget extends StatelessWidget {
       color: Colors.white,
       elevation: 2,
       borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade300, width: 1.2),
-        ),
-        child: Text(
-          node.text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      child: IntrinsicWidth(
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 60, maxWidth: 260),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade300, width: 1.2),
+          ),
+          child: Text(
+            node.text,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            softWrap: true,
+            overflow: TextOverflow.visible,
+            maxLines: 4,
+          ),
         ),
       ),
     );
