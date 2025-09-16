@@ -19,14 +19,18 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
   late List<MindMapNode> nodes;
   late List<MindMapConnection> connections;
 
+  /// Colores por nodo (id -> Color)
+  final Map<String, Color> nodeColors = {};
+
   @override
   void initState() {
     super.initState();
 
-    // Cargar (si existen) nodos previos de la nota para preservar posiciones
+    // Cargar nodos previos de la nota (posiciones + colores)
     final prevNodes = <String, MindMapNode>{};
     if (widget.note.mindMapNodes != null) {
       for (final e in widget.note.mindMapNodes!) {
+        // Posiciones y texto previos
         prevNodes[e['id']] = MindMapNode(
           id: e['id'],
           text: e['text'],
@@ -38,13 +42,18 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
               (e['children'] as List?)?.map((c) => c.toString()).toList() ??
                   <String>[],
         );
+        // Color previo si existe
+        if (e['color'] != null) {
+          final intVal = (e['color'] as num).toInt();
+          nodeColors[e['id']] = Color(intVal);
+        }
       }
     }
 
     nodes = _generateNodesFromNoteWithPositions(prevNodes);
     connections = _generateConnections(nodes);
 
-    // Guardar el estado inicial (asegura persistencia cuando se abre)
+    // Guardar el estado inicial (asegura persistencia al abrir)
     WidgetsBinding.instance.addPostFrameCallback((_) => _saveMindMap());
   }
 
@@ -76,7 +85,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
     }).toList();
 
     final double radius = 160;
-    final total = textParts.length == 0 ? 1 : textParts.length;
+    final total = textParts.isEmpty ? 1 : textParts.length;
 
     int idx = 0;
     for (final part in textParts) {
@@ -98,6 +107,9 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
 
       result.add(node);
       idx++;
+
+      // Si no tenía color previo, asigna blanco
+      nodeColors.putIfAbsent(id, () => Colors.white);
     }
 
     // Hijos del root = todos los nodos no raíz
@@ -106,6 +118,9 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
     if (rootIndex != -1) {
       result[rootIndex] = result[rootIndex].copyWith(children: childrenIds);
     }
+
+    // Color por defecto del root si no existe
+    nodeColors.putIfAbsent(rootId, () => Colors.white);
 
     return result;
   }
@@ -121,7 +136,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
   }
 
   void _saveMindMap() {
-    // Persistir nodos y conexiones en la nota
+    // Persistir nodos y conexiones en la nota (incluye color por nodo)
     widget.note.mindMapNodes = nodes
         .map((n) => {
               'id': n.id,
@@ -129,6 +144,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
               'x': n.position.dx,
               'y': n.position.dy,
               'children': n.children,
+              'color': nodeColors[n.id]?.value, // puede ser null si no existe
             })
         .toList();
 
@@ -161,6 +177,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
           key: ValueKey('board_${widget.note.id}'),
           nodes: nodes,
           connections: connections,
+          nodeColors: nodeColors,
           onNodeMoved: (updatedNode) {
             setState(() {
               // Reemplazar el nodo por id con la instancia actualizada
@@ -168,6 +185,12 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
               if (idx != -1) {
                 nodes[idx] = updatedNode;
               }
+              _saveMindMap();
+            });
+          },
+          onNodeColorChanged: (nodeId, color) {
+            setState(() {
+              nodeColors[nodeId] = color;
               _saveMindMap();
             });
           },
