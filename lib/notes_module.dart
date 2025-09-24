@@ -1179,19 +1179,28 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               ],
             ),
 
-            // ---- Imágenes flotantes (encima del contenido) ----
-            ..._floatingImages.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final img = entry.value;
+            // ---- Área clipeada para imágenes flotantes (aún más espacio abajo) ----
+            Positioned(
+              top: 155, // Perfecto arriba
+              left: 16, // Padding left del ListView
+              right: 16, // Padding right del ListView  
+              bottom: 10.0, // Aún menos para dar más espacio abajo
+              child: ClipRect(
+                child: Stack(
+                  children: [
+                    // ---- Imágenes flotantes (limitadas al área de contenido) ----
+                    ..._floatingImages.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final img = entry.value;
 
-              // Ajustar posición según el scroll
-              final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
-              final adjustedY = img.y - scrollOffset + 180; // +180 para compensar la altura del header
+                      // Ajustar posición según el scroll
+                      final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+                      final adjustedY = img.y - scrollOffset; // Sin compensación adicional porque ya estamos dentro del área clipeada
 
-              return Positioned(
-                key: ValueKey('floating_${idx}_${img.filePath}'),
-                left: img.x,
-                top: adjustedY,
+                      return Positioned(
+                        key: ValueKey('floating_${idx}_${img.filePath}'),
+                        left: img.x - 16, // Compensar el padding left del ClipRect
+                        top: adjustedY - 16, // Compensar el padding top del ClipRect
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
@@ -1234,6 +1243,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 ),
               );
             }),
+                  ], // Cierre del Stack interno de imágenes flotantes
+                ),
+              ),
+            ), // Cierre del Positioned y ClipRect
           ],
         ),
       ),
@@ -1324,9 +1337,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       final defaultW = 240.0;
                       final defaultH = 160.0;
                       final size = MediaQuery.of(context).size;
-                      final startX = (size.width - defaultW) / 2;
+                      final startX = (size.width - defaultW) / 2 + 16; // +16 para compensar el padding del ClipRect
                       // Ubicación inicial razonable bajo el encabezado
-                      final startY = 220.0;
+                      final startY = 220.0 + 16; // +16 para compensar el padding del ClipRect
 
                       setState(() {
                         // 🔵 Agregar SIEMPRE como imagen flotante
