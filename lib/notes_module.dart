@@ -163,6 +163,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   // Selección (se usará para imágenes flotantes)
   int? _activeImageIndex;
 
+  // Controller para el scroll del contenido
+  late ScrollController _scrollController;
+
   // Control de inserciones por drag de texto
   int? _dropInsertIndex;
 
@@ -413,6 +416,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   @override
   void initState() {
     super.initState();
+
+    _scrollController = ScrollController();
+    _scrollController.addListener(() {
+      // Actualizar cuando hay scroll para recalcular posiciones de imágenes
+      if (mounted) setState(() {});
+    });
 
     _blinkController = AnimationController(
       vsync: this,
@@ -880,6 +889,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 // Contenido + LISTVIEW (llenará el resto)
                 Expanded(
                   child: ListView(
+                    controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.fromLTRB(
                       16,
@@ -1174,13 +1184,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               final idx = entry.key;
               final img = entry.value;
 
-              double startX = img.x;
-              double startY = img.y;
+              // Ajustar posición según el scroll
+              final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+              final adjustedY = img.y - scrollOffset + 180; // +180 para compensar la altura del header
 
               return Positioned(
                 key: ValueKey('floating_${idx}_${img.filePath}'),
                 left: img.x,
-                top: img.y,
+                top: adjustedY,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
@@ -1189,12 +1200,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     });
                   },
                   onPanStart: (_) {
-                    startX = _floatingImages[idx].x;
-                    startY = _floatingImages[idx].y;
+                    // Guardar posición inicial para referencia si es necesario
                   },
                   onPanUpdate: (details) {
                     setState(() {
                       _floatingImages[idx].x += details.delta.dx;
+                      // Para y, agregar el delta al valor original (que ya incluye scroll)
                       _floatingImages[idx].y += details.delta.dy;
                     });
                   },
