@@ -1183,7 +1183,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             Positioned(
               top: 155, // Perfecto arriba
               left: 16, // Padding left del ListView
-              right: 16, // Padding right del ListView  
+              right: 16, // Padding right del ListView
               bottom: 10.0, // Aún menos para dar más espacio abajo
               child: ClipRect(
                 child: Stack(
@@ -1194,55 +1194,61 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       final img = entry.value;
 
                       // Ajustar posición según el scroll
-                      final scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
-                      final adjustedY = img.y - scrollOffset; // Sin compensación adicional porque ya estamos dentro del área clipeada
+                      final scrollOffset = _scrollController.hasClients
+                          ? _scrollController.offset
+                          : 0.0;
+                      final adjustedY = img.y -
+                          scrollOffset; // Sin compensación adicional porque ya estamos dentro del área clipeada
 
                       return Positioned(
                         key: ValueKey('floating_${idx}_${img.filePath}'),
-                        left: img.x - 16, // Compensar el padding left del ClipRect
-                        top: adjustedY - 16, // Compensar el padding top del ClipRect
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    setState(() {
-                      _activeImageIndex = _activeImageIndex == idx ? null : idx;
-                    });
-                  },
-                  onPanStart: (_) {
-                    // Guardar posición inicial para referencia si es necesario
-                  },
-                  onPanUpdate: (details) {
-                    setState(() {
-                      _floatingImages[idx].x += details.delta.dx;
-                      // Para y, agregar el delta al valor original (que ya incluye scroll)
-                      _floatingImages[idx].y += details.delta.dy;
-                    });
-                  },
-                  onPanEnd: (_) {
-                    _saveNote(pop: false);
-                  },
-                  child: _ResizableImage(
-                    filePath: img.filePath,
-                    width: img.width,
-                    height: img.height,
-                    selected: _activeImageIndex == idx,
-                    onSelect: () {
-                      setState(() {
-                        _activeImageIndex =
-                            _activeImageIndex == idx ? null : idx;
-                      });
-                    },
-                    onResize: (w, h) {
-                      setState(() {
-                        _floatingImages[idx].width = w;
-                        _floatingImages[idx].height = h;
-                      });
-                      _saveNote(pop: false);
-                    },
-                  ),
-                ),
-              );
-            }),
+                        left: img.x -
+                            16, // Compensar el padding left del ClipRect
+                        top: adjustedY -
+                            16, // Compensar el padding top del ClipRect
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() {
+                              _activeImageIndex =
+                                  _activeImageIndex == idx ? null : idx;
+                            });
+                          },
+                          onPanStart: (_) {
+                            // Guardar posición inicial para referencia si es necesario
+                          },
+                          onPanUpdate: (details) {
+                            setState(() {
+                              _floatingImages[idx].x += details.delta.dx;
+                              // Para y, agregar el delta al valor original (que ya incluye scroll)
+                              _floatingImages[idx].y += details.delta.dy;
+                            });
+                          },
+                          onPanEnd: (_) {
+                            _saveNote(pop: false);
+                          },
+                          child: _ResizableImage(
+                            filePath: img.filePath,
+                            width: img.width,
+                            height: img.height,
+                            selected: _activeImageIndex == idx,
+                            onSelect: () {
+                              setState(() {
+                                _activeImageIndex =
+                                    _activeImageIndex == idx ? null : idx;
+                              });
+                            },
+                            onResize: (w, h) {
+                              setState(() {
+                                _floatingImages[idx].width = w;
+                                _floatingImages[idx].height = h;
+                              });
+                              _saveNote(pop: false);
+                            },
+                          ),
+                        ),
+                      );
+                    }),
                   ], // Cierre del Stack interno de imágenes flotantes
                 ),
               ),
@@ -1337,9 +1343,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       final defaultW = 240.0;
                       final defaultH = 160.0;
                       final size = MediaQuery.of(context).size;
-                      final startX = (size.width - defaultW) / 2 + 16; // +16 para compensar el padding del ClipRect
+                      final startX = (size.width - defaultW) / 2 +
+                          16; // +16 para compensar el padding del ClipRect
                       // Ubicación inicial razonable bajo el encabezado
-                      final startY = 220.0 + 16; // +16 para compensar el padding del ClipRect
+                      final startY = 220.0 +
+                          16; // +16 para compensar el padding del ClipRect
 
                       setState(() {
                         // 🔵 Agregar SIEMPRE como imagen flotante
