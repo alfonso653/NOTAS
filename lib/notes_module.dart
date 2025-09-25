@@ -1757,6 +1757,56 @@ class SkinPanel extends StatelessWidget {
       const Color(0xFFc9ffbf),
       const Color(0xFFffafbd),
       const Color(0xFFb2fefa),
+      // 🎨 COLORES PASTEL ADICIONALES - 7 filas de 6 colores
+      // Fila 1: Rosas pastel
+      const Color(0xFFf8d7da),
+      const Color(0xFFfce4ec),
+      const Color(0xFFf3e5f5),
+      const Color(0xFFede7f6),
+      const Color(0xFFe8f5e8),
+      const Color(0xFFe0f2f1),
+      // Fila 2: Azules pastel
+      const Color(0xFFe3f2fd),
+      const Color(0xFFe1f5fe),
+      const Color(0xFFe0f7fa),
+      const Color(0xFFf1f8e9),
+      const Color(0xFFf9fbe7),
+      const Color(0xFFfffde7),
+      // Fila 3: Verdes pastel
+      const Color(0xFFe8f5e8),
+      const Color(0xFFf1f8e9),
+      const Color(0xFFf9fbe7),
+      const Color(0xFFfffde7),
+      const Color(0xFFfff8e1),
+      const Color(0xFFfff3e0),
+      // Fila 4: Amarillos y naranjas pastel
+      const Color(0xFFfce4ec),
+      const Color(0xFFfff3e0),
+      const Color(0xFFfff8e1),
+      const Color(0xFFfffde7),
+      const Color(0xFFf9fbe7),
+      const Color(0xFFf1f8e9),
+      // Fila 5: Morados y lilas pastel
+      const Color(0xFFf3e5f5),
+      const Color(0xFFede7f6),
+      const Color(0xFFe8eaf6),
+      const Color(0xFFe3f2fd),
+      const Color(0xFFe1f5fe),
+      const Color(0xFFe0f7fa),
+      // Fila 6: Tonos neutros pastel
+      const Color(0xFFfafafa),
+      const Color(0xFFf5f5f5),
+      const Color(0xFFeceff1),
+      const Color(0xFFcfd8dc),
+      const Color(0xFFb0bec5),
+      const Color(0xFF90a4ae),
+      // Fila 7: Mezcla de pasteles únicos
+      const Color(0xFFf8bbd9),
+      const Color(0xFFe7c3ff),
+      const Color(0xFFc3e7ff),
+      const Color(0xFFc3ffc3),
+      const Color(0xFFffffc3),
+      const Color(0xFFffc3c3),
     ];
 
     return SafeArea(

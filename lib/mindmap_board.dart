@@ -205,6 +205,56 @@ class _MindMapBoardState extends State<MindMapBoard> {
     Color(0xFFFFECB3),
     Color(0xFFBBDEFB),
     Color(0xFFFFCDD2),
+    // 🎨 COLORES PASTEL ADICIONALES - 7 filas de 6 colores
+    // Fila 1: Rosas pastel
+    Color(0xFFf8d7da),
+    Color(0xFFfce4ec),
+    Color(0xFFf3e5f5),
+    Color(0xFFede7f6),
+    Color(0xFFe8f5e8),
+    Color(0xFFe0f2f1),
+    // Fila 2: Azules pastel
+    Color(0xFFe3f2fd),
+    Color(0xFFe1f5fe),
+    Color(0xFFe0f7fa),
+    Color(0xFFf1f8e9),
+    Color(0xFFf9fbe7),
+    Color(0xFFfffde7),
+    // Fila 3: Verdes pastel
+    Color(0xFFe8f5e8),
+    Color(0xFFf1f8e9),
+    Color(0xFFf9fbe7),
+    Color(0xFFfffde7),
+    Color(0xFFfff8e1),
+    Color(0xFFfff3e0),
+    // Fila 4: Amarillos y naranjas pastel
+    Color(0xFFfce4ec),
+    Color(0xFFfff3e0),
+    Color(0xFFfff8e1),
+    Color(0xFFfffde7),
+    Color(0xFFf9fbe7),
+    Color(0xFFf1f8e9),
+    // Fila 5: Morados y lilas pastel
+    Color(0xFFf3e5f5),
+    Color(0xFFede7f6),
+    Color(0xFFe8eaf6),
+    Color(0xFFe3f2fd),
+    Color(0xFFe1f5fe),
+    Color(0xFFe0f7fa),
+    // Fila 6: Tonos neutros pastel
+    Color(0xFFfafafa),
+    Color(0xFFf5f5f5),
+    Color(0xFFeceff1),
+    Color(0xFFcfd8dc),
+    Color(0xFFb0bec5),
+    Color(0xFF90a4ae),
+    // Fila 7: Mezcla de pasteles únicos
+    Color(0xFFf8bbd9),
+    Color(0xFFe7c3ff),
+    Color(0xFFc3e7ff),
+    Color(0xFFc3ffc3),
+    Color(0xFFffffc3),
+    Color(0xFFffc3c3),
   ];
 
   Future<Color?> _pickColorDialog(BuildContext context, Color initial) async {
