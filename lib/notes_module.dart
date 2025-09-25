@@ -1245,6 +1245,23 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               });
                               _saveNote(pop: false);
                             },
+                            // 🔴 CALLBACK PARA ELIMINAR IMAGEN
+                            onDelete: () {
+                              setState(() {
+                                _floatingImages.removeAt(idx);
+                                _activeImageIndex = null; // Deseleccionar
+                              });
+                              _saveNote(pop: false);
+
+                              // Mostrar confirmación de eliminación
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('✅ Imagen eliminada'),
+                                  duration: Duration(seconds: 2),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       );
@@ -1400,6 +1417,7 @@ class _ResizableImage extends StatefulWidget {
   final bool selected;
   final VoidCallback onSelect;
   final void Function(double w, double h) onResize;
+  final VoidCallback? onDelete; // 🔴 Nuevo callback para eliminar
 
   const _ResizableImage({
     Key? key,
@@ -1409,6 +1427,7 @@ class _ResizableImage extends StatefulWidget {
     required this.selected,
     required this.onSelect,
     required this.onResize,
+    this.onDelete, // 🔴 Opcional para mantener compatibilidad
   }) : super(key: key);
 
   @override
@@ -1525,6 +1544,86 @@ class _ResizableImageState extends State<_ResizableImage> {
               Positioned(right: 0, top: 0, child: _handleAt(1)),
               Positioned(left: 0, bottom: 0, child: _handleAt(2)),
               Positioned(right: 0, bottom: 0, child: _handleAt(3)),
+
+              // 🔴 BOTÓN ELIMINAR EN ESQUINA SUPERIOR IZQUIERDA
+              if (widget.onDelete != null)
+                Positioned(
+                  top: (_handle / 2) + -22, // 🎯 Esquina superior de la imagen
+                  left:
+                      (_handle / 2) + -22, // 🎯 Esquina IZQUIERDA de la imagen
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(
+                          22), // 🎯 Área redondeada para mejor toque
+                      onTap: () {
+                        print(
+                            '🔴 Botón X presionado!'); // 🐛 Debug para verificar que funciona
+                        // Mostrar confirmación antes de eliminar
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('¿Eliminar imagen?'),
+                            content:
+                                const Text('Esta acción no se puede deshacer.'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('Cancelar'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(ctx).pop();
+                                  widget.onDelete!();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Eliminar'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width:
+                            44, // 🎯 Área táctil MUY grande para máxima sensibilidad
+                        height:
+                            44, // 🎯 Área táctil MUY grande para máxima sensibilidad
+                        decoration: const BoxDecoration(
+                          color: Colors
+                              .transparent, // 🎯 Fondo transparente para área extra
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Container(
+                            width:
+                                30, // 🎯 Ícono un poco más grande para mejor visibilidad
+                            height: 30,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      Colors.black38, // 🎯 Sombra más visible
+                                  blurRadius: 6,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 20, // 🎯 Ícono un poco más grande
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ],
         ),
