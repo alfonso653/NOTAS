@@ -1,30 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // listEquals, mapEquals
 import 'mindmap_model.dart';
 
-/// Widget minimalista para tablero de mapa mental
-typedef NodeMovedCallback = void Function(MindMapNode node);
-typedef NodeColorChangedCallback = void Function(String nodeId, Color color);
-
+/// Tablero de mapa mental con nodos arrastrables y edición.
+/// - Inmutable: actualizaciones con copyWith + reemplazo.
+/// - Claves estables ValueKey(node.id) para evitar asserts de dependents.
+/// - Colores por nodo: acepta nodeColors y expone onNodeColorChanged.
+/// - onNodeMoved: notifica al terminar el arrastre.
 class MindMapBoard extends StatefulWidget {
   final List<MindMapNode> nodes;
   final List<MindMapConnection> connections;
 
-  /// Colores por nodo (id -> Color). Opcional para compatibilidad hacia atrás.
-  final Map<String, Color> nodeColors;
+  /// Mapa de colores por nodo (nodeId -> Color)
+  final Map<String, Color>? nodeColors;
 
-  /// Notifica al padre que un nodo cambió de posición
-  final NodeMovedCallback? onNodeMoved;
+  /// Color por defecto para nodos sin entrada en nodeColors
+  final Color defaultNodeColor;
 
-  /// Notifica al padre que un nodo cambió de color
-  final NodeColorChangedCallback? onNodeColorChanged;
+  /// Notifica la lista de nodos actualizada (posición/texto)
+  final ValueChanged<List<MindMapNode>>? onNodesChanged;
+
+  /// Notifica cuando cambia el texto de un nodo (nodeId, newText)
+  final void Function(String nodeId, String newText)? onNodeTextChanged;
+
+  /// Notifica cuando termina de moverse un nodo (instancia actualizada)
+  final void Function(MindMapNode updatedNode)? onNodeMoved;
+
+  /// Notifica cuando cambia el color de un nodo (nodeId, color)
+  final void Function(String nodeId, Color color)? onNodeColorChanged;
 
   const MindMapBoard({
     Key? key,
     required this.nodes,
-    required this.connections,
+    this.connections = const [],
+    this.nodeColors,
+    this.defaultNodeColor = Colors.white,
+    this.onNodesChanged,
+    this.onNodeTextChanged,
     this.onNodeMoved,
     this.onNodeColorChanged,
-    this.nodeColors = const {},
   }) : super(key: key);
 
   @override
@@ -32,14 +46,11 @@ class MindMapBoard extends StatefulWidget {
 }
 
 class _MindMapBoardState extends State<MindMapBoard> {
-  // Estado de arrastre por nodo (evita conflictos entre gestures)
-  final Map<String, bool> _draggingNodes = {};
-  // Posición del nodo al iniciar el drag (en coordenadas de escena)
-  final Map<String, Offset?> _dragStartNodePositions = {};
-  // Punto de escena donde empezó el puntero
-  final Map<String, Offset?> _dragStartScenePositions = {};
+  late List<MindMapNode> _nodes;
+  late Map<String, MindMapNode> _byId;
 
-  String? _selectedNodeId;
+  /// Copia local y mutable para reflejar cambios inmediatos en el board
+  late Map<String, Color> _nodeColors;
 
   // Zoom / Pan
   final double _minZoom = 0.4;
@@ -48,9 +59,9 @@ class _MindMapBoardState extends State<MindMapBoard> {
   late final TransformationController _transformationController;
   final GlobalKey _viewerKey = GlobalKey();
 
-  // Canvas dinámico para evitar que el contenido se recorte
-  static const double _minCanvas = 2000.0;
-  static const double _canvasPadding = 300.0;
+  // Para arrastre fluido - evitar setState en cada frame
+  String? _draggingNodeId;
+  Offset? _dragOffset;
 
   @override
   void initState() {
@@ -58,6 +69,7 @@ class _MindMapBoardState extends State<MindMapBoard> {
     _zoom = 1.0;
     _transformationController =
         TransformationController(Matrix4.identity()..scale(_zoom));
+    _syncFromWidget();
   }
 
   @override
@@ -66,185 +78,217 @@ class _MindMapBoardState extends State<MindMapBoard> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant MindMapBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Sincroniza nodos cuando cambia la referencia de la lista del padre
+    if (!identical(oldWidget.nodes, widget.nodes)) {
+      _syncNodes();
+    }
+
+    // Sincroniza colores si cambió el mapa recibido
+    if (!mapEquals(oldWidget.nodeColors, widget.nodeColors)) {
+      _syncColors();
+      setState(() {}); // refresco visual si los colores cambiaron
+    }
+  }
+
+  void _syncFromWidget() {
+    _syncNodes();
+    _syncColors();
+  }
+
+  void _syncNodes() {
+    _nodes = List<MindMapNode>.from(widget.nodes);
+    _byId = {for (final n in _nodes) n.id: n};
+  }
+
+  void _syncColors() {
+    _nodeColors = Map<String, Color>.from(widget.nodeColors ?? const {});
+  }
+
+  void _emit() {
+    widget.onNodesChanged?.call(List.unmodifiable(_nodes));
+  }
+
   Size _computeCanvasSize() {
-    if (widget.nodes.isEmpty) return const Size(_minCanvas, _minCanvas);
+    if (_nodes.isEmpty) return const Size(2000.0, 2000.0);
     double minX = double.infinity, minY = double.infinity;
     double maxX = -double.infinity, maxY = -double.infinity;
 
-    for (final n in widget.nodes) {
+    for (final n in _nodes) {
       minX = n.position.dx < minX ? n.position.dx : minX;
       minY = n.position.dy < minY ? n.position.dy : minY;
       maxX = n.position.dx > maxX ? n.position.dx : maxX;
       maxY = n.position.dy > maxY ? n.position.dy : maxY;
     }
 
-    final width =
-        (maxX - minX).abs() + _canvasPadding * 2 + 400; // margen extra
-    final height = (maxY - minY).abs() + _canvasPadding * 2 + 400;
+    final width = (maxX - minX).abs() + 600 + 400; // margen extra
+    final height = (maxY - minY).abs() + 600 + 400;
 
     return Size(
-      width.isFinite ? width.clamp(_minCanvas, double.infinity) : _minCanvas,
-      height.isFinite ? height.clamp(_minCanvas, double.infinity) : _minCanvas,
+      width.isFinite ? width.clamp(2000.0, double.infinity) : 2000.0,
+      height.isFinite ? height.clamp(2000.0, double.infinity) : 2000.0,
     );
   }
 
-  /// Convierte un punto global (pantalla) a coordenadas de escena del child de InteractiveViewer
-  Offset _globalToScene(Offset globalPosition) {
-    final box = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null) return globalPosition;
-    final local = box.globalToLocal(globalPosition);
-    // TransformationController expone toScene
-    return _transformationController.toScene(local);
-  }
-
-  void _onNodePanStart(MindMapNode node, DragStartDetails details) {
-    final scenePoint = _globalToScene(details.globalPosition);
+  /// Reemplaza un nodo por id en _nodes y en _byId
+  void _replaceNode(MindMapNode updated) {
+    final i = _nodes.indexWhere((n) => n.id == updated.id);
+    if (i == -1) return;
     setState(() {
-      _selectedNodeId = node.id;
-      _draggingNodes[node.id] = true;
-      _dragStartNodePositions[node.id] = node.position;
-      _dragStartScenePositions[node.id] = scenePoint;
+      _nodes[i] = updated;
+      _byId[updated.id] = updated;
     });
+    _emit();
   }
 
-  void _onNodePanUpdate(MindMapNode node, DragUpdateDetails details) {
-    final startNode = _dragStartNodePositions[node.id];
-    final startScene = _dragStartScenePositions[node.id];
-    if (_draggingNodes[node.id] == true &&
-        startNode != null &&
-        startScene != null) {
-      final currentScene = _globalToScene(details.globalPosition);
-      final deltaScene = currentScene - startScene;
-      final newPos = startNode + deltaScene;
+  /// Iniciar arrastre - prepara para movimiento fluido
+  void _onDragStart(MindMapNode node, DragStartDetails details) {
+    _draggingNodeId = node.id;
+    _dragOffset = Offset.zero;
+  }
 
+  /// Arrastrar: actualización súper fluida sin setState por frame
+  void _onDragUpdate(MindMapNode node, DragUpdateDetails d) {
+    if (_draggingNodeId == node.id) {
+      _dragOffset = (_dragOffset ?? Offset.zero) + d.delta;
+      // Solo actualizar la posición visualmente, sin setState costoso
       setState(() {
-        node.position = newPos;
-      });
-
-      if (widget.onNodeMoved != null) {
-        try {
-          final updated = node.copyWith(position: newPos);
-          widget.onNodeMoved!(updated);
-        } catch (_) {
-          widget.onNodeMoved!(node);
+        final newPos = node.position + d.delta;
+        final updated = node.copyWith(position: newPos);
+        final i = _nodes.indexWhere((n) => n.id == updated.id);
+        if (i != -1) {
+          _nodes[i] = updated;
+          _byId[updated.id] = updated;
         }
-      }
+      });
     }
   }
 
-  void _onNodePanEndOrCancel(String nodeId) {
-    setState(() {
-      _draggingNodes[nodeId] = false;
-      _dragStartNodePositions[nodeId] = null;
-      _dragStartScenePositions[nodeId] = null;
-    });
+  /// Finalizar arrastre
+  void _onDragEnd(MindMapNode node) {
+    _draggingNodeId = null;
+    _dragOffset = null;
+    // Notificar el cambio final
+    final finalNode = _byId[node.id];
+    if (finalNode != null) {
+      widget.onNodeMoved?.call(finalNode);
+      _emit();
+    }
   }
 
-  Future<void> _pickColorForNode(BuildContext context, MindMapNode node) async {
-    final colors = <Color>[
-      Colors.white,
-      Colors.grey.shade100,
-      Colors.grey.shade200,
-      Colors.yellow.shade100,
-      Colors.amber.shade100,
-      Colors.orange.shade100,
-      Colors.red.shade100,
-      Colors.pink.shade100,
-      Colors.purple.shade100,
-      Colors.deepPurple.shade100,
-      Colors.indigo.shade100,
-      Colors.blue.shade100,
-      Colors.lightBlue.shade100,
-      Colors.cyan.shade100,
-      Colors.teal.shade100,
-      Colors.green.shade100,
-      Colors.lime.shade100,
-      Colors.brown.shade100,
-    ];
+  /// Cambio de texto: usa copyWith y notifica opcionalmente al padre
+  void _onNodeTextChanged(String nodeId, String newText) {
+    final node = _byId[nodeId];
+    if (node == null) return;
+    final updated = node.copyWith(text: newText);
+    _replaceNode(updated);
+    widget.onNodeTextChanged?.call(nodeId, newText);
+  }
 
-    await showModalBottomSheet(
+  /// Paleta simple de colores para elegir rápido
+  static const List<Color> _palette = <Color>[
+    Colors.white,
+    Color(0xFFF1F1F1),
+    Color(0xFFFFF3CD),
+    Color(0xFFD1E7DD),
+    Color(0xFFCFE2FF),
+    Color(0xFFFFE5E5),
+    Color(0xFFFFF0F6),
+    Color(0xFFE7E1FF),
+    Color(0xFFFFF8E1),
+    Color(0xFFE3F2FD),
+    Color(0xFFFCE4EC),
+    Color(0xFFE8F5E9),
+    Color(0xFFFFECB3),
+    Color(0xFFBBDEFB),
+    Color(0xFFFFCDD2),
+  ];
+
+  Future<Color?> _pickColorDialog(BuildContext context, Color initial) async {
+    return showDialog<Color>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-      ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Color del nodo',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final w = constraints.maxWidth;
-                  final count = (w / 44).floor().clamp(4, 10);
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: count,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 1,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Color del nodo'),
+          content: SizedBox(
+            width: 320,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _palette.map((c) {
+                final isSel = c.value == initial.value;
+                return InkWell(
+                  onTap: () {
+                    Navigator.of(ctx).pop(c);
+                  },
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: c,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSel ? Colors.black87 : Colors.black26,
+                        width: isSel ? 2 : 1,
+                      ),
                     ),
-                    itemCount: colors.length,
-                    itemBuilder: (ctx, i) {
-                      final c = colors[i];
-                      final isSelected = (widget.nodeColors[node.id]?.value ??
-                              Colors.white.value) ==
-                          c.value;
-                      return InkWell(
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          if (widget.onNodeColorChanged != null) {
-                            widget.onNodeColorChanged!(node.id, c);
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(10),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          decoration: BoxDecoration(
-                            color: c,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Colors.blueAccent
-                                  : Colors.black12,
-                              width: isSelected ? 2.5 : 1.0,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                        color:
-                                            Colors.blueAccent.withOpacity(0.2),
-                                        blurRadius: 8)
-                                  ]
-                                : [],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 6),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar'),
-              ),
-            ],
+                  ),
+                );
+              }).toList(),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _editNodeTextDialog(
+    BuildContext context,
+    MindMapNode node,
+  ) async {
+    final controller = TextEditingController(text: node.text);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar nodo'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Texto del nodo',
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Guardar'),
+          ),
+        ],
       ),
     );
+    if (result != null && result.trim().isNotEmpty) {
+      _onNodeTextChanged(node.id, result.trim());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final canvasSize = _computeCanvasSize();
-
+    
     return Column(
       children: [
         // Slider de zoom + centrar
@@ -294,73 +338,65 @@ class _MindMapBoardState extends State<MindMapBoard> {
 
         // Área interactiva del mapa mental
         Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () {
+          child: InteractiveViewer(
+            key: _viewerKey,
+            minScale: _minZoom,
+            maxScale: _maxZoom,
+            panEnabled: true,
+            scaleEnabled: true,
+            constrained: false,
+            boundaryMargin: const EdgeInsets.all(double.infinity),
+            transformationController: _transformationController,
+            onInteractionUpdate: (_) {
               setState(() {
-                _selectedNodeId = null;
+                _zoom = _transformationController.value.getMaxScaleOnAxis();
               });
             },
-            child: InteractiveViewer(
-              key: _viewerKey,
-              minScale: _minZoom,
-              maxScale: _maxZoom,
-              panEnabled: true, // pan/zoom siempre activos
-              scaleEnabled: true,
-              constrained: false, // canvas grande
-              boundaryMargin: const EdgeInsets.all(double.infinity),
-              transformationController: _transformationController,
-              onInteractionUpdate: (_) {
-                setState(() {
-                  _zoom = _transformationController.value.getMaxScaleOnAxis();
-                });
-              },
-              child: RepaintBoundary(
-                child: SizedBox(
-                  width: canvasSize.width,
-                  height: canvasSize.height,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Conexiones debajo
-                      Positioned.fill(
-                        child: CustomPaint(
-                          painter: _ConnectionsPainter(
-                              widget.nodes, widget.connections),
-                        ),
+            child: SizedBox(
+              width: canvasSize.width,
+              height: canvasSize.height,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Conexiones entre nodos (líneas)
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _ConnectionsPainter(
+                        nodes: _nodes,
+                        connections: widget.connections,
                       ),
-
-                      // Nodos encima
-                      ...widget.nodes.map((node) {
-                        final isSelected = node.id == _selectedNodeId;
-                        final bgColor =
-                            widget.nodeColors[node.id] ?? Colors.white;
-
-                        return Positioned(
-                          key: ValueKey('pos_${node.id}'),
-                          left: node.position.dx,
-                          top: node.position.dy,
-                          child: _DraggableMindMapNode(
-                            key: ValueKey('node_${node.id}'),
-                            node: node,
-                            selected: isSelected,
-                            backgroundColor: bgColor,
-                            onSelect: () {
-                              setState(() => _selectedNodeId = node.id);
-                            },
-                            onLongPress: () => _pickColorForNode(context, node),
-                            onMoveStart: (details) =>
-                                _onNodePanStart(node, details),
-                            onMoveUpdate: (details) =>
-                                _onNodePanUpdate(node, details),
-                            onMoveEnd: () => _onNodePanEndOrCancel(node.id),
-                            onMoveCancel: () => _onNodePanEndOrCancel(node.id),
-                          ),
-                        );
-                      }).toList(),
-                    ],
+                    ),
                   ),
+          // Nodos
+          ..._nodes.map((node) {
+            final bgColor = _nodeColors[node.id] ?? widget.defaultNodeColor;
+            return Positioned(
+              key: ValueKey(node.id), // clave estable por id
+              left: node.position.dx,
+              top: node.position.dy,
+              child: GestureDetector(
+                onPanStart: (details) => _onDragStart(node, details),
+                onPanUpdate: (d) => _onDragUpdate(node, d),
+                onPanEnd: (_) => _onDragEnd(node),
+                onTap: () => _editNodeTextDialog(context, node),
+                onLongPress: () async {
+                  // Pick color y notifica
+                  final picked = await _pickColorDialog(context, bgColor);
+                  if (picked != null) {
+                    setState(() {
+                      _nodeColors[node.id] = picked;
+                    });
+                    widget.onNodeColorChanged?.call(node.id, picked);
+                  }
+                },
+                child: _DefaultNodeBubble(
+                  text: node.text,
+                  background: bgColor,
                 ),
+              ),
+            );
+          }),
+                ],
               ),
             ),
           ),
@@ -370,132 +406,71 @@ class _MindMapBoardState extends State<MindMapBoard> {
   }
 }
 
-class _DraggableMindMapNode extends StatelessWidget {
-  final MindMapNode node;
-  final bool selected;
-  final Color backgroundColor;
-  final VoidCallback onSelect;
-  final VoidCallback onLongPress;
-  final GestureDragStartCallback onMoveStart;
-  final GestureDragUpdateCallback onMoveUpdate;
-  final VoidCallback onMoveEnd;
-  final VoidCallback onMoveCancel;
-
-  const _DraggableMindMapNode({
-    required this.node,
-    required this.selected,
-    required this.backgroundColor,
-    required this.onSelect,
-    required this.onLongPress,
-    required this.onMoveStart,
-    required this.onMoveUpdate,
-    required this.onMoveEnd,
-    required this.onMoveCancel,
-    Key? key,
-  }) : super(key: key);
+/// Punto de anclaje visual del nodo (simple). Si ya tienes tu propio widget, úsalo.
+/// Importante: NO usar UniqueKey aquí; usa claves por id en el contenedor padre.
+class _DefaultNodeBubble extends StatelessWidget {
+  final String text;
+  final Color background;
+  const _DefaultNodeBubble({
+    required this.text,
+    required this.background,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Importante: no usamos Scrollbar por nodo para evitar PrimaryScrollController conflicts.
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onSelect,
-      onLongPress: onLongPress,
-      onPanStart: onMoveStart,
-      onPanUpdate: onMoveUpdate,
-      onPanEnd: (_) => onMoveEnd(),
-      onPanCancel: onMoveCancel,
-      child: Material(
-        color: Colors.transparent,
-        elevation: selected ? 8 : 2,
-        borderRadius: BorderRadius.circular(16),
-        child: IntrinsicWidth(
-          child: Container(
-            constraints: const BoxConstraints(
-              minWidth: 60,
-              maxWidth: 260,
-              minHeight: 40,
-              maxHeight: 160,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selected ? Colors.blueAccent : Colors.grey.shade300,
-                width: selected ? 2.5 : 1.2,
-              ),
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                          color: Colors.blueAccent.withOpacity(0.18),
-                          blurRadius: 16,
-                          spreadRadius: 2)
-                    ]
-                  : [BoxShadow(color: Colors.black12, blurRadius: 6)],
-            ),
-            child: SingleChildScrollView(
-              primary:
-                  false, // <-- clave para no usar la PrimaryScrollController
-              scrollDirection: Axis.vertical,
-              child: Text(
-                node.text,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-                softWrap: true,
-                overflow: TextOverflow.visible,
-              ),
-            ),
-          ),
+    return Material(
+      elevation: 2,
+      borderRadius: BorderRadius.circular(12),
+      color: background,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
         ),
       ),
     );
   }
 }
 
+/// Dibuja líneas entre nodos según las conexiones
 class _ConnectionsPainter extends CustomPainter {
   final List<MindMapNode> nodes;
   final List<MindMapConnection> connections;
 
-  _ConnectionsPainter(this.nodes, this.connections);
+  _ConnectionsPainter({
+    required this.nodes,
+    required this.connections,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..strokeWidth = 2.2
-      ..style = PaintingStyle.stroke;
-
-    for (final conn in connections) {
-      final from = nodes
-          .where((n) => n.id == conn.fromId)
-          .cast<MindMapNode?>()
-          .firstWhere(
-            (n) => n != null,
-            orElse: () => null,
-          );
-      final to =
-          nodes.where((n) => n.id == conn.toId).cast<MindMapNode?>().firstWhere(
-                (n) => n != null,
-                orElse: () => null,
-              );
+    final byId = {for (final n in nodes) n.id: n};
+    for (final c in connections) {
+      final from = byId[c.fromId];
+      final to = byId[c.toId];
       if (from == null || to == null) continue;
 
-      paint.color = conn.color;
+      final paint = Paint()
+        ..color = c.color
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke;
 
-      // Puntos aproximados desde el centro del nodo (ajustables)
-      final fromOffset = from.position + const Offset(60, 24);
-      final toOffset = to.position + const Offset(60, 24);
+      // Ajusta estos offsets al centro de tu widget de nodo, si lo necesitas
+      final p1 = from.position + const Offset(40, 20);
+      final p2 = to.position + const Offset(40, 20);
 
-      canvas.drawLine(fromOffset, toOffset, paint);
+      final path = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..cubicTo(p1.dx + 40, p1.dy, p2.dx - 40, p2.dy, p2.dx, p2.dy);
+
+      canvas.drawPath(path, paint);
     }
   }
 
   @override
   bool shouldRepaint(covariant _ConnectionsPainter oldDelegate) {
-    // Re-pintar cuando cambien nodos o conexiones
-    return oldDelegate.nodes != nodes || oldDelegate.connections != connections;
+    // Repintar siempre para seguir posiciones/conexiones cambiantes.
+    return true;
   }
 }
