@@ -338,7 +338,7 @@ class _MindMapBoardState extends State<MindMapBoard> {
   @override
   Widget build(BuildContext context) {
     final canvasSize = _computeCanvasSize();
-    
+
     return Column(
       children: [
         // Slider de zoom + centrar
@@ -417,35 +417,37 @@ class _MindMapBoardState extends State<MindMapBoard> {
                       ),
                     ),
                   ),
-          // Nodos
-          ..._nodes.map((node) {
-            final bgColor = _nodeColors[node.id] ?? widget.defaultNodeColor;
-            return Positioned(
-              key: ValueKey(node.id), // clave estable por id
-              left: node.position.dx,
-              top: node.position.dy,
-              child: GestureDetector(
-                onPanStart: (details) => _onDragStart(node, details),
-                onPanUpdate: (d) => _onDragUpdate(node, d),
-                onPanEnd: (_) => _onDragEnd(node),
-                onTap: () => _editNodeTextDialog(context, node),
-                onLongPress: () async {
-                  // Pick color y notifica
-                  final picked = await _pickColorDialog(context, bgColor);
-                  if (picked != null) {
-                    setState(() {
-                      _nodeColors[node.id] = picked;
-                    });
-                    widget.onNodeColorChanged?.call(node.id, picked);
-                  }
-                },
-                child: _DefaultNodeBubble(
-                  text: node.text,
-                  background: bgColor,
-                ),
-              ),
-            );
-          }),
+                  // Nodos
+                  ..._nodes.map((node) {
+                    final bgColor =
+                        _nodeColors[node.id] ?? widget.defaultNodeColor;
+                    return Positioned(
+                      key: ValueKey(node.id), // clave estable por id
+                      left: node.position.dx,
+                      top: node.position.dy,
+                      child: GestureDetector(
+                        onPanStart: (details) => _onDragStart(node, details),
+                        onPanUpdate: (d) => _onDragUpdate(node, d),
+                        onPanEnd: (_) => _onDragEnd(node),
+                        onTap: () => _editNodeTextDialog(context, node),
+                        onLongPress: () async {
+                          // Pick color y notifica
+                          final picked =
+                              await _pickColorDialog(context, bgColor);
+                          if (picked != null) {
+                            setState(() {
+                              _nodeColors[node.id] = picked;
+                            });
+                            widget.onNodeColorChanged?.call(node.id, picked);
+                          }
+                        },
+                        child: _DefaultNodeBubble(
+                          text: node.text,
+                          background: bgColor,
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),

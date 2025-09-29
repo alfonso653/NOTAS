@@ -90,6 +90,7 @@ class FloatingImage {
   double y;
   double width;
   double height;
+  bool isLocked; // 🔒 Nueva propiedad para bloquear movimiento
 
   FloatingImage({
     required this.filePath,
@@ -97,6 +98,7 @@ class FloatingImage {
     required this.y,
     required this.width,
     required this.height,
+    this.isLocked = false, // Por defecto desbloqueado
   });
 
   Map<String, dynamic> toJson() => {
@@ -105,6 +107,7 @@ class FloatingImage {
         'y': y,
         'width': width,
         'height': height,
+        'isLocked': isLocked,
       };
 
   factory FloatingImage.fromJson(Map<String, dynamic> json) => FloatingImage(
@@ -113,6 +116,7 @@ class FloatingImage {
         y: (json['y'] as num).toDouble(),
         width: (json['width'] as num).toDouble(),
         height: (json['height'] as num).toDouble(),
+        isLocked: (json['isLocked'] ?? false) as bool,
       );
 }
 
@@ -182,6 +186,32 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   bool _showSavedSnackbar = false;
 
   // ========= Helpers =========
+  
+  /// Hace scroll automático al área de escritura (campo de texto continuo)
+  Future<void> _scrollToWritingArea() async {
+    if (!_scrollController.hasClients) return;
+    
+    // 🎯 Calcular la posición del área de escritura de manera más precisa
+    final contentHeight = _contentParts.length * 80.0; // Altura más realista por parte
+    final targetPosition = contentHeight + 150.0; // Espacio suficiente para ver el campo
+    
+    // 🎯 Solo hacer scroll si es necesario (evitar scroll innecesario)
+    final currentPosition = _scrollController.offset;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final clampedTarget = targetPosition.clamp(0.0, maxScroll);
+    
+    // Solo animar si la diferencia es significativa
+    if ((clampedTarget - currentPosition).abs() > 50.0) {
+      await _scrollController.animateTo(
+        clampedTarget,
+        duration: const Duration(milliseconds: 400), // Más rápido
+        curve: Curves.easeOutCubic, // Curva más suave
+      );
+      
+      // Pausa más corta
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+  }
   void setHasUnsavedChanges(bool v) {
     if (_hasUnsavedChanges == v) return;
     setState(() {
@@ -458,12 +488,19 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _categoriaController.addListener(_onAnyChange);
     _hiddenController.addListener(_onAnyChange);
 
-    // Restaurar imágenes flotantes guardadas en la nota
+    // 🎯 Restaurar imágenes flotantes guardadas en la nota
     _floatingImages.clear();
     for (final img in widget.note.floatingImages) {
-      _floatingImages
-          .add(FloatingImage.fromJson((img as Map).cast<String, dynamic>()));
+      final restoredImg = FloatingImage.fromJson((img as Map).cast<String, dynamic>());
+      _floatingImages.add(restoredImg);
     }
+    
+    // 🎯 Asegurar que las posiciones se mantengan después de la restauración
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {}); // Refrescar el UI con las posiciones correctas
+      }
+    });
 
     // Guardar automáticamente al entrar
     WidgetsBinding.instance.addPostFrameCallback((_) => _saveNote(pop: false));
@@ -890,7 +927,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 Expanded(
                   child: ListView(
                     controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    physics: const ClampingScrollPhysics(), // 🎯 Scroll normal pero SIN efecto elástico
                     padding: EdgeInsets.fromLTRB(
                       16,
                       16,
@@ -1170,7 +1207,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             filled: true,
                           ),
                           textAlign: TextAlign.left,
-                          onChanged: (_) => _saveNote(),
+                          onChanged: (_) {
+                            // 💾 Guardar inmediatamente para mantener contenido y posiciones
+                            _saveNote(pop: false);
+                          },
                         ),
                       ),
                     ],
@@ -1193,19 +1233,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       final idx = entry.key;
                       final img = entry.value;
 
-                      // Ajustar posición según el scroll
+                      // 🎯 Ajustar posición según el scroll de manera más precisa
                       final scrollOffset = _scrollController.hasClients
                           ? _scrollController.offset
                           : 0.0;
-                      final adjustedY = img.y -
-                          scrollOffset; // Sin compensación adicional porque ya estamos dentro del área clipeada
+                      // 🎯 Mantener la posición relativa al contenido, no al viewport
+                      final adjustedY = img.y - scrollOffset;
 
                       return Positioned(
                         key: ValueKey('floating_${idx}_${img.filePath}'),
-                        left: img.x -
-                            16, // Compensar el padding left del ClipRect
-                        top: adjustedY -
-                            16, // Compensar el padding top del ClipRect
+                        left: img.x, // 🎯 Sin compensación - usar posición directa
+                        top: adjustedY, // 🎯 Sin compensación - usar posición ajustada por scroll
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
@@ -1213,30 +1251,52 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               _activeImageIndex =
                                   _activeImageIndex == idx ? null : idx;
                             });
+                            // 💾 Guardar estado de selección para mantener consistencia
+                            _saveNote(pop: false);
                           },
-                          onPanStart: (_) {
-                            // Guardar posición inicial para referencia si es necesario
+                          onPanStart: (details) {
+                            // Si está bloqueado, mostrar mensaje y no permitir movimiento
+                            if (img.isLocked) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('🔒 Imagen bloqueada. Toca el candado para desbloquear.'),
+                                  duration: Duration(seconds: 2),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            }
                           },
                           onPanUpdate: (details) {
-                            setState(() {
-                              _floatingImages[idx].x += details.delta.dx;
-                              // Para y, agregar el delta al valor original (que ya incluye scroll)
-                              _floatingImages[idx].y += details.delta.dy;
-                            });
+                            // Solo permitir movimiento si NO está bloqueado
+                            if (!img.isLocked) {
+                              setState(() {
+                                // 🎯 Actualizar posición directamente
+                                _floatingImages[idx].x += details.delta.dx;
+                                // 🎯 Para Y: actualizar posición absoluta
+                                _floatingImages[idx].y += details.delta.dy;
+                              });
+                              // 💾 Guardar después de múltiples updates para mejor rendimiento
+                            }
                           },
                           onPanEnd: (_) {
-                            _saveNote(pop: false);
+                            if (!img.isLocked) {
+                              // 💾 Guardar una sola vez al final del movimiento
+                              _saveNote(pop: false);
+                            }
                           },
                           child: _ResizableImage(
                             filePath: img.filePath,
                             width: img.width,
                             height: img.height,
                             selected: _activeImageIndex == idx,
+                            isLocked: img.isLocked,
                             onSelect: () {
                               setState(() {
                                 _activeImageIndex =
                                     _activeImageIndex == idx ? null : idx;
                               });
+                              // 💾 Guardar estado de selección inmediatamente
+                              _saveNote(pop: false);
                             },
                             onResize: (w, h) {
                               setState(() {
@@ -1244,6 +1304,28 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 _floatingImages[idx].height = h;
                               });
                               _saveNote(pop: false);
+                            },
+                            // 🔒 CALLBACK PARA ALTERNAR CANDADO
+                            onToggleLock: () {
+                              setState(() {
+                                _floatingImages[idx].isLocked = !_floatingImages[idx].isLocked;
+                              });
+                              _saveNote(pop: false);
+                              
+                              // Mostrar confirmación del cambio
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    _floatingImages[idx].isLocked 
+                                        ? '🔒 Imagen bloqueada'
+                                        : '🔓 Imagen desbloqueada'
+                                  ),
+                                  duration: const Duration(seconds: 2),
+                                  backgroundColor: _floatingImages[idx].isLocked 
+                                      ? Colors.red.shade400
+                                      : Colors.green.shade400,
+                                ),
+                              );
                             },
                             // 🔴 CALLBACK PARA ELIMINAR IMAGEN
                             onDelete: () {
@@ -1322,6 +1404,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     });
                   }
 
+                  // 🎯 ENFOCAR EN EL ÁREA DE ESCRITURA ANTES DE ABRIR EL PANEL
+                  await _scrollToWritingArea();
+                  
                   await showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
@@ -1330,9 +1415,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       padding: MediaQuery.of(ctx).viewInsets,
                       child: TextFormatPanel(
                         value: _contentFormat,
-                        onChanged: (val) => setState(() {
-                          _contentFormat = val;
-                        }),
+                        onChanged: (val) {
+                          setState(() {
+                            _contentFormat = val;
+                          });
+                          // 💾 Guardar formato inmediatamente para mantener configuración
+                          _saveNote(pop: false);
+                        },
                         onClose: () {
                           Navigator.pop(ctx);
                           FocusScope.of(context).requestFocus(_hiddenFocus);
@@ -1415,9 +1504,11 @@ class _ResizableImage extends StatefulWidget {
   final double width;
   final double height;
   final bool selected;
+  final bool isLocked; // 🔒 Estado del candado
   final VoidCallback onSelect;
   final void Function(double w, double h) onResize;
-  final VoidCallback? onDelete; // 🔴 Nuevo callback para eliminar
+  final VoidCallback? onDelete; // 🔴 Callback para eliminar
+  final VoidCallback? onToggleLock; // 🔒 Callback para alternar candado
 
   const _ResizableImage({
     Key? key,
@@ -1425,9 +1516,11 @@ class _ResizableImage extends StatefulWidget {
     required this.width,
     required this.height,
     required this.selected,
+    required this.isLocked,
     required this.onSelect,
     required this.onResize,
-    this.onDelete, // 🔴 Opcional para mantener compatibilidad
+    this.onDelete,
+    this.onToggleLock,
   }) : super(key: key);
 
   @override
@@ -1617,6 +1710,64 @@ class _ResizableImageState extends State<_ResizableImage> {
                               Icons.close,
                               color: Colors.white,
                               size: 20, // 🎯 Ícono un poco más grande
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              
+              // 🔒 BOTÓN CANDADO EN ESQUINA SUPERIOR DERECHA
+              if (widget.onToggleLock != null)
+                Positioned(
+                  top: (_handle / 2) + -22, // 🎯 Esquina superior de la imagen
+                  right:
+                      (_handle / 2) + -22, // 🎯 Esquina DERECHA de la imagen
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(
+                          22), // 🎯 Área redondeada para mejor toque
+                      onTap: () {
+                        print(
+                            '🔒 Botón candado presionado!'); // 🐛 Debug para verificar que funciona
+                        widget.onToggleLock!();
+                      },
+                      child: Container(
+                        width:
+                            44, // 🎯 Área táctil MUY grande para máxima sensibilidad
+                        height:
+                            44, // 🎯 Área táctil MUY grande para máxima sensibilidad
+                        decoration: const BoxDecoration(
+                          color: Colors
+                              .transparent, // 🎯 Fondo transparente para área extra
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Container(
+                            width:
+                                30, // 🎯 Ícono un poco más grande para mejor visibilidad
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: widget.isLocked ? Colors.red.shade400 : Colors.green.shade400,
+                              shape: BoxShape.circle,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color:
+                                      Colors.black38, // 🎯 Sombra más visible
+                                  blurRadius: 6,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Text(
+                                widget.isLocked ? '🔒' : '🔓', // Emoji dinámico
+                                style: const TextStyle(
+                                  fontSize: 16, // 🎯 Tamaño óptimo para emoji
+                                ),
+                              ),
                             ),
                           ),
                         ),
