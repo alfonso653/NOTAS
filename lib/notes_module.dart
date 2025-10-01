@@ -22,6 +22,7 @@ import 'audio_mic_fab.dart';
 import 'camera_gallery_widget.dart';
 import 'mindmap_test_screen.dart';
 import 'mindmap_from_note_screen.dart';
+import 'free_canvas_screen.dart';
 
 /// =========================
 /// Modelo de segmento (_TextPart)
@@ -994,6 +995,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     ),
                   );
                   break;
+                case 'free_mode':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FreeCanvasScreen(note: widget.note),
+                    ),
+                  );
+                  break;
                 case 'delete':
                   showDialog(
                     context: context,
@@ -1025,6 +1034,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             },
             itemBuilder: (ctx) => const [
               PopupMenuItem(value: 'skins', child: Text('Skins y color')),
+              PopupMenuItem(value: 'free_mode', child: Text('🎨 Modo Libre')),
               PopupMenuItem(value: 'delete', child: Text('Eliminar nota')),
             ],
           ),

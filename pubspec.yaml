@@ -20,7 +20,7 @@ dependencies:
 
   # UI y utilidades
   auto_size_text: ^3.0.0
-  image_picker: ^1.2.0
+  image_picker: ^1.0.7
   permission_handler: ^11.0.0
 
   # (Opcionales: solo si los usas en otras partes de tu app)
