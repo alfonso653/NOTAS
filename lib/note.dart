@@ -14,6 +14,7 @@ class Note {
   double contentFontSize;
   List<Map<String, dynamic>> contentParts; // [{text:..., bold:...}, ...]
   List<Map<String, dynamic>> floatingImages;
+  List<Map<String, dynamic>> floatingTexts;
 
   Note({
     required this.id,
@@ -26,9 +27,11 @@ class Note {
     required this.contentFontSize,
     required this.contentParts,
     List<Map<String, dynamic>>? floatingImages,
+    List<Map<String, dynamic>>? floatingTexts,
     this.mindMapNodes,
     this.mindMapConnections,
-  }) : floatingImages = floatingImages ?? [];
+  })  : floatingImages = floatingImages ?? [],
+        floatingTexts = floatingTexts ?? [];
 
   factory Note.fromJson(Map<String, dynamic> json) {
     return Note(
@@ -47,6 +50,11 @@ class Note {
           : [],
       floatingImages: (json['floatingImages'] is List)
           ? (json['floatingImages'] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : [],
+      floatingTexts: (json['floatingTexts'] is List)
+          ? (json['floatingTexts'] as List)
               .map((e) => Map<String, dynamic>.from(e))
               .toList()
           : [],
@@ -75,6 +83,7 @@ class Note {
       'contentFontSize': contentFontSize,
       'contentParts': contentParts,
       'floatingImages': floatingImages,
+      'floatingTexts': floatingTexts,
       if (mindMapNodes != null) 'mindMapNodes': mindMapNodes,
       if (mindMapConnections != null) 'mindMapConnections': mindMapConnections,
     };

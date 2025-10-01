@@ -7,6 +7,21 @@ import 'note_provider.dart';
 import 'mindmap_model.dart';
 import 'mindmap_board.dart';
 
+/// Tipo de item combinado que puede convertirse en nodo
+enum _ItemKind { topic, floating, paragraph }
+
+/// Item combinado (tema inteligente, texto flotante o párrafo/linea)
+class _CombinedItem {
+  final String id;
+  final String text;
+  final _ItemKind kind;
+  const _CombinedItem({
+    required this.id,
+    required this.text,
+    required this.kind,
+  });
+}
+
 class MindMapFromNoteScreen extends StatefulWidget {
   final Note note;
   const MindMapFromNoteScreen({Key? key, required this.note}) : super(key: key);
@@ -23,7 +38,8 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
   final Map<String, Color> nodeColors = {};
 
   // 📈 EVOLUCIÓN TEMPORAL
-  String? _lastContentHash;
+  String?
+      _lastContentHash; // hash GUARDADO en el root la última vez que se persistió
   final Set<String> _newTopics = <String>{};
   final Map<String, DateTime> _topicCreationTime = <String, DateTime>{};
 
@@ -31,11 +47,12 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
   void initState() {
     super.initState();
 
-    // Cargar nodos previos de la nota (posiciones + colores)
+    // --- Cargar nodos previos (posiciones + colores) y contentHash guardado en root ---
     final prevNodes = <String, MindMapNode>{};
+    String? savedContentHash;
+
     if (widget.note.mindMapNodes != null) {
       for (final e in widget.note.mindMapNodes!) {
-        // Posiciones y texto previos
         prevNodes[e['id']] = MindMapNode(
           id: e['id'],
           text: e['text'],
@@ -47,27 +64,93 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
               (e['children'] as List?)?.map((c) => c.toString()).toList() ??
                   <String>[],
         );
-        // Color previo si existe
         if (e['color'] != null) {
           final intVal = (e['color'] as num).toInt();
           nodeColors[e['id']] = Color(intVal);
         }
+        if ((e['id'] == 'root') && e['contentHash'] != null) {
+          savedContentHash = (e['contentHash'] as Object).toString();
+        }
       }
     }
 
-    // 📈 INICIALIZAR EVOLUCIÓN TEMPORAL
-    _initializeTemporalEvolution();
+    _initializeTemporalEvolution(savedContentHash: savedContentHash);
 
+    // Generamos SIEMPRE (conserva posiciones por id estable)
     nodes = _generateIntelligentNodes(prevNodes);
     connections = _generateConnections(nodes);
 
-    // Guardar el estado inicial (asegura persistencia al abrir)
+    // Guardar el estado inicial (incluye contentHash en root)
     WidgetsBinding.instance.addPostFrameCallback((_) => _saveMindMap());
+  }
+
+  /// Si la nota inyectada en el widget cambia en caliente, revalidamos.
+  @override
+  void didUpdateWidget(covariant MindMapFromNoteScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    String? savedContentHash;
+    final prevNodes = <String, MindMapNode>{};
+
+    if (widget.note.mindMapNodes != null) {
+      for (final e in widget.note.mindMapNodes!) {
+        prevNodes[e['id']] = MindMapNode(
+          id: e['id'],
+          text: e['text'],
+          position: Offset(
+            (e['x'] as num).toDouble(),
+            (e['y'] as num).toDouble(),
+          ),
+          children:
+              (e['children'] as List?)?.map((c) => c.toString()).toList() ??
+                  <String>[],
+        );
+        if ((e['id'] == 'root') && e['contentHash'] != null) {
+          savedContentHash = (e['contentHash'] as Object).toString();
+        }
+      }
+    }
+
+    _initializeTemporalEvolution(savedContentHash: savedContentHash);
+
+    final String currentContent = _extractFullTextContent();
+    final String currentHash = _generateContentHash(currentContent);
+
+    if (_lastContentHash != currentHash) {
+      setState(() {
+        nodes = _generateIntelligentNodes(prevNodes);
+        connections = _generateConnections(nodes);
+        _lastContentHash = currentHash;
+      });
+      _saveMindMap();
+      if (mounted && _newTopics.isNotEmpty) {
+        _showNewTopicsNotification();
+      }
+    }
+  }
+
+  // ====== 🔐 IDs ESTABLES (evita descalibración por reordenamientos) ======
+  int _djb2Hash(String s) {
+    var hash = 5381;
+    for (final cu in s.codeUnits) {
+      hash = ((hash << 5) + hash) + cu;
+    }
+    return hash & 0x7fffffff;
+  }
+
+  String _stableId(String prefix, String text, {int? occurrence}) {
+    final norm = text.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    final h = _djb2Hash(norm).toRadixString(36);
+    // ✅ usar llaves para evitar que Dart lea "$h__" como "h__"
+    return occurrence == null
+        ? '${prefix}_$h'
+        : '${prefix}_${h}__${occurrence}';
   }
 
   // 🧠 GENERADOR DE NODOS INTELIGENTES
   List<MindMapNode> _generateIntelligentNodes(
-      Map<String, MindMapNode> prevNodes) {
+    Map<String, MindMapNode> prevNodes,
+  ) {
     final result = <MindMapNode>[];
 
     // Nodo raíz
@@ -86,44 +169,103 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
         );
     result.add(rootNode);
 
-    // 🧠 ANÁLISIS INTELIGENTE DE CONTENIDO
+    // 🧠 ANÁLISIS INTELIGENTE DE CONTENIDO + ENTRADAS DE PÁRRAFOS + FLOTANTES
     final String fullContent = _extractFullTextContent();
     final List<String> intelligentTopics =
         _analyzeContentForTopics(fullContent);
+    final List<String> paragraphEntries = _extractParagraphEntries();
 
-    // Si no hay temas inteligentes, usar método anterior como fallback
-    if (intelligentTopics.isEmpty) {
+    // Flotantes normalizados
+    final List<Map<String, dynamic>> floatingTexts =
+        (widget.note.floatingTexts ?? <Map<String, dynamic>>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+
+    // Si no hay nada, fallback
+    if (intelligentTopics.isEmpty &&
+        floatingTexts.isEmpty &&
+        paragraphEntries.isEmpty) {
       return _generateFallbackNodes(prevNodes, result);
     }
 
-    // Generar nodos basados en análisis inteligente
-    final double radius = 180;
-    final total = intelligentTopics.length;
+    // 🔄 Construir lista combinada (temas + flotantes + párrafos) con IDs ESTABLES
+    final combined = <_CombinedItem>[];
 
-    for (int idx = 0; idx < intelligentTopics.length; idx++) {
-      final topic = intelligentTopics[idx];
-      final id = 'topic_$idx';
-      final angle = 2 * math.pi * idx / total;
+    // Temas inteligentes
+    for (final topic in intelligentTopics) {
+      final id = _stableId('topic', topic);
+      combined.add(_CombinedItem(id: id, text: topic, kind: _ItemKind.topic));
+    }
 
-      final prev = prevNodes[id];
+    // Flotantes
+    for (final ftx in floatingTexts) {
+      final full = (ftx['text'] ?? '').toString().trim();
+      if (full.isEmpty) continue;
+      final id = _stableId('floating', full);
+      combined.add(_CombinedItem(id: id, text: full, kind: _ItemKind.floating));
+    }
+
+    // Párrafos / líneas (un nodo por línea no vacía)
+    final counts = <String, int>{};
+    for (final entry in paragraphEntries) {
+      final normKey =
+          entry.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+      final occ = (counts[normKey] ?? 0);
+      counts[normKey] = occ + 1;
+
+      final id = _stableId('para', entry, occurrence: occ);
+      combined
+          .add(_CombinedItem(id: id, text: entry, kind: _ItemKind.paragraph));
+    }
+
+    // 📏 Distribución uniforme en círculo
+    final int totalNodes = combined.length;
+    final double baseRadius = 180;
+    final double radius =
+        totalNodes <= 10 ? baseRadius : baseRadius + (totalNodes - 10) * 8.0;
+    const double startAngle = -math.pi / 2; // Arriba
+
+    for (int i = 0; i < combined.length; i++) {
+      final item = combined[i];
+      final angle = startAngle + (2 * math.pi * i / totalNodes);
+
+      // Respetar posición previa si existe (mismo id)
+      final prev = prevNodes[item.id];
+
+      // Texto a mostrar
+      String displayText = item.text;
+      if (item.kind == _ItemKind.floating && displayText.length > 30) {
+        displayText = '${displayText.substring(0, 30)}...';
+      }
+
       final node = MindMapNode(
-        id: id,
-        text: topic,
+        id: item.id,
+        text: displayText,
         position: prev?.position ??
             Offset(
               rootNode.position.dx + radius * math.cos(angle),
               rootNode.position.dy + radius * math.sin(angle),
             ),
-        children: <String>[],
+        children: const <String>[],
       );
 
       result.add(node);
 
-      // 🎨 COLORES INTELIGENTES POR TIPO DE TEMA
-      nodeColors.putIfAbsent(id, () => _getThemeColor(topic));
+      // ⏱️ marca tiempo de creación si es nuevo
+      _topicCreationTime.putIfAbsent(item.id, () => DateTime.now());
+
+      // 🎨 Color por tipo
+      if (item.kind == _ItemKind.floating) {
+        nodeColors.putIfAbsent(item.id, () => const Color(0xFF00BCD4)); // cian
+      } else if (item.kind == _ItemKind.topic) {
+        nodeColors.putIfAbsent(item.id, () => _getThemeColor(item.text));
+      } else {
+        // párrafo / línea: blanco
+        nodeColors.putIfAbsent(item.id, () => Colors.white);
+      }
     }
 
-    // Hijos del root = todos los nodos de temas
+    // Hijos del root = todos los nodos (temas + flotantes + párrafos)
     final childrenIds = result.skip(1).map((n) => n.id).toList();
     final rootIndex = result.indexWhere((n) => n.id == 'root');
     if (rootIndex != -1) {
@@ -133,30 +275,66 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
     // Color por defecto del root si no existe
     nodeColors.putIfAbsent('root', () => const Color(0xFF6C63FF));
 
+    // Actualizamos el hash actual (para guardarlo en root)
+    _lastContentHash = _generateContentHash(_extractFullTextContent());
+
     return result;
   }
 
-  // 🧠 EXTRACTOR DE CONTENIDO COMPLETO
+  // 🧠 EXTRACTOR DE CONTENIDO COMPLETO (para hashing)
   String _extractFullTextContent() {
     final buffer = StringBuffer();
 
-    // Agregar título si existe
     if (widget.note.title.isNotEmpty) {
       buffer.writeln(widget.note.title);
     }
 
-    // Extraer TODO el texto de todos los nodos
     for (final part in widget.note.contentParts) {
       final isImage = (part['isImage'] ?? false) == true;
       if (!isImage) {
         final text = (part['text'] ?? '').toString().trim();
-        if (text.isNotEmpty) {
-          buffer.writeln(text);
-        }
+        if (text.isNotEmpty) buffer.writeln(text);
+      }
+    }
+
+    final ftList = widget.note.floatingTexts;
+    if (ftList != null) {
+      for (final floatingText in ftList) {
+        final text = (floatingText['text'] ?? '').toString().trim();
+        if (text.isNotEmpty) buffer.writeln(text);
       }
     }
 
     return buffer.toString().trim();
+  }
+
+  // 🧵 EXTRACTOR DE PÁRRAFOS/LÍNEAS PARA NODOS (uno por línea)
+  List<String> _extractParagraphEntries() {
+    final entries = <String>[];
+
+    for (final part in widget.note.contentParts) {
+      final isImage = (part['isImage'] ?? false) == true;
+      if (isImage) continue;
+
+      final raw = (part['text'] ?? '').toString();
+      if (raw.trim().isEmpty) continue;
+
+      // Cortar por líneas (permite párrafos y bullets)
+      final lines = raw.split(RegExp(r'\r?\n'));
+      for (var line in lines) {
+        var s = line.trim();
+        if (s.isEmpty) continue;
+
+        // Quitar bullets si hay
+        s = s.replaceFirst(RegExp(r'^(\s*[-*•]\s+|\s*\d+\.\s+)'), '');
+
+        if (s.trim().isEmpty) continue;
+
+        entries.add(s);
+      }
+    }
+
+    return entries;
   }
 
   // 🧠 ANALIZADOR INTELIGENTE DE TEMAS
@@ -171,7 +349,6 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
         .where((w) => w.length > 3)
         .toList();
 
-    // 📊 PALABRAS CLAVE RELEVANTES (temática cristiana/espiritual)
     final Map<String, List<String>> themeKeywords = {
       'Fe y Creencias': [
         'dios',
@@ -245,37 +422,28 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
       ],
     };
 
-    // 🎯 DETECTAR TEMAS POR FRECUENCIA DE PALABRAS CLAVE
     final Map<String, int> themeScores = {};
-
     for (final entry in themeKeywords.entries) {
       final theme = entry.key;
       final keywords = entry.value;
       int score = 0;
-
       for (final keyword in keywords) {
         score += words.where((w) => w.contains(keyword)).length;
       }
-
-      if (score > 0) {
-        themeScores[theme] = score;
-      }
+      if (score > 0) themeScores[theme] = score;
     }
 
-    // 📈 ORDENAR POR RELEVANCIA Y TOMAR LOS TOP 6
     final sortedThemes = themeScores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-
     topics.addAll(sortedThemes.take(6).map((e) => e.key));
 
-    // 🔍 DETECTAR CONCEPTOS ESPECÍFICOS (nombres propios, fechas, lugares)
     final specificConcepts = _extractSpecificConcepts(content);
     topics.addAll(specificConcepts.take(3));
 
-    // 📝 SI HAY POCOS TEMAS, AGREGAR FRASES CLAVE
     if (topics.length < 4) {
       final keyPhrases = _extractKeyPhrases(content);
-      topics.addAll(keyPhrases.take(5 - topics.length));
+      final int needed = math.max(0, 5 - topics.length);
+      topics.addAll(keyPhrases.take(needed));
     }
 
     return topics.take(8).toList(); // Máximo 8 nodos principales
@@ -287,22 +455,18 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
     final lines = content.split('\n');
 
     for (final line in lines) {
-      // Detectar nombres propios (palabras que empiezan con mayúscula)
       final properNouns = RegExp(r'\b[A-ZÁÉÍÓÚÜÑ][a-záéíóúüñ]+\b')
           .allMatches(line)
           .map((m) => m.group(0)!)
           .where((w) => w.length > 3)
           .toList();
-
       concepts.addAll(properNouns);
 
-      // Detectar fechas
       if (line.contains(RegExp(r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}')) ||
           line.contains(RegExp(r'\d{1,2}\s+de\s+\w+'))) {
         concepts.add('Fechas Importantes');
       }
     }
-
     return concepts.toSet().take(4).toList();
   }
 
@@ -314,66 +478,44 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
     for (final sentence in sentences) {
       final cleanSentence = sentence.trim();
       if (cleanSentence.length > 20 && cleanSentence.length < 60) {
-        // Tomar las primeiras palabras como concepto
         final words = cleanSentence.split(' ').take(4).join(' ');
-        if (words.isNotEmpty) {
-          phrases.add(words);
-        }
+        if (words.isNotEmpty) phrases.add(words);
       }
     }
-
     return phrases.take(5).toList();
   }
 
   // 🎨 COLORES INTELIGENTES POR TIPO DE TEMA
   Color _getThemeColor(String topic) {
-    // 🆕 COLORES ESPECIALES PARA TEMAS NUEVOS
     if (_newTopics.contains(topic)) {
       return const Color(0xFFFF6B6B); // Rojo brillante para nuevos
     }
 
-    // ⏰ COLORES POR ANTIGÜEDAD
-    final creationTime = _topicCreationTime[topic];
-    if (creationTime != null) {
-      final daysSinceCreation = DateTime.now().difference(creationTime).inDays;
-      if (daysSinceCreation <= 1) {
-        return const Color(0xFFFF9500); // Naranja para recientes (1 día)
-      } else if (daysSinceCreation <= 7) {
-        return const Color(0xFFFFD93D); // Amarillo para una semana
-      }
-    }
-
     final Map<String, Color> themeColors = {
-      'Fe y Creencias': const Color(0xFF4CAF50), // Verde
-      'Oración y Adoración': const Color(0xFF9C27B0), // Púrpura
-      'Amor y Relaciones': const Color(0xFFE91E63), // Rosa
-      'Enseñanzas': const Color(0xFF2196F3), // Azul
-      'Valores Cristianos': const Color(0xFFFF9800), // Naranja
-      'Vida Espiritual': const Color(0xFF00BCD4), // Cian
-      'Esperanza y Futuro': const Color(0xFFFFEB3B), // Amarillo
+      'Fe y Creencias': const Color(0xFF4CAF50),
+      'Oración y Adoración': const Color(0xFF9C27B0),
+      'Amor y Relaciones': const Color(0xFFE91E63),
+      'Enseñanzas': const Color(0xFF2196F3),
+      'Valores Cristianos': const Color(0xFFFF9800),
+      'Vida Espiritual': const Color(0xFF00BCD4),
+      'Esperanza y Futuro': const Color(0xFFFFEB3B),
     };
 
-    // Buscar color por tema específico
     for (final entry in themeColors.entries) {
-      if (topic.contains(entry.key)) {
-        return entry.value;
-      }
+      if (topic.contains(entry.key)) return entry.value;
     }
 
-    // Colores por defecto para conceptos específicos
     if (topic.contains('Fechas') || topic.contains('Tiempo')) {
-      return const Color(0xFF795548); // Marrón
+      return const Color(0xFF795548);
     }
 
-    // Color aleatorio suave para otros conceptos
     final colors = [
-      const Color(0xFFFFCDD2), // Rosa claro
-      const Color(0xFFC8E6C9), // Verde claro
-      const Color(0xFFBBDEFB), // Azul claro
-      const Color(0xFFFFF9C4), // Amarillo claro
-      const Color(0xFFE1BEE7), // Púrpura claro
+      const Color(0xFFFFCDD2),
+      const Color(0xFFC8E6C9),
+      const Color(0xFFBBDEFB),
+      const Color(0xFFFFF9C4),
+      const Color(0xFFE1BEE7),
     ];
-
     return colors[topic.hashCode % colors.length];
   }
 
@@ -405,7 +547,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
               rootNode.position.dx + radius * math.cos(angle),
               rootNode.position.dy + radius * math.sin(angle),
             ),
-        children: <String>[],
+        children: const <String>[],
       );
 
       result.add(node);
@@ -413,7 +555,6 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
       nodeColors.putIfAbsent(id, () => Colors.white);
     }
 
-    // Hijos del root = todos los nodos no raíz
     final childrenIds = result.skip(1).map((n) => n.id).toList();
     final rootIndex = result.indexWhere((n) => n.id == 'root');
     if (rootIndex != -1) {
@@ -435,11 +576,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
   }
 
   // 📈 INICIALIZAR EVOLUCIÓN TEMPORAL
-  void _initializeTemporalEvolution() {
-    final currentContent = _extractFullTextContent();
-    _lastContentHash = _generateContentHash(currentContent);
-
-    // Cargar tiempos de creación previos si existen
+  void _initializeTemporalEvolution({String? savedContentHash}) {
     if (widget.note.mindMapNodes != null) {
       for (final nodeData in widget.note.mindMapNodes!) {
         final id = nodeData['id'] as String;
@@ -449,6 +586,8 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
         }
       }
     }
+    _lastContentHash =
+        savedContentHash ?? _generateContentHash(_extractFullTextContent());
   }
 
   // 📊 GENERAR HASH DEL CONTENIDO
@@ -467,17 +606,14 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
   void _detectNewTopics(
       List<String> currentTopics, List<String> previousTopics) {
     _newTopics.clear();
-    final now = DateTime.now();
-
     for (final topic in currentTopics) {
       if (!previousTopics.contains(topic)) {
         _newTopics.add(topic);
-        _topicCreationTime[topic] = now;
       }
     }
   }
 
-  // ⚡ ACTUALIZACIÓN INTELIGENTE DEL MAPA
+  // ⚡ ACTUALIZACIÓN INTELIGENTE DEL MAPA (para botón manual)
   void _updateMindMapIfNeeded() {
     if (_hasContentChanged()) {
       final currentContent = _extractFullTextContent();
@@ -485,10 +621,8 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
       final previousTopics =
           nodes.where((n) => n.id != 'root').map((n) => n.text).toList();
 
-      // Detectar temas nuevos
       _detectNewTopics(currentTopics, previousTopics);
 
-      // Regenerar con preservación de posiciones
       final prevNodes = <String, MindMapNode>{};
       for (final node in nodes) {
         prevNodes[node.id] = node;
@@ -499,11 +633,9 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
         connections = _generateConnections(nodes);
       });
 
-      // Actualizar hash del contenido
       _lastContentHash = _generateContentHash(currentContent);
       _saveMindMap();
 
-      // Mostrar notificación de temas nuevos
       if (_newTopics.isNotEmpty) {
         _showNewTopicsNotification();
       }
@@ -520,9 +652,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
         action: SnackBarAction(
           label: 'Ver',
           textColor: Colors.white,
-          onPressed: () {
-            _highlightNewTopics();
-          },
+          onPressed: _highlightNewTopics,
         ),
       ),
     );
@@ -530,24 +660,26 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
 
   // ✨ RESALTAR TEMAS NUEVOS
   void _highlightNewTopics() {
-    // Los temas nuevos ya se muestran con colores especiales
-    // Esta función podría implementar animaciones adicionales
+    // Hook para futuras animaciones
   }
 
   void _saveMindMap() {
     try {
-      // Persistir nodos y conexiones en la nota (incluye color por nodo Y tiempo de creación)
-      widget.note.mindMapNodes = nodes
-          .map((n) => {
-                'id': n.id,
-                'text': n.text,
-                'x': n.position.dx.isFinite ? n.position.dx : 0.0,
-                'y': n.position.dy.isFinite ? n.position.dy : 0.0,
-                'children': List<String>.from(n.children),
-                'color': nodeColors[n.id]?.value,
-                'creationTime': _topicCreationTime[n.id]?.toIso8601String(),
-              })
-          .toList();
+      widget.note.mindMapNodes = nodes.map((n) {
+        final map = {
+          'id': n.id,
+          'text': n.text,
+          'x': n.position.dx.isFinite ? n.position.dx : 0.0,
+          'y': n.position.dy.isFinite ? n.position.dy : 0.0,
+          'children': List<String>.from(n.children),
+          'color': nodeColors[n.id]?.value,
+          'creationTime': _topicCreationTime[n.id]?.toIso8601String(),
+        };
+        if (n.id == 'root') {
+          map['contentHash'] = _lastContentHash;
+        }
+        return map;
+      }).toList();
 
       widget.note.mindMapConnections = connections
           .map((c) => {
@@ -558,8 +690,8 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
 
       Provider.of<NoteProvider>(context, listen: false).updateNote(widget.note);
     } catch (e) {
+      // ignore: avoid_print
       print('Error saving mind map: $e');
-      // Mostrar un snackbar de error al usuario
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -618,11 +750,12 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
             tooltip: 'Regenerar con IA',
             onPressed: () {
               setState(() {
-                // Limpiar nodos previos y regenerar
                 _newTopics.clear();
                 nodes = _generateIntelligentNodes({});
                 connections = _generateConnections(nodes);
               });
+              _lastContentHash =
+                  _generateContentHash(_extractFullTextContent());
               _saveMindMap();
             },
             icon: const Icon(Icons.auto_awesome, color: Colors.white),
@@ -677,7 +810,6 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
                 });
               },
             ),
-            // 📊 INFORMACIÓN TEMPORAL SUPERPUESTA
             Positioned(
               top: 16,
               right: 16,
