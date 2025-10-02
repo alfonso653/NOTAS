@@ -408,6 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'Cita',
       'Versículo',
       'Oración',
+      'Culto',
       'Otro',
     ];
     String tempQuery = _searchQuery;
@@ -858,6 +859,7 @@ class NoteListScreen extends StatelessWidget {
           'Cita': Color(0xFFFFF3E0),
           'Versículo': Color(0xFFE8F5E9),
           'Oración': Color(0xFFF3E5F5),
+          'Culto': Color(0xFFE1F8FF),
           'Otro': Color(0xFFD7CCC8),
         };
 
@@ -1284,6 +1286,8 @@ String _categoriaAbreviatura(String categoria) {
       return 'VER';
     case 'Oración':
       return 'ORA';
+    case 'Culto':
+      return 'CUL';
     case 'Otro':
       return 'OTR';
     default:

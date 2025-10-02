@@ -4,8 +4,6 @@ class Note {
   // Nuevo: estado del mapa mental (lista de nodos y conexiones)
   List<Map<String, dynamic>>? mindMapNodes;
   List<Map<String, dynamic>>? mindMapConnections;
-  // Nuevo: datos del canvas libre
-  Map<String, dynamic>? freeCanvasData;
   final String id;
   String title;
   String date;
@@ -32,7 +30,6 @@ class Note {
     List<Map<String, dynamic>>? floatingTexts,
     this.mindMapNodes,
     this.mindMapConnections,
-    this.freeCanvasData,
   })  : floatingImages = floatingImages ?? [],
         floatingTexts = floatingTexts ?? [];
 
@@ -71,9 +68,6 @@ class Note {
               .map((e) => Map<String, dynamic>.from(e))
               .toList()
           : null,
-      freeCanvasData: json['freeCanvasData'] != null
-          ? Map<String, dynamic>.from(json['freeCanvasData'])
-          : null,
     );
   }
 
@@ -92,7 +86,6 @@ class Note {
       'floatingTexts': floatingTexts,
       if (mindMapNodes != null) 'mindMapNodes': mindMapNodes,
       if (mindMapConnections != null) 'mindMapConnections': mindMapConnections,
-      if (freeCanvasData != null) 'freeCanvasData': freeCanvasData,
     };
   }
 }

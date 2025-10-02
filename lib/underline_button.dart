@@ -23,16 +23,15 @@ class UnderlineButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
         GestureDetector(
           onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+          child: Container(
             width: 50,
             height: 50,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
+            margin: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               color: selected ? color : const Color(0xFFF6F7F9),
               borderRadius: BorderRadius.circular(12),
@@ -64,24 +63,42 @@ class UnderlineButton extends StatelessWidget {
           ),
         ),
         if (selected)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: pastelColors.map((c) => GestureDetector(
-              onTap: () => onColorSelected(c),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: c,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: color == c ? Colors.black87 : Colors.transparent,
-                    width: 2,
+          Positioned(
+            left: 60,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
                   ),
-                ),
+                ],
               ),
-            )).toList(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: pastelColors.map((c) => GestureDetector(
+                  onTap: () => onColorSelected(c),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: c,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: color == c ? Colors.black87 : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
           ),
       ],
     );

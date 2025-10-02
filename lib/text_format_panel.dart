@@ -79,7 +79,7 @@ class _TextFormatPanelState extends State<TextFormatPanel>
       duration: const Duration(milliseconds: 400),
     );
     _offsetAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5),
+      begin: const Offset(-1.0, 0),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _controller,
@@ -105,22 +105,24 @@ class _TextFormatPanelState extends State<TextFormatPanel>
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onClose,
-        child: Center(
+        child: Align(
+          alignment: Alignment.topLeft,
           child: SlideTransition(
             position: _offsetAnimation,
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+              child: Container(
+                margin: const EdgeInsets.only(left: 16, top: 80),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   // Botón Negrilla (B)
                   GestureDetector(
                     onTap: () => _set(v.copyWith(bold: !v.bold)),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
+                    child: Container(
                       width: 50,
                       height: 50,
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      margin: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
                         color: v.bold
                             ? const Color(0xFFFFC107)
@@ -172,6 +174,7 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                   ),
                 ],
               ),
+                ),
             ),
           ),
         ),
@@ -204,16 +207,15 @@ class HighlightButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
         GestureDetector(
           onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+          child: Container(
             width: 50,
             height: 50,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
+            margin: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               color: selected ? color : const Color(0xFFF6F7F9),
               borderRadius: BorderRadius.circular(12),
@@ -240,30 +242,47 @@ class HighlightButton extends StatelessWidget {
           ),
         ),
         if (selected)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: pastelColors
-                .map(
-                  (c) => GestureDetector(
-                    onTap: () => onColorSelected(c),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 2, vertical: 4),
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: c,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color:
-                              color == c ? Colors.black87 : Colors.transparent,
-                          width: 2,
+          Positioned(
+            left: 60,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: pastelColors
+                    .map(
+                      (c) => GestureDetector(
+                        onTap: () => onColorSelected(c),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: c,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color:
+                                  color == c ? Colors.black87 : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                )
-                .toList(),
+                    )
+                    .toList(),
+              ),
+            ),
           ),
       ],
     );
