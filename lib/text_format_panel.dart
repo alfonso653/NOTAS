@@ -103,7 +103,7 @@ class _TextFormatPanelState extends State<TextFormatPanel>
     return Material(
       color: Colors.transparent,
       child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+        behavior: HitTestBehavior.translucent,
         onTap: widget.onClose,
         child: Align(
           alignment: Alignment.topLeft,
@@ -115,6 +115,7 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                 margin: const EdgeInsets.only(left: 16, top: 80),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                   // Botón Negrilla (B)
                   GestureDetector(
@@ -203,12 +204,15 @@ class HighlightButton extends StatelessWidget {
     Color(0xFFB3E5FC), // Azul
     Color(0xFFE1BEE7), // Lila
     Color(0xFFFFCDD2), // Rosa
+    Color(0xFFFFE0B2), // Naranja claro
+    Color(0xFFB2DFDB), // Menta claro
+    Color(0xFFF3E5F5), // Lavanda suave
+    Color(0xFFFFECB3), // Crema dorado
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
+    return Row(
       children: [
         GestureDetector(
           onTap: onTap,
@@ -241,49 +245,73 @@ class HighlightButton extends StatelessWidget {
             ),
           ),
         ),
-        if (selected)
-          Positioned(
-            left: 60,
-            top: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: pastelColors
-                    .map(
-                      (c) => GestureDetector(
-                        onTap: () => onColorSelected(c),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                          width: 18,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: c,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color:
-                                  color == c ? Colors.black87 : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                        ),
+        if (selected) ...[
+          SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ...pastelColors.map((c) => GestureDetector(
+                  onTap: () {
+                    print('Color seleccionado: $c'); // Debug
+                    onColorSelected(c);
+                  },
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    margin: EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: c,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: color == c ? Colors.black87 : Colors.grey.shade300,
+                        width: 2,
                       ),
-                    )
-                    .toList(),
-              ),
+                    ),
+                  ),
+                )).toList(),
+                // Botón para quitar resaltado
+                GestureDetector(
+                  onTap: () {
+                    print('Quitar resaltado'); // Debug
+                    onTap(); // Desactiva el resaltado
+                  },
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    margin: EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.red.shade300,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '🚫',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+        ],
       ],
     );
   }

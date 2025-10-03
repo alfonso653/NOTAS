@@ -19,12 +19,15 @@ class UnderlineButton extends StatelessWidget {
     Color(0xFF80DEEA), // celeste
     Color(0xFFFFAB91), // coral
     Color(0xFFA5D6A7), // verde
+    Color(0xFFF8BBD9), // rosa suave
+    Color(0xFFE1F5FE), // azul hielo
+    Color(0xFFD7CCC8), // beige suave
+    Color(0xFFE8F5E8), // menta pálido
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
+    return Row(
       children: [
         GestureDetector(
           onTap: onTap,
@@ -62,44 +65,73 @@ class UnderlineButton extends StatelessWidget {
             ),
           ),
         ),
-        if (selected)
-          Positioned(
-            left: 60,
-            top: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: pastelColors.map((c) => GestureDetector(
-                  onTap: () => onColorSelected(c),
+        if (selected) ...[
+          SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ...pastelColors.map((c) => GestureDetector(
+                  onTap: () {
+                    print('Color seleccionado: $c'); // Debug
+                    onColorSelected(c);
+                  },
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    width: 18,
-                    height: 18,
+                    width: 24,
+                    height: 24,
+                    margin: EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       color: c,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: color == c ? Colors.black87 : Colors.transparent,
+                        color: color == c ? Colors.black87 : Colors.grey.shade300,
                         width: 2,
                       ),
                     ),
                   ),
                 )).toList(),
-              ),
+                // Botón para quitar subrayado
+                GestureDetector(
+                  onTap: () {
+                    print('Quitar subrayado'); // Debug
+                    onTap(); // Desactiva el subrayado
+                  },
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    margin: EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.red.shade300,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '🚫',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+        ],
       ],
     );
   }
