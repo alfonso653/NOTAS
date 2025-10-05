@@ -84,6 +84,105 @@ class _TextPart {
       );
 }
 
+/// Modelo para trazos de dibujo libre
+class DrawingStroke {
+  final List<Offset> points;
+  final Color color;
+  final double strokeWidth;
+  final String toolType; // 'pencil', 'pen', 'crayon', 'brush'
+
+  const DrawingStroke({
+    required this.points,
+    required this.color,
+    required this.strokeWidth,
+    required this.toolType,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'points': points.map((p) => {'dx': p.dx, 'dy': p.dy}).toList(),
+        'color': color.value,
+        'strokeWidth': strokeWidth,
+        'toolType': toolType,
+      };
+
+  factory DrawingStroke.fromJson(Map<String, dynamic> json) => DrawingStroke(
+        points: (json['points'] as List)
+            .map((p) => Offset(p['dx'] as double, p['dy'] as double))
+            .toList(),
+        color: Color(json['color'] as int),
+        strokeWidth: (json['strokeWidth'] as num).toDouble(),
+        toolType: json['toolType'] as String,
+      );
+}
+
+/// CustomPainter para renderizar los trazos de dibujo libre
+class DrawingPainter extends CustomPainter {
+  final List<DrawingStroke> strokes;
+  final DrawingStroke? currentStroke;
+
+  DrawingPainter({
+    required this.strokes,
+    this.currentStroke,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Dibujar todos los trazos completados
+    for (final stroke in strokes) {
+      _drawStroke(canvas, stroke);
+    }
+
+    // Dibujar el trazo actual (en progreso)
+    if (currentStroke != null) {
+      _drawStroke(canvas, currentStroke!);
+    }
+  }
+
+  void _drawStroke(Canvas canvas, DrawingStroke stroke) {
+    if (stroke.points.isEmpty) return;
+
+    final paint = Paint()
+      ..color = stroke.color
+      ..strokeWidth = stroke.strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    // Aplicar efectos según el tipo de herramienta
+    switch (stroke.toolType) {
+      case 'pencil':
+        paint.color = stroke.color.withOpacity(0.8);
+        break;
+      case 'pen':
+        paint.color = stroke.color;
+        break;
+      case 'crayon':
+        paint.color = stroke.color.withOpacity(0.9);
+        paint.strokeWidth = stroke.strokeWidth * 1.2;
+        break;
+      case 'brush':
+        paint.color = stroke.color.withOpacity(0.7);
+        paint.strokeWidth = stroke.strokeWidth * 1.5;
+        break;
+    }
+
+    // Dibujar las líneas conectando los puntos
+    final path = Path();
+    if (stroke.points.isNotEmpty) {
+      path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
+      for (int i = 1; i < stroke.points.length; i++) {
+        path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant DrawingPainter oldDelegate) {
+    return oldDelegate.strokes != strokes || oldDelegate.currentStroke != currentStroke;
+  }
+}
+
 /// Imágenes flotantes (superpuestas al contenido)
 class FloatingImage {
   String filePath;
@@ -249,6 +348,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // Snackbar manual
   bool _showSavedSnackbar = false;
+
+  // ========= Sistema de Dibujo Libre =========
+  final List<DrawingStroke> _drawingStrokes = <DrawingStroke>[];
+  bool _isDrawingMode = false;
+  DrawingStroke? _currentStroke;
 
   // ========= Helpers =========
 
@@ -727,6 +831,70 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
+  // ========= Métodos de Dibujo Libre =========
+  
+  void _onDrawStart(DragStartDetails details) {
+    if (!_isDrawingMode) return;
+    
+    // Determinar qué herramienta está activa y sus propiedades
+    String toolType = '';
+    Color color = Colors.black;
+    double strokeWidth = 2.0;
+    
+    if (_contentFormat.pencil) {
+      toolType = 'pencil';
+      color = _contentFormat.pencilColor;
+      strokeWidth = 2.0;
+    } else if (_contentFormat.pen) {
+      toolType = 'pen';
+      color = _contentFormat.penColor;
+      strokeWidth = 4.0;
+    } else if (_contentFormat.crayon) {
+      toolType = 'crayon';
+      color = _contentFormat.crayonColor;
+      strokeWidth = 8.0;
+    } else if (_contentFormat.brush) {
+      toolType = 'brush';
+      color = _contentFormat.brushColor;
+      strokeWidth = 6.0;
+    }
+    
+    // Crear nuevo trazo
+    setState(() {
+      _currentStroke = DrawingStroke(
+        points: [details.localPosition],
+        color: color,
+        strokeWidth: strokeWidth,
+        toolType: toolType,
+      );
+    });
+  }
+  
+  void _onDrawUpdate(DragUpdateDetails details) {
+    if (!_isDrawingMode || _currentStroke == null) return;
+    
+    setState(() {
+      _currentStroke = DrawingStroke(
+        points: [..._currentStroke!.points, details.localPosition],
+        color: _currentStroke!.color,
+        strokeWidth: _currentStroke!.strokeWidth,
+        toolType: _currentStroke!.toolType,
+      );
+    });
+  }
+  
+  void _onDrawEnd(DragEndDetails details) {
+    if (!_isDrawingMode || _currentStroke == null) return;
+    
+    setState(() {
+      _drawingStrokes.add(_currentStroke!);
+      _currentStroke = null;
+    });
+    
+    // Guardar los trazos en la nota
+    _saveNote();
+  }
+
   void _saveNote({bool pop = false}) {
     final note = widget.note;
     note.title = _titleController.text;
@@ -766,6 +934,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     // Guardar textos flotantes en la nota
     note.floatingTexts = _floatingTexts.map((text) => text.toJson()).toList();
+
+    // Guardar trazos de dibujo libre en la nota
+    note.drawingStrokes = _drawingStrokes.map((stroke) => stroke.toJson()).toList();
 
     context.read<NoteProvider>().updateNote(note);
 
@@ -859,6 +1030,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       final restoredText =
           FloatingText.fromJson((text as Map).cast<String, dynamic>());
       _floatingTexts.add(restoredText);
+    }
+
+    // 🎯 Restaurar trazos de dibujo libre guardados en la nota
+    _drawingStrokes.clear();
+    for (final stroke in widget.note.drawingStrokes) {
+      final restoredStroke =
+          DrawingStroke.fromJson((stroke as Map).cast<String, dynamic>());
+      _drawingStrokes.add(restoredStroke);
     }
 
     // 🎯 Asegurar que las posiciones se mantengan después de la restauración
@@ -1034,9 +1213,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       // ======= BODY: Stack con contenido principal + imágenes flotantes =======
       body: RepaintBoundary(
         key: _noteKey,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
+        child: GestureDetector(
+          onPanStart: _isDrawingMode ? _onDrawStart : null,
+          onPanUpdate: _isDrawingMode ? _onDrawUpdate : null,
+          onPanEnd: _isDrawingMode ? _onDrawEnd : null,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
             // ---- Contenido principal (debajo) ----
             Column(
               children: [
@@ -1891,8 +2074,20 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 ),
               ),
             ), // Cierre del Positioned y ClipRect
+            
+            // ===== Capa de dibujo libre =====
+            // Siempre mostrar los trazos guardados, el trazo actual solo en modo dibujo
+            Positioned.fill(
+              child: CustomPaint(
+                painter: DrawingPainter(
+                  strokes: _drawingStrokes,
+                  currentStroke: _isDrawingMode ? _currentStroke : null,
+                ),
+              ),
+            ),
           ],
-        ),
+        ), // Cierre del Stack
+        ), // Cierre del GestureDetector
       ),
 
       // ======= BARRA INFERIOR =======
@@ -1959,6 +2154,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         onChanged: (val) {
                           // 🎯 Actualizar formato SIN reorganizar el layout
                           _contentFormat = val;
+                          
+                          // 🎨 Activar modo dibujo si alguna herramienta está seleccionada
+                          _isDrawingMode = val.pencil || val.pen || val.crayon || val.brush;
+                          
                           // 💾 Guardar formato inmediatamente SIN setState innecesario
                           _saveNote(pop: false);
                           // 🎯 Solo refrescar si es absolutamente necesario

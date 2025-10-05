@@ -527,6 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     contentFontSize: 18.0,
                     contentParts: const [],
                     floatingImages: const [],
+                    drawingStrokes: const [], // 🎨 Inicializar lista de trazos
                   );
                   context.read<NoteProvider>().addNote(newNote);
                   Navigator.push(

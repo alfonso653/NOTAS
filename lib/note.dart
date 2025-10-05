@@ -15,6 +15,7 @@ class Note {
   List<Map<String, dynamic>> contentParts; // [{text:..., bold:...}, ...]
   List<Map<String, dynamic>> floatingImages;
   List<Map<String, dynamic>> floatingTexts;
+  List<Map<String, dynamic>> drawingStrokes; // Trazos de dibujo libre
 
   Note({
     required this.id,
@@ -28,10 +29,12 @@ class Note {
     required this.contentParts,
     List<Map<String, dynamic>>? floatingImages,
     List<Map<String, dynamic>>? floatingTexts,
+    List<Map<String, dynamic>>? drawingStrokes,
     this.mindMapNodes,
     this.mindMapConnections,
   })  : floatingImages = floatingImages ?? [],
-        floatingTexts = floatingTexts ?? [];
+        floatingTexts = floatingTexts ?? [],
+        drawingStrokes = drawingStrokes ?? [];
 
   factory Note.fromJson(Map<String, dynamic> json) {
     return Note(
@@ -55,6 +58,11 @@ class Note {
           : [],
       floatingTexts: (json['floatingTexts'] is List)
           ? (json['floatingTexts'] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+          : [],
+      drawingStrokes: (json['drawingStrokes'] is List)
+          ? (json['drawingStrokes'] as List)
               .map((e) => Map<String, dynamic>.from(e))
               .toList()
           : [],
@@ -84,6 +92,7 @@ class Note {
       'contentParts': contentParts,
       'floatingImages': floatingImages,
       'floatingTexts': floatingTexts,
+      'drawingStrokes': drawingStrokes,
       if (mindMapNodes != null) 'mindMapNodes': mindMapNodes,
       if (mindMapConnections != null) 'mindMapConnections': mindMapConnections,
     };
