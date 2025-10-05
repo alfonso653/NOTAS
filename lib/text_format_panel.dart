@@ -20,6 +20,8 @@ class TextFormatValue {
   final Color crayonColor;
   final bool brush;
   final Color brushColor;
+  // Borrador para eliminar trazos
+  final bool eraser;
 
   const TextFormatValue({
     this.bold = false,
@@ -39,6 +41,7 @@ class TextFormatValue {
     this.crayonColor = const Color(0xFF4CAF50),
     this.brush = false,
     this.brushColor = const Color(0xFF9C27B0),
+    this.eraser = false,
   });
 
   TextFormatValue copyWith({
@@ -59,6 +62,7 @@ class TextFormatValue {
     Color? crayonColor,
     bool? brush,
     Color? brushColor,
+    bool? eraser,
   }) {
     return TextFormatValue(
       bold: bold ?? this.bold,
@@ -78,6 +82,7 @@ class TextFormatValue {
       crayonColor: crayonColor ?? this.crayonColor,
       brush: brush ?? this.brush,
       brushColor: brushColor ?? this.brushColor,
+      eraser: eraser ?? this.eraser,
     );
   }
 }
@@ -241,6 +246,11 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       onColorSelected: (color) => _set(
                         v.copyWith(brush: true, brushColor: color),
                       ),
+                    ),
+                    // Botón Borrador
+                    EraserButton(
+                      selected: v.eraser,
+                      onTap: () => _set(v.copyWith(eraser: !v.eraser)),
                     ),
                   ],
                 ),
@@ -910,6 +920,52 @@ class BrushButton extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// Widget para el botón borrador
+class EraserButton extends StatelessWidget {
+  final bool selected;
+  final VoidCallback onTap;
+  const EraserButton({
+    required this.selected,
+    required this.onTap,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 50,
+        height: 50,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? Colors.pink.shade100 : const Color(0xFFF6F7F9),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? Colors.pink.shade300 : Colors.grey.shade300,
+            width: 2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '🧹',
+          style: TextStyle(
+            fontSize: 24,
+            color: selected ? Colors.pink.shade700 : Colors.black54,
+          ),
+        ),
+      ),
     );
   }
 }

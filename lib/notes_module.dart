@@ -141,6 +141,43 @@ class DrawingPainter extends CustomPainter {
   void _drawStroke(Canvas canvas, DrawingStroke stroke) {
     if (stroke.points.isEmpty) return;
 
+    switch (stroke.toolType) {
+      case 'pencil':
+        _drawPencilStroke(canvas, stroke);
+        break;
+      case 'pen':
+        _drawPenStroke(canvas, stroke);
+        break;
+      case 'crayon':
+        _drawCrayonStroke(canvas, stroke);
+        break;
+      case 'brush':
+        _drawBrushStroke(canvas, stroke);
+        break;
+    }
+  }
+
+  // ✏️ Lápiz - Trazo suave y uniforme
+  void _drawPencilStroke(Canvas canvas, DrawingStroke stroke) {
+    final paint = Paint()
+      ..color = stroke.color.withOpacity(0.8)
+      ..strokeWidth = stroke.strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    if (stroke.points.isNotEmpty) {
+      path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
+      for (int i = 1; i < stroke.points.length; i++) {
+        path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  // 🖊️ Lapicero - Trazo elegante y definido con brillo
+  void _drawPenStroke(Canvas canvas, DrawingStroke stroke) {
     final paint = Paint()
       ..color = stroke.color
       ..strokeWidth = stroke.strokeWidth
@@ -148,31 +185,93 @@ class DrawingPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
-    // Aplicar efectos según el tipo de herramienta
-    switch (stroke.toolType) {
-      case 'pencil':
-        paint.color = stroke.color.withOpacity(0.8);
-        break;
-      case 'pen':
-        paint.color = stroke.color;
-        break;
-      case 'crayon':
-        paint.color = stroke.color.withOpacity(0.9);
-        paint.strokeWidth = stroke.strokeWidth * 1.2;
-        break;
-      case 'brush':
-        paint.color = stroke.color.withOpacity(0.7);
-        paint.strokeWidth = stroke.strokeWidth * 1.5;
-        break;
-    }
-
-    // Dibujar las líneas conectando los puntos
+    // Trazo principal elegante
     final path = Path();
     if (stroke.points.isNotEmpty) {
       path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
       for (int i = 1; i < stroke.points.length; i++) {
         path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
       }
+      canvas.drawPath(path, paint);
+      
+      // Efecto de brillo interno para elegancia
+      final highlightPaint = Paint()
+        ..color = stroke.color.withOpacity(0.3)
+        ..strokeWidth = stroke.strokeWidth * 0.4
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke;
+      canvas.drawPath(path, highlightPaint);
+    }
+  }
+
+  // 🖍️ Crayola - Efecto punteado/granulado como crayón real
+  void _drawCrayonStroke(Canvas canvas, DrawingStroke stroke) {
+    final random = Random(42); // Seed fijo para consistencia
+    
+    for (int i = 0; i < stroke.points.length - 1; i++) {
+      final start = stroke.points[i];
+      final end = stroke.points[i + 1];
+      
+      // Crear puntos granulados a lo largo de la línea
+      for (double t = 0; t <= 1.0; t += 0.02) {
+        final point = Offset.lerp(start, end, t)!;
+        
+        // Agregar variación aleatoria para efecto granulado
+        final offsetX = (random.nextDouble() - 0.5) * stroke.strokeWidth * 0.5;
+        final offsetY = (random.nextDouble() - 0.5) * stroke.strokeWidth * 0.5;
+        final randomPoint = point + Offset(offsetX, offsetY);
+        
+        // Dibujar pequeños círculos para simular la textura de crayón
+        final paint = Paint()
+          ..color = stroke.color.withOpacity(random.nextDouble() * 0.4 + 0.6)
+          ..style = PaintingStyle.fill;
+        
+        final radius = stroke.strokeWidth * (0.1 + random.nextDouble() * 0.2);
+        canvas.drawCircle(randomPoint, radius, paint);
+      }
+    }
+  }
+
+  // 🖌️ Pincel - Efecto acuarela con bordes suaves
+  void _drawBrushStroke(Canvas canvas, DrawingStroke stroke) {
+    if (stroke.points.length < 2) return;
+    
+    // Crear múltiples capas para efecto acuarela
+    final layers = [
+      {'opacity': 0.15, 'width': stroke.strokeWidth * 2.0},
+      {'opacity': 0.25, 'width': stroke.strokeWidth * 1.5},
+      {'opacity': 0.4, 'width': stroke.strokeWidth * 1.0},
+      {'opacity': 0.6, 'width': stroke.strokeWidth * 0.7},
+    ];
+    
+    for (final layer in layers) {
+      final paint = Paint()
+        ..color = stroke.color.withOpacity(layer['opacity']!)
+        ..strokeWidth = layer['width']!
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2.0);
+      
+      final path = Path();
+      path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
+      
+      // Crear curvas suaves para efecto acuarela
+      for (int i = 1; i < stroke.points.length; i++) {
+        if (i == stroke.points.length - 1) {
+          path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
+        } else {
+          final current = stroke.points[i];
+          final next = stroke.points[i + 1];
+          final controlPoint = Offset(
+            (current.dx + next.dx) / 2,
+            (current.dy + next.dy) / 2,
+          );
+          path.quadraticBezierTo(current.dx, current.dy, controlPoint.dx, controlPoint.dy);
+        }
+      }
+      
       canvas.drawPath(path, paint);
     }
   }
@@ -836,6 +935,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   void _onDrawStart(DragStartDetails details) {
     if (!_isDrawingMode) return;
     
+    // Si el borrador está activo, buscar trazos para borrar
+    if (_contentFormat.eraser) {
+      _eraseStrokesAt(details.localPosition);
+      return;
+    }
+    
     // Determinar qué herramienta está activa y sus propiedades
     String toolType = '';
     Color color = Colors.black;
@@ -871,7 +976,15 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
   
   void _onDrawUpdate(DragUpdateDetails details) {
-    if (!_isDrawingMode || _currentStroke == null) return;
+    if (!_isDrawingMode) return;
+    
+    // Si el borrador está activo, seguir borrando
+    if (_contentFormat.eraser) {
+      _eraseStrokesAt(details.localPosition);
+      return;
+    }
+    
+    if (_currentStroke == null) return;
     
     setState(() {
       _currentStroke = DrawingStroke(
@@ -884,7 +997,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
   
   void _onDrawEnd(DragEndDetails details) {
-    if (!_isDrawingMode || _currentStroke == null) return;
+    if (!_isDrawingMode) return;
+    
+    // Si es borrador, no hay trazo que terminar
+    if (_contentFormat.eraser) return;
+    
+    if (_currentStroke == null) return;
     
     setState(() {
       _drawingStrokes.add(_currentStroke!);
@@ -893,6 +1011,36 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     
     // Guardar los trazos en la nota
     _saveNote();
+  }
+
+  // Método para borrar trazos en una posición específica
+  void _eraseStrokesAt(Offset position) {
+    const double eraserRadius = 20.0; // Radio del borrador
+    
+    List<DrawingStroke> strokesToRemove = [];
+    
+    // Encontrar trazos que intersectan con la posición del borrador
+    for (DrawingStroke stroke in _drawingStrokes) {
+      for (Offset point in stroke.points) {
+        double distance = (point - position).distance;
+        if (distance <= eraserRadius) {
+          strokesToRemove.add(stroke);
+          break; // Una vez que encontramos una intersección, marcamos todo el trazo para borrar
+        }
+      }
+    }
+    
+    // Remover los trazos encontrados
+    if (strokesToRemove.isNotEmpty) {
+      setState(() {
+        for (DrawingStroke stroke in strokesToRemove) {
+          _drawingStrokes.remove(stroke);
+        }
+      });
+      
+      // Guardar los cambios
+      _saveNote();
+    }
   }
 
   void _saveNote({bool pop = false}) {
