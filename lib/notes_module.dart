@@ -1,4 +1,5 @@
 // (Declaración de _dropInsertIndex movida a la clase correspondiente)
+import 'dart:async'; // Para Timer
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
@@ -289,9 +290,11 @@ class DrawingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant DrawingPainter old) {
-    return old.strokes != strokes ||
-        old.currentStroke != currentStroke ||
-        old.scrollOffset != scrollOffset;
+    // OPTIMIZACIÓN: Comparaciones más eficientes
+    if (old.scrollOffset != scrollOffset) return true;
+    if (old.currentStroke != currentStroke) return true;
+    if (old.strokes.length != strokes.length) return true;
+    return false;
   }
 }
 
@@ -464,6 +467,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // Snackbar manual
   bool _showSavedSnackbar = false;
+
+  // OPTIMIZACIÓN: Debounce para _saveNote
+  Timer? _saveDebounceTimer;
+  
+  // OPTIMIZACIÓN: Cache para evitar cálculos repetitivos
+  Timer? _contentRectUpdateTimer;
 
   // ========= Sistema de Dibujo Libre =========
   final List<DrawingStroke> _drawingStrokes = <DrawingStroke>[];
@@ -933,7 +942,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   // ========= Geometría del área de contenido =========
 
   void _scheduleUpdateContentRect() {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateContentRect());
+    // OPTIMIZACIÓN: Evitar múltiples updates por frame
+    _contentRectUpdateTimer?.cancel();
+    _contentRectUpdateTimer = Timer(const Duration(milliseconds: 16), () {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _updateContentRect());
+    });
   }
 
   void _updateContentRect() {
@@ -1079,6 +1092,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   void _saveNote({bool pop = false}) {
+    // OPTIMIZACIÓN: Cancelar timer anterior y programar nuevo guardado
+    _saveDebounceTimer?.cancel();
+    _saveDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _performSave(pop: pop);
+    });
+  }
+
+  void _performSave({bool pop = false}) {
     final note = widget.note;
     note.title = _titleController.text;
     note.categoria = _categoriaController.text;
@@ -1153,9 +1174,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     _scrollController = ScrollController();
     _scrollController.addListener(() {
-      // Recalcular área de contenido y repintar dibujos al scrollear
+      // OPTIMIZADO: Solo recalcular área de contenido, sin setState innecesario
       if (mounted) {
-        setState(() {});
         _scheduleUpdateContentRect();
       }
     });
@@ -1231,7 +1251,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   @override
   void dispose() {
-    _saveNote(pop: false);
+    // OPTIMIZACIÓN: Limpiar timers para evitar memory leaks
+    _saveDebounceTimer?.cancel();
+    _contentRectUpdateTimer?.cancel();
+    
+    _performSave(pop: false); // Guardado final sin debounce
     _blinkController.dispose();
     _titleController.removeListener(_onAnyChange);
     _categoriaController.removeListener(_onAnyChange);
@@ -2316,20 +2340,81 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             // Aplicar SOLO el nuevo formato seleccionado (crear nuevo párrafo)
                             setState(() {
                               if (val.bold && !_contentFormat.bold) {
-                                _contentFormat = const TextFormatValue().copyWith(bold: true);
+                                _contentFormat = TextFormatValue(
+                                  bold: true,
+                                  underline: false,
+                                  highlight: false,
+                                  // Mantener herramientas de dibujo existentes
+                                  pencil: _contentFormat.pencil,
+                                  pencilColor: _contentFormat.pencilColor,
+                                  pen: _contentFormat.pen,
+                                  penColor: _contentFormat.penColor,
+                                  crayon: _contentFormat.crayon,
+                                  crayonColor: _contentFormat.crayonColor,
+                                  brush: _contentFormat.brush,
+                                  brushColor: _contentFormat.brushColor,
+                                  eraser: _contentFormat.eraser,
+                                );
                               } else if (val.underline && !_contentFormat.underline) {
-                                _contentFormat = const TextFormatValue().copyWith(
+                                _contentFormat = TextFormatValue(
+                                  bold: false,
                                   underline: true,
                                   underlineColor: val.underlineColor,
+                                  highlight: false,
+                                  // Mantener herramientas de dibujo existentes
+                                  pencil: _contentFormat.pencil,
+                                  pencilColor: _contentFormat.pencilColor,
+                                  pen: _contentFormat.pen,
+                                  penColor: _contentFormat.penColor,
+                                  crayon: _contentFormat.crayon,
+                                  crayonColor: _contentFormat.crayonColor,
+                                  brush: _contentFormat.brush,
+                                  brushColor: _contentFormat.brushColor,
+                                  eraser: _contentFormat.eraser,
                                 );
                               } else if (val.highlight && !_contentFormat.highlight) {
-                                _contentFormat = const TextFormatValue().copyWith(
+                                _contentFormat = TextFormatValue(
+                                  bold: false,
+                                  underline: false,
                                   highlight: true,
                                   highlightColor: val.highlightColor,
+                                  // Mantener herramientas de dibujo existentes
+                                  pencil: _contentFormat.pencil,
+                                  pencilColor: _contentFormat.pencilColor,
+                                  pen: _contentFormat.pen,
+                                  penColor: _contentFormat.penColor,
+                                  crayon: _contentFormat.crayon,
+                                  crayonColor: _contentFormat.crayonColor,
+                                  brush: _contentFormat.brush,
+                                  brushColor: _contentFormat.brushColor,
+                                  eraser: _contentFormat.eraser,
                                 );
                               }
                             });
                             
+                            _saveNote(pop: false);
+                            
+                            // SOLUCIÓN COLORES: Solo cerrar si es BOLD (sin colores)
+                            if (val.bold && !val.underline && !val.highlight) {
+                              Navigator.pop(ctx);
+                              FocusScope.of(context).requestFocus(_hiddenFocus);
+                            }
+                            // Para underline y highlight, NO cerrar para permitir selección de color
+                            return;
+                          }
+                          
+                          // Detectar cuando se selecciona color en underline o highlight
+                          if ((val.underline && _contentFormat.underline && val.underlineColor != _contentFormat.underlineColor) ||
+                              (val.highlight && _contentFormat.highlight && val.highlightColor != _contentFormat.highlightColor)) {
+                            // Solo actualizar el color, y cerrar
+                            setState(() {
+                              if (val.underline && val.underlineColor != _contentFormat.underlineColor) {
+                                _contentFormat = _contentFormat.copyWith(underlineColor: val.underlineColor);
+                              }
+                              if (val.highlight && val.highlightColor != _contentFormat.highlightColor) {
+                                _contentFormat = _contentFormat.copyWith(highlightColor: val.highlightColor);
+                              }
+                            });
                             _saveNote(pop: false);
                             Navigator.pop(ctx);
                             FocusScope.of(context).requestFocus(_hiddenFocus);
