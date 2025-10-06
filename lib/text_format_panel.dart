@@ -315,12 +315,11 @@ class HighlightButton extends StatelessWidget {
               ],
             ),
             alignment: Alignment.center,
-            child: Text(
-              '🖍️',
-              style: TextStyle(
-                fontSize: 26,
-                color: selected ? Colors.white : Colors.black54,
-              ),
+            child: Image.asset(
+              'assets/crayon.png',
+              width: 26,
+              height: 26,
+              color: selected ? Colors.white : Colors.black54,
             ),
           ),
         ),
@@ -943,10 +942,10 @@ class EraserButton extends StatelessWidget {
         height: 50,
         margin: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Colors.pink.shade100 : const Color(0xFFF6F7F9),
+          color: selected ? Colors.white : const Color(0xFFF6F7F9),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? Colors.pink.shade300 : Colors.grey.shade300,
+            color: selected ? Colors.grey.shade400 : Colors.grey.shade300,
             width: 2,
           ),
           boxShadow: const [
@@ -958,12 +957,11 @@ class EraserButton extends StatelessWidget {
           ],
         ),
         alignment: Alignment.center,
-        child: Text(
-          '🧹',
-          style: TextStyle(
-            fontSize: 24,
-            color: selected ? Colors.pink.shade700 : Colors.black54,
-          ),
+        child: Image.asset(
+          'assets/borrador.png',
+          width: 24,
+          height: 24,
+          color: selected ? Colors.grey.shade700 : Colors.black54,
         ),
       ),
     );

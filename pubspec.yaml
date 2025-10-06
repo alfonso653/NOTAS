@@ -69,6 +69,8 @@ flutter:
     - assets/fontsabc/indent_increase.png
     - assets/fontsabc/brush.png
     - assets/fontsabc/color_picker.png
+    - assets/borrador.png
+    - assets/crayon.png
 
   fonts:
     - family: Nunito

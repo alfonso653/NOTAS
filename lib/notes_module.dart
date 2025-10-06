@@ -86,7 +86,8 @@ class _TextPart {
 
 /// Modelo para trazos de dibujo libre
 class DrawingStroke {
-  final List<Offset> points;
+  final List<Offset>
+      points; // Coordenadas en el espacio del CONTENIDO (y = yVisible + scroll)
   final Color color;
   final double strokeWidth;
   final String toolType; // 'pencil', 'pen', 'crayon', 'brush'
@@ -107,7 +108,8 @@ class DrawingStroke {
 
   factory DrawingStroke.fromJson(Map<String, dynamic> json) => DrawingStroke(
         points: (json['points'] as List)
-            .map((p) => Offset(p['dx'] as double, p['dy'] as double))
+            .map((p) => Offset(
+                (p['dx'] as num).toDouble(), (p['dy'] as num).toDouble()))
             .toList(),
         color: Color(json['color'] as int),
         strokeWidth: (json['strokeWidth'] as num).toDouble(),
@@ -120,13 +122,25 @@ class DrawingPainter extends CustomPainter {
   final List<DrawingStroke> strokes;
   final DrawingStroke? currentStroke;
 
+  /// scrollOffset: cuánto ha avanzado el ListView (para desplazar el lienzo de visualización)
+  final double scrollOffset;
+
   DrawingPainter({
     required this.strokes,
     this.currentStroke,
+    required this.scrollOffset,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Limitar a la zona visible del overlay (área de contenido)
+    canvas.clipRect(Offset.zero & size);
+
+    // Convertir espacio de CONTENIDO -> espacio del OVERLAY visible
+    // (yVisible = yContenido - scroll)
+    canvas.save();
+    canvas.translate(0, -scrollOffset);
+
     // Dibujar todos los trazos completados
     for (final stroke in strokes) {
       _drawStroke(canvas, stroke);
@@ -136,6 +150,8 @@ class DrawingPainter extends CustomPainter {
     if (currentStroke != null) {
       _drawStroke(canvas, currentStroke!);
     }
+
+    canvas.restore();
   }
 
   void _drawStroke(Canvas canvas, DrawingStroke stroke) {
@@ -185,7 +201,6 @@ class DrawingPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
-    // Trazo principal elegante
     final path = Path();
     if (stroke.points.isNotEmpty) {
       path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
@@ -193,8 +208,8 @@ class DrawingPainter extends CustomPainter {
         path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
       }
       canvas.drawPath(path, paint);
-      
-      // Efecto de brillo interno para elegancia
+
+      // Efecto de brillo interno
       final highlightPaint = Paint()
         ..color = stroke.color.withOpacity(0.3)
         ..strokeWidth = stroke.strokeWidth * 0.4
@@ -205,59 +220,54 @@ class DrawingPainter extends CustomPainter {
     }
   }
 
-  // 🖍️ Crayola - Efecto punteado/granulado como crayón real
+  // 🖍️ Crayola - Efecto punteado/granulado
   void _drawCrayonStroke(Canvas canvas, DrawingStroke stroke) {
     final random = Random(42); // Seed fijo para consistencia
-    
+
     for (int i = 0; i < stroke.points.length - 1; i++) {
       final start = stroke.points[i];
       final end = stroke.points[i + 1];
-      
-      // Crear puntos granulados a lo largo de la línea
+
       for (double t = 0; t <= 1.0; t += 0.02) {
         final point = Offset.lerp(start, end, t)!;
-        
-        // Agregar variación aleatoria para efecto granulado
+
         final offsetX = (random.nextDouble() - 0.5) * stroke.strokeWidth * 0.5;
         final offsetY = (random.nextDouble() - 0.5) * stroke.strokeWidth * 0.5;
         final randomPoint = point + Offset(offsetX, offsetY);
-        
-        // Dibujar pequeños círculos para simular la textura de crayón
+
         final paint = Paint()
           ..color = stroke.color.withOpacity(random.nextDouble() * 0.4 + 0.6)
           ..style = PaintingStyle.fill;
-        
+
         final radius = stroke.strokeWidth * (0.1 + random.nextDouble() * 0.2);
         canvas.drawCircle(randomPoint, radius, paint);
       }
     }
   }
 
-  // 🖌️ Pincel - Efecto acuarela con bordes suaves
+  // 🖌️ Pincel - Efecto acuarela
   void _drawBrushStroke(Canvas canvas, DrawingStroke stroke) {
     if (stroke.points.length < 2) return;
-    
-    // Crear múltiples capas para efecto acuarela
+
     final layers = [
       {'opacity': 0.15, 'width': stroke.strokeWidth * 2.0},
       {'opacity': 0.25, 'width': stroke.strokeWidth * 1.5},
       {'opacity': 0.4, 'width': stroke.strokeWidth * 1.0},
       {'opacity': 0.6, 'width': stroke.strokeWidth * 0.7},
     ];
-    
+
     for (final layer in layers) {
       final paint = Paint()
-        ..color = stroke.color.withOpacity(layer['opacity']!)
-        ..strokeWidth = layer['width']!
+        ..color = stroke.color.withOpacity(layer['opacity'] as double)
+        ..strokeWidth = layer['width'] as double
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2.0);
-      
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+
       final path = Path();
       path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
-      
-      // Crear curvas suaves para efecto acuarela
+
       for (int i = 1; i < stroke.points.length; i++) {
         if (i == stroke.points.length - 1) {
           path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
@@ -268,17 +278,20 @@ class DrawingPainter extends CustomPainter {
             (current.dx + next.dx) / 2,
             (current.dy + next.dy) / 2,
           );
-          path.quadraticBezierTo(current.dx, current.dy, controlPoint.dx, controlPoint.dy);
+          path.quadraticBezierTo(
+              current.dx, current.dy, controlPoint.dx, controlPoint.dy);
         }
       }
-      
+
       canvas.drawPath(path, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant DrawingPainter oldDelegate) {
-    return oldDelegate.strokes != strokes || oldDelegate.currentStroke != currentStroke;
+  bool shouldRepaint(covariant DrawingPainter old) {
+    return old.strokes != strokes ||
+        old.currentStroke != currentStroke ||
+        old.scrollOffset != scrollOffset;
   }
 }
 
@@ -445,6 +458,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   // RepaintBoundary para compartir imagen
   final GlobalKey _noteKey = GlobalKey();
 
+  // ======= CLAVES/GEOMETRÍA PARA DELIMITAR ÁREA DE CONTENIDO =======
+  final GlobalKey _contentAreaKey = GlobalKey(); // mide el área de ListView
+  Rect? _contentRectInStack; // rect relativo al Stack raíz
+
   // Snackbar manual
   bool _showSavedSnackbar = false;
 
@@ -455,19 +472,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // ========= Helpers =========
 
-  // Función _scrollToWritingArea() removida - ya no se necesita para evitar reorganización
-
   /// 🔄 Convertir párrafo en texto flotante arrastrable
   void _convertParagraphToFloating(int index, _TextPart part) {
     setState(() {
-      // Crear texto flotante en posición inicial
       final floatingText = FloatingText(
         text: part.text,
-        x: 50.0, // Posición inicial X
-        y: 200.0 +
-            (_floatingTexts.length *
-                80.0), // Posición inicial Y (evitar solapamiento)
-        width: 250.0, // Ancho inicial
+        x: 50.0,
+        y: 200.0 + (_floatingTexts.length * 80.0),
+        width: 250.0,
         bold: part.bold,
         underline: part.underline,
         underlineColor: part.underlineColor,
@@ -475,11 +487,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         highlightColor: part.highlightColor,
         fontSize: _contentFontSize,
       );
-
-      // Agregar a la lista de textos flotantes
       _floatingTexts.add(floatingText);
-
-      // Remover del párrafo original
       _contentParts.removeAt(index);
     });
 
@@ -544,7 +552,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           animation: animation,
           onMoveTap: () {
             Navigator.pop(context);
-            // 🎯 Para textos flotantes, "mover" puede ser cambiar posición o no hacer nada específico
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('💡 Arrastra el texto para moverlo'),
@@ -555,10 +562,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           onDuplicateTap: () {
             Navigator.pop(context);
             setState(() {
-              // 📋 Duplicar texto flotante
               final duplicatedText = FloatingText(
                 text: text.text,
-                x: text.x + 20, // Offset para que no se solape
+                x: text.x + 20,
                 y: text.y + 20,
                 width: text.width,
                 bold: text.bold,
@@ -581,7 +587,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           onDeleteTap: () {
             Navigator.pop(context);
             setState(() {
-              // 🗑️ Eliminar texto flotante
               _floatingTexts.removeAt(index);
             });
             _saveNote();
@@ -604,7 +609,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   /// 📝 Mostrar panel de formato específico para texto flotante
   void _showFloatingTextFormatPanel(
       BuildContext context, int index, FloatingText text) {
-    // Crear formato inicial basado en el texto flotante actual
     TextFormatValue currentFormat = TextFormatValue(
       bold: text.bold,
       underline: text.underline,
@@ -627,7 +631,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           value: currentFormat,
           onChanged: (val) {
             setState(() {
-              // 🎯 Aplicar formato al texto flotante
               _floatingTexts[index].bold = val.bold;
               _floatingTexts[index].underline = val.underline;
               _floatingTexts[index].underlineColor =
@@ -656,7 +659,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           animation: animation,
           onMoveTap: () {
             Navigator.pop(context);
-            // 🎯 Convertir párrafo en elemento flotante arrastrable
             _convertParagraphToFloating(index, part);
           },
           onDuplicateTap: () {
@@ -686,10 +688,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     );
   }
 
-  /// � Mostrar panel de formato para párrafo específico
+  /// 🧶 Panel de formato para párrafo
   void _showParagraphFormatPanel(
       BuildContext context, int index, _TextPart part) {
-    // Crear un formato inicial basado en el formato actual del párrafo
     TextFormatValue currentFormat = TextFormatValue(
       bold: part.bold,
       underline: part.underline,
@@ -711,16 +712,15 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         child: TextFormatPanel(
           value: currentFormat,
           onChanged: (val) {
-            // 🎯 Aplicar formato al párrafo específico
             setState(() {
               _contentParts[index] = _TextPart(
-                part.text, // Mantener el texto original
+                part.text,
                 val.bold,
                 val.underline,
                 val.underline ? val.underlineColor.value : null,
                 val.highlight,
                 val.highlight ? val.highlightColor.value : null,
-                false, // No es imagen
+                false,
               );
             });
             _saveNote(pop: false);
@@ -733,7 +733,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     );
   }
 
-  /// �🗑️ Eliminar párrafo con confirmación
+  /// 🗑️ Eliminar párrafo
   void _deleteParagraph(int index, _TextPart part) {
     showDialog(
       context: context,
@@ -930,22 +930,61 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
+  // ========= Geometría del área de contenido =========
+
+  void _scheduleUpdateContentRect() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateContentRect());
+  }
+
+  void _updateContentRect() {
+    try {
+      final stackBox =
+          _noteKey.currentContext?.findRenderObject() as RenderBox?;
+      final contentBox =
+          _contentAreaKey.currentContext?.findRenderObject() as RenderBox?;
+      if (stackBox == null || contentBox == null) return;
+
+      final topLeft = contentBox.localToGlobal(Offset.zero, ancestor: stackBox);
+      final size = contentBox.size;
+      final newRect =
+          Rect.fromLTWH(topLeft.dx, topLeft.dy, size.width, size.height);
+
+      if (_contentRectInStack == null ||
+          _rectsDifferent(_contentRectInStack!, newRect)) {
+        setState(() {
+          _contentRectInStack = newRect;
+        });
+      }
+    } catch (_) {
+      // Silencio: puede ocurrir durante hot-reload
+    }
+  }
+
+  bool _rectsDifferent(Rect a, Rect b) {
+    const eps = 0.5;
+    return (a.left - b.left).abs() > eps ||
+        (a.top - b.top).abs() > eps ||
+        (a.width - b.width).abs() > eps ||
+        (a.height - b.height).abs() > eps;
+  }
+
   // ========= Métodos de Dibujo Libre =========
-  
+
+  // Convierte posición local del overlay de dibujo -> coordenadas del CONTENIDO
+  Offset _toContentCoords(Offset localInOverlay) {
+    final scroll =
+        _scrollController.hasClients ? _scrollController.offset : 0.0;
+    return Offset(localInOverlay.dx, localInOverlay.dy + scroll);
+  }
+
   void _onDrawStart(DragStartDetails details) {
     if (!_isDrawingMode) return;
-    
-    // Si el borrador está activo, buscar trazos para borrar
-    if (_contentFormat.eraser) {
-      _eraseStrokesAt(details.localPosition);
-      return;
-    }
-    
-    // Determinar qué herramienta está activa y sus propiedades
+
+    // Determinar herramienta
     String toolType = '';
     Color color = Colors.black;
     double strokeWidth = 2.0;
-    
+
     if (_contentFormat.pencil) {
       toolType = 'pencil';
       color = _contentFormat.pencilColor;
@@ -962,83 +1001,79 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       toolType = 'brush';
       color = _contentFormat.brushColor;
       strokeWidth = 6.0;
+    } else if (_contentFormat.eraser) {
+      // Borrador: manejar en update
     }
-    
-    // Crear nuevo trazo
+
+    // Crear nuevo trazo (en espacio de CONTENIDO)
     setState(() {
-      _currentStroke = DrawingStroke(
-        points: [details.localPosition],
-        color: color,
-        strokeWidth: strokeWidth,
-        toolType: toolType,
-      );
+      final p = _toContentCoords(details.localPosition);
+      _currentStroke = (_contentFormat.eraser)
+          ? null
+          : DrawingStroke(
+              points: [p],
+              color: color,
+              strokeWidth: strokeWidth,
+              toolType: toolType,
+            );
     });
   }
-  
+
   void _onDrawUpdate(DragUpdateDetails details) {
     if (!_isDrawingMode) return;
-    
-    // Si el borrador está activo, seguir borrando
+
+    final p = _toContentCoords(details.localPosition);
+
     if (_contentFormat.eraser) {
-      _eraseStrokesAt(details.localPosition);
+      _eraseStrokesAt(p);
       return;
     }
-    
+
     if (_currentStroke == null) return;
-    
+
     setState(() {
       _currentStroke = DrawingStroke(
-        points: [..._currentStroke!.points, details.localPosition],
+        points: [..._currentStroke!.points, p],
         color: _currentStroke!.color,
         strokeWidth: _currentStroke!.strokeWidth,
         toolType: _currentStroke!.toolType,
       );
     });
   }
-  
+
   void _onDrawEnd(DragEndDetails details) {
     if (!_isDrawingMode) return;
-    
-    // Si es borrador, no hay trazo que terminar
     if (_contentFormat.eraser) return;
-    
     if (_currentStroke == null) return;
-    
+
     setState(() {
       _drawingStrokes.add(_currentStroke!);
       _currentStroke = null;
     });
-    
-    // Guardar los trazos en la nota
+
     _saveNote();
   }
 
-  // Método para borrar trazos en una posición específica
-  void _eraseStrokesAt(Offset position) {
-    const double eraserRadius = 20.0; // Radio del borrador
-    
-    List<DrawingStroke> strokesToRemove = [];
-    
-    // Encontrar trazos que intersectan con la posición del borrador
-    for (DrawingStroke stroke in _drawingStrokes) {
-      for (Offset point in stroke.points) {
-        double distance = (point - position).distance;
-        if (distance <= eraserRadius) {
-          strokesToRemove.add(stroke);
-          break; // Una vez que encontramos una intersección, marcamos todo el trazo para borrar
+  // Borrar trazos cerca de una posición (en coordenadas de CONTENIDO)
+  void _eraseStrokesAt(Offset positionInContent) {
+    const double eraserRadius = 20.0;
+    final toRemove = <DrawingStroke>[];
+
+    for (final stroke in _drawingStrokes) {
+      for (final point in stroke.points) {
+        if ((point - positionInContent).distance <= eraserRadius) {
+          toRemove.add(stroke);
+          break;
         }
       }
     }
-    
-    // Remover los trazos encontrados
-    if (strokesToRemove.isNotEmpty) {
+
+    if (toRemove.isNotEmpty) {
       setState(() {
-        for (DrawingStroke stroke in strokesToRemove) {
-          _drawingStrokes.remove(stroke);
+        for (final s in toRemove) {
+          _drawingStrokes.remove(s);
         }
       });
-      
-      // Guardar los cambios
       _saveNote();
     }
   }
@@ -1059,12 +1094,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         partsToSave.add(
           _TextPart(
             pendingText,
-            _contentFormat.bold,
-            _contentFormat.underline,
+            _contentFormat.bold,    // RESTAURADO: negrilla se aplica al texto principal
+            _contentFormat.underline, // RESTAURADO: subrayado se aplica al texto principal
             _contentFormat.underline
                 ? _contentFormat.underlineColor.value
                 : null,
-            _contentFormat.highlight,
+            _contentFormat.highlight, // RESTAURADO: resaltado se aplica al texto principal
             _contentFormat.highlight
                 ? _contentFormat.highlightColor.value
                 : null,
@@ -1074,17 +1109,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       }
     }
 
-    // Guardar SOLO texto (ignorando imágenes incrustadas antiguas si existieran)
     note.contentParts = partsToSave.map((e) => e.toJson()).toList();
-
-    // Guardar imágenes flotantes en la nota
     note.floatingImages = _floatingImages.map((img) => img.toJson()).toList();
-
-    // Guardar textos flotantes en la nota
     note.floatingTexts = _floatingTexts.map((text) => text.toJson()).toList();
-
-    // Guardar trazos de dibujo libre en la nota
-    note.drawingStrokes = _drawingStrokes.map((stroke) => stroke.toJson()).toList();
+    note.drawingStrokes = _drawingStrokes.map((s) => s.toJson()).toList();
 
     context.read<NoteProvider>().updateNote(note);
 
@@ -1125,8 +1153,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     _scrollController = ScrollController();
     _scrollController.addListener(() {
-      // Actualizar cuando hay scroll para recalcular posiciones de imágenes
-      if (mounted) setState(() {});
+      // Recalcular área de contenido y repintar dibujos al scrollear
+      if (mounted) {
+        setState(() {});
+        _scheduleUpdateContentRect();
+      }
     });
 
     _blinkController = AnimationController(
@@ -1164,7 +1195,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _categoriaController.addListener(_onAnyChange);
     _hiddenController.addListener(_onAnyChange);
 
-    // 🎯 Restaurar imágenes flotantes guardadas en la nota
+    // Restaurar imágenes y textos flotantes
     _floatingImages.clear();
     for (final img in widget.note.floatingImages) {
       final restoredImg =
@@ -1172,7 +1203,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       _floatingImages.add(restoredImg);
     }
 
-    // 🎯 Restaurar textos flotantes guardados en la nota
     _floatingTexts.clear();
     for (final text in widget.note.floatingTexts) {
       final restoredText =
@@ -1180,7 +1210,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       _floatingTexts.add(restoredText);
     }
 
-    // 🎯 Restaurar trazos de dibujo libre guardados en la nota
+    // Restaurar trazos
     _drawingStrokes.clear();
     for (final stroke in widget.note.drawingStrokes) {
       final restoredStroke =
@@ -1188,15 +1218,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       _drawingStrokes.add(restoredStroke);
     }
 
-    // 🎯 Asegurar que las posiciones se mantengan después de la restauración
+    // Ajuste de posiciones post-frame y guardar
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {}); // Refrescar el UI con las posiciones correctas
-      }
+      if (!mounted) return;
+      _updateContentRect();
+      setState(() {});
+      _saveNote(pop: false);
     });
-
-    // Guardar automáticamente al entrar
-    WidgetsBinding.instance.addPostFrameCallback((_) => _saveNote(pop: false));
   }
 
   void _onAnyChange() => setHasUnsavedChanges(true);
@@ -1212,12 +1240,16 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _categoriaController.dispose();
     _hiddenController.dispose();
     _hiddenFocus.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     const double _bottomBarHeight = 72.0;
+
+    final currentScroll =
+        _scrollController.hasClients ? _scrollController.offset : 0.0;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -1316,6 +1348,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         setState(() {
                           _noteColor = c;
                           _saveNote(pop: false);
+                          _scheduleUpdateContentRect();
                         });
                       },
                     ),
@@ -1358,16 +1391,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         ],
       ),
 
-      // ======= BODY: Stack con contenido principal + imágenes flotantes =======
+      // ======= BODY: Stack con contenido principal + overlays =======
       body: RepaintBoundary(
         key: _noteKey,
-        child: GestureDetector(
-          onPanStart: _isDrawingMode ? _onDrawStart : null,
-          onPanUpdate: _isDrawingMode ? _onDrawUpdate : null,
-          onPanEnd: _isDrawingMode ? _onDrawEnd : null,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
             // ---- Contenido principal (debajo) ----
             Column(
               children: [
@@ -1573,7 +1602,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     _minTitleFontSize, _maxTitleFontSize),
                                 onChanged: (v) {
                                   setState(() {
-                                    // 🎯 Calcular factor de escala basado en el cambio de tamaño de fuente
                                     final oldSize = _titleFontSize;
                                     final newSize = v.clamp(
                                         _minTitleFontSize, _maxTitleFontSize);
@@ -1581,14 +1609,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
                                     _titleFontSize = newSize;
 
-                                    // 📏 Escalar imágenes proporcionalmente al cambio de fuente
                                     for (int i = 0;
                                         i < _floatingImages.length;
                                         i++) {
                                       _floatingImages[i].width *= scaleFactor;
                                       _floatingImages[i].height *= scaleFactor;
-
-                                      // 🎯 Mantener límites razonables para las imágenes
                                       _floatingImages[i].width =
                                           _floatingImages[i]
                                               .width
@@ -1600,6 +1625,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     }
                                   });
                                   _saveNote();
+                                  _scheduleUpdateContentRect();
                                 },
                               ),
                             ),
@@ -1630,7 +1656,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     _minContentFontSize, _maxContentFontSize),
                                 onChanged: (v) {
                                   setState(() {
-                                    // 🎯 Calcular factor de escala basado en el cambio de tamaño de fuente del contenido
                                     final oldSize = _contentFontSize;
                                     final newSize = v.clamp(_minContentFontSize,
                                         _maxContentFontSize);
@@ -1638,14 +1663,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
                                     _contentFontSize = newSize;
 
-                                    // 📏 Escalar imágenes proporcionalmente al cambio de fuente del contenido
                                     for (int i = 0;
                                         i < _floatingImages.length;
                                         i++) {
                                       _floatingImages[i].width *= scaleFactor;
                                       _floatingImages[i].height *= scaleFactor;
-
-                                      // 🎯 Mantener límites razonables para las imágenes
                                       _floatingImages[i].width =
                                           _floatingImages[i]
                                               .width
@@ -1656,13 +1678,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                               .clamp(60.0, 600.0);
                                     }
 
-                                    // 📝 También escalar textos flotantes proporcionalmente
                                     for (int i = 0;
                                         i < _floatingTexts.length;
                                         i++) {
                                       _floatingTexts[i].fontSize *= scaleFactor;
-
-                                      // 🎯 Mantener límites razonables para el texto flotante
                                       _floatingTexts[i].fontSize =
                                           _floatingTexts[i]
                                               .fontSize
@@ -1670,6 +1689,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     }
                                   });
                                   _saveNote();
+                                  _scheduleUpdateContentRect();
                                 },
                               ),
                             ),
@@ -1682,560 +1702,543 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
                 // Contenido + LISTVIEW (llenará el resto)
                 Expanded(
-                  child: ListView(
-                    controller: _scrollController,
-                    physics:
-                        const ClampingScrollPhysics(), // 🎯 Scroll normal pero SIN efecto elástico
-                    padding: EdgeInsets.fromLTRB(
-                      8, // 🎯 Padding izquierdo mínimo para mantener borde
-                      16,
-                      16,
-                      _bottomBarHeight +
-                          MediaQuery.of(context).padding.bottom +
-                          16,
-                    ),
-                    // 🎯 Evitar reorganización automática del contenido
-                    shrinkWrap: false,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: List.generate(_contentParts.length, (i) {
-                          final part = _contentParts[i];
+                  child: Container(
+                    key:
+                        _contentAreaKey, // 📌 Medimos esta caja para el overlay
+                    child: ListView(
+                      controller: _scrollController,
+                      physics: const ClampingScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        8,
+                        16,
+                        16,
+                        _bottomBarHeight +
+                            MediaQuery.of(context).padding.bottom +
+                            16,
+                      ),
+                      shrinkWrap: false,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: List.generate(_contentParts.length, (i) {
+                            final part = _contentParts[i];
 
-                          // 🔒 Importante: NO pintar imágenes incrustadas.
-                          if (part.isImage) {
-                            return const SizedBox.shrink();
-                          }
+                            if (part.isImage) {
+                              return const SizedBox.shrink();
+                            }
 
-                          // ---- TEXTO ----
-                          if (_editingPartIndex == i) {
-                            _partControllers[i] ??=
-                                TextEditingController(text: part.text);
-                            return Focus(
-                              onFocusChange: (hasFocus) {
-                                if (!hasFocus) {
-                                  setState(() {
-                                    _contentParts[i] = _TextPart(
-                                      _partControllers[i]?.text ?? part.text,
-                                      _contentFormat.bold,
-                                      _contentFormat.underline,
-                                      _contentFormat.underline
-                                          ? _contentFormat.underlineColor.value
-                                          : null,
-                                      _contentFormat.highlight,
-                                      _contentFormat.highlight
-                                          ? _contentFormat.highlightColor.value
-                                          : null,
-                                      false,
-                                    );
-                                    _editingPartIndex = null;
-                                    _partControllers.remove(i);
-                                  });
-                                  _saveNote();
-                                }
-                              },
-                              child: TextField(
-                                controller: _partControllers[i],
-                                autofocus: true,
-                                maxLines: null,
-                                style: TextStyle(
-                                  fontSize: _contentFontSize,
-                                  fontWeight: _contentFormat.bold
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  color: Colors.black87,
-                                  decoration: _contentFormat.underline
-                                      ? TextDecoration.underline
-                                      : TextDecoration.none,
-                                  decorationColor: _contentFormat.underline
-                                      ? _contentFormat.underlineColor
-                                      : null,
-                                  decorationThickness:
-                                      _contentFormat.underline ? 2.5 : null,
-                                  backgroundColor: _contentFormat.highlight
-                                      ? _contentFormat.highlightColor
-                                      : Colors.transparent,
-                                ),
-                                textAlign: TextAlign.left,
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                ),
-                                onChanged: (_) => setHasUnsavedChanges(true),
-                                onSubmitted: (value) {
-                                  setState(() {
-                                    _contentParts[i] = _TextPart(
-                                      value,
-                                      _contentFormat.bold,
-                                      _contentFormat.underline,
-                                      _contentFormat.underline
-                                          ? _contentFormat.underlineColor.value
-                                          : null,
-                                      _contentFormat.highlight,
-                                      _contentFormat.highlight
-                                          ? _contentFormat.highlightColor.value
-                                          : null,
-                                      false,
-                                    );
-                                    _editingPartIndex = null;
-                                    _partControllers.remove(i);
-                                  });
-                                  _saveNote();
+                            if (_editingPartIndex == i) {
+                              _partControllers[i] ??=
+                                  TextEditingController(text: part.text);
+                              return Focus(
+                                onFocusChange: (hasFocus) {
+                                  if (!hasFocus) {
+                                    setState(() {
+                                      _contentParts[i] = _TextPart(
+                                        _partControllers[i]?.text ?? part.text,
+                                        _contentFormat.bold,
+                                        _contentFormat.underline,
+                                        _contentFormat.underline
+                                            ? _contentFormat
+                                                .underlineColor.value
+                                            : null,
+                                        _contentFormat.highlight,
+                                        _contentFormat.highlight
+                                            ? _contentFormat
+                                                .highlightColor.value
+                                            : null,
+                                        false,
+                                      );
+                                      _editingPartIndex = null;
+                                      _partControllers.remove(i);
+                                    });
+                                    _saveNote();
+                                  }
                                 },
-                              ),
-                            );
-                          } else {
-                            // Vista de texto no editable
-                            return LongPressDraggable<int>(
-                              data: i,
-                              feedback: Material(
-                                color: Colors.transparent,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 2.0, horizontal: 4.0),
-                                  child: RichText(
-                                    text: TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: part.text,
-                                          style: TextStyle(
-                                            fontSize: _contentFontSize,
-                                            fontWeight: part.bold
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                            color: Colors.black54,
-                                            decoration: part.underline
-                                                ? TextDecoration.underline
-                                                : TextDecoration.none,
-                                            decorationColor: part.underline &&
-                                                    part.underlineColor != null
-                                                ? Color(part.underlineColor!)
-                                                : null,
-                                            decorationThickness:
-                                                part.underline ? 2.5 : null,
-                                            backgroundColor: part.highlight &&
-                                                    part.highlightColor != null
-                                                ? Color(part.highlightColor!)
-                                                : Colors.transparent,
+                                child: TextField(
+                                  controller: _partControllers[i],
+                                  autofocus: true,
+                                  maxLines: null,
+                                  style: TextStyle(
+                                    fontSize: _contentFontSize,
+                                    fontWeight: _contentFormat.bold
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: Colors.black87,
+                                    decoration: _contentFormat.underline
+                                        ? TextDecoration.underline
+                                        : TextDecoration.none,
+                                    decorationColor: _contentFormat.underline
+                                        ? _contentFormat.underlineColor
+                                        : null,
+                                    decorationThickness:
+                                        _contentFormat.underline ? 2.5 : null,
+                                    backgroundColor: _contentFormat.highlight
+                                        ? _contentFormat.highlightColor
+                                        : Colors.transparent,
+                                  ),
+                                  textAlign: TextAlign.left,
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                  ),
+                                  onChanged: (_) => setHasUnsavedChanges(true),
+                                  onSubmitted: (value) {
+                                    setState(() {
+                                      _contentParts[i] = _TextPart(
+                                        value,
+                                        _contentFormat.bold,
+                                        _contentFormat.underline,
+                                        _contentFormat.underline
+                                            ? _contentFormat
+                                                .underlineColor.value
+                                            : null,
+                                        _contentFormat.highlight,
+                                        _contentFormat.highlight
+                                            ? _contentFormat
+                                                .highlightColor.value
+                                            : null,
+                                        false,
+                                      );
+                                      _editingPartIndex = null;
+                                      _partControllers.remove(i);
+                                    });
+                                    _saveNote();
+                                  },
+                                ),
+                              );
+                            } else {
+                              return LongPressDraggable<int>(
+                                data: i,
+                                feedback: Material(
+                                  color: Colors.transparent,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 2.0, horizontal: 4.0),
+                                    child: RichText(
+                                      text: TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: part.text,
+                                            style: TextStyle(
+                                              fontSize: _contentFontSize,
+                                              fontWeight: part.bold
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: Colors.black54,
+                                              decoration: part.underline
+                                                  ? TextDecoration.underline
+                                                  : TextDecoration.none,
+                                              decorationColor: part.underline &&
+                                                      part.underlineColor !=
+                                                          null
+                                                  ? Color(part.underlineColor!)
+                                                  : null,
+                                              decorationThickness:
+                                                  part.underline ? 2.5 : null,
+                                              backgroundColor: part.highlight &&
+                                                      part.highlightColor !=
+                                                          null
+                                                  ? Color(part.highlightColor!)
+                                                  : Colors.transparent,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              childWhenDragging: const SizedBox.shrink(),
-                              onDragCompleted: () {},
-                              child: GestureDetector(
-                                // 🎯 Toque simple para editar párrafo
-                                onTap: () => setState(() {
-                                  _editingPartIndex = i;
-                                }),
-                                // 🎯 Mantener presionado para mostrar menú en abanico
-                                onLongPress: () {
-                                  // Evitar el arrastre cuando se muestra el menú
-                                  _showParagraphOptionsPanel(context, i, part);
-                                },
-                                child: DragTarget<int>(
-                                  onWillAccept: (from) =>
-                                      from != null && from != i,
-                                  onAccept: (from) {
-                                    setState(() {
-                                      final moved =
-                                          _contentParts.removeAt(from);
-                                      _contentParts.insert(
-                                          _dropInsertIndex ?? i, moved);
-                                      _dropInsertIndex = null;
-                                      _saveNote();
-                                    });
-                                  },
-                                  onLeave: (_) => setState(() {
-                                    _dropInsertIndex = null;
+                                childWhenDragging: const SizedBox.shrink(),
+                                onDragCompleted: () {},
+                                child: GestureDetector(
+                                  onTap: () => setState(() {
+                                    _editingPartIndex = i;
                                   }),
-                                  builder:
-                                      (context, candidateData, rejectedData) {
-                                    final isActive = candidateData.isNotEmpty;
-                                    return Column(
-                                      children: [
-                                        AnimatedOpacity(
-                                          opacity: isActive ? 1.0 : 0.0,
-                                          duration:
-                                              const Duration(milliseconds: 180),
-                                          child: Container(
-                                            height: 3,
-                                            margin: const EdgeInsets.symmetric(
-                                                horizontal: 12),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  Colors.blue.withOpacity(0.5),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
+                                  onLongPress: () {
+                                    _showParagraphOptionsPanel(
+                                        context, i, part);
+                                  },
+                                  child: DragTarget<int>(
+                                    onWillAccept: (from) =>
+                                        from != null && from != i,
+                                    onAccept: (from) {
+                                      setState(() {
+                                        final moved =
+                                            _contentParts.removeAt(from);
+                                        _contentParts.insert(
+                                            _dropInsertIndex ?? i, moved);
+                                        _dropInsertIndex = null;
+                                        _saveNote();
+                                      });
+                                    },
+                                    onLeave: (_) => setState(() {
+                                      _dropInsertIndex = null;
+                                    }),
+                                    builder:
+                                        (context, candidateData, rejectedData) {
+                                      final isActive = candidateData.isNotEmpty;
+                                      return Column(
+                                        children: [
+                                          AnimatedOpacity(
+                                            opacity: isActive ? 1.0 : 0.0,
+                                            duration: const Duration(
+                                                milliseconds: 180),
+                                            child: Container(
+                                              height: 3,
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue
+                                                    .withOpacity(0.5),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        GestureDetector(
-                                          // 🎯 Toque simple para editar párrafo
-                                          onTap: () => setState(() {
-                                            _editingPartIndex = i;
-                                          }),
-                                          // 🎯 Mantener presionado para mostrar menú en abanico
-                                          onLongPress: () {
-                                            _showParagraphOptionsPanel(
-                                                context, i, part);
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 2.0, horizontal: 4.0),
-                                            child: Align(
-                                              alignment: Alignment.centerLeft,
-                                              child: RichText(
-                                                text: TextSpan(
-                                                  children: [
-                                                    TextSpan(
-                                                      text: part.text,
-                                                      style: TextStyle(
-                                                        fontSize:
-                                                            _contentFontSize,
-                                                        fontWeight: part.bold
-                                                            ? FontWeight.bold
-                                                            : FontWeight.normal,
-                                                        color: Colors.black87,
-                                                        decoration:
-                                                            part.underline
-                                                                ? TextDecoration
-                                                                    .underline
-                                                                : TextDecoration
-                                                                    .none,
-                                                        decorationColor: part
-                                                                    .underline &&
-                                                                part.underlineColor !=
-                                                                    null
-                                                            ? Color(part
-                                                                .underlineColor!)
-                                                            : null,
-                                                        decorationThickness:
-                                                            part.underline
-                                                                ? 2.5
-                                                                : null,
-                                                        backgroundColor: part
-                                                                    .highlight &&
-                                                                part.highlightColor !=
-                                                                    null
-                                                            ? Color(part
-                                                                .highlightColor!)
-                                                            : Colors
-                                                                .transparent,
+                                          GestureDetector(
+                                            onTap: () => setState(() {
+                                              _editingPartIndex = i;
+                                            }),
+                                            onLongPress: () {
+                                              _showParagraphOptionsPanel(
+                                                  context, i, part);
+                                            },
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 2.0,
+                                                      horizontal: 4.0),
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: RichText(
+                                                  text: TextSpan(
+                                                    children: [
+                                                      TextSpan(
+                                                        text: part.text,
+                                                        style: TextStyle(
+                                                          fontSize:
+                                                              _contentFontSize,
+                                                          fontWeight: part.bold
+                                                              ? FontWeight.bold
+                                                              : FontWeight
+                                                                  .normal,
+                                                          color: Colors.black87,
+                                                          decoration: part
+                                                                  .underline
+                                                              ? TextDecoration
+                                                                  .underline
+                                                              : TextDecoration
+                                                                  .none,
+                                                          decorationColor: part
+                                                                      .underline &&
+                                                                  part.underlineColor !=
+                                                                      null
+                                                              ? Color(part
+                                                                  .underlineColor!)
+                                                              : null,
+                                                          decorationThickness:
+                                                              part.underline
+                                                                  ? 2.5
+                                                                  : null,
+                                                          backgroundColor: part
+                                                                      .highlight &&
+                                                                  part.highlightColor !=
+                                                                      null
+                                                              ? Color(part
+                                                                  .highlightColor!)
+                                                              : Colors
+                                                                  .transparent,
+                                                        ),
                                                       ),
-                                                    ),
-                                                  ],
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    );
-                                  },
+                                        ],
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
-                            );
-                          }
-                        }),
-                      ),
-                      const SizedBox(height: 8),
+                              );
+                            }
+                          }),
+                        ),
+                        const SizedBox(height: 8),
 
-                      // Campo de escritura continua - POSICIÓN FIJA
-                      Container(
-                        width: double
-                            .infinity, // 🎯 Ocupa todo el ancho disponible
-                        decoration: const BoxDecoration(
-                          border: Border.fromBorderSide(BorderSide.none),
-                          color: Colors.transparent,
-                        ),
-                        child: TextField(
-                          controller: _hiddenController,
-                          focusNode: _hiddenFocus,
-                          maxLines:
-                              null, // 🎯 Sin límite de líneas para párrafos largos
-                          minLines:
-                              3, // 🎯 Mínimo 3 líneas visibles para mostrar párrafos
-                          keyboardType: TextInputType.multiline,
-                          textInputAction: TextInputAction
-                              .newline, // 🎯 Enter crea nueva línea
-                          cursorColor: Colors.amber,
-                          style: TextStyle(
-                            fontSize: _contentFontSize,
-                            fontWeight: _contentFormat.bold
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: Colors.black87,
-                            decoration: _contentFormat.underline
-                                ? TextDecoration.underline
-                                : TextDecoration.none,
-                            decorationColor: _contentFormat.underline
-                                ? _contentFormat.underlineColor
-                                : null,
-                            decorationThickness:
-                                _contentFormat.underline ? 2.5 : null,
-                            backgroundColor: _contentFormat.highlight
-                                ? _contentFormat.highlightColor
-                                : Colors.transparent,
-                            height:
-                                1.8, // 🎯 Mayor espaciado entre líneas para separar párrafos
+                        // Campo de escritura continua
+                        Container(
+                          width: double.infinity,
+                          decoration: const BoxDecoration(
+                            border: Border.fromBorderSide(BorderSide.none),
+                            color: Colors.transparent,
                           ),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.only(
-                                left: 0,
-                                right: 8,
-                                top: 10,
-                                bottom:
-                                    10), // 🎯 Siempre comienza en borde izquierdo
-                            hintText:
-                                'Escribe aquí...\n\nPresiona Enter para crear párrafos separados',
-                            fillColor: Colors.transparent,
-                            filled: true,
+                          child: TextField(
+                            controller: _hiddenController,
+                            focusNode: _hiddenFocus,
+                            maxLines: null,
+                            minLines: 3,
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.newline,
+                            cursorColor: Colors.amber,
+                            style: TextStyle(
+                              fontSize: _contentFontSize,
+                              fontWeight: _contentFormat.bold
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: Colors.black87,
+                              decoration: _contentFormat.underline
+                                  ? TextDecoration.underline
+                                  : TextDecoration.none,
+                              decorationColor: _contentFormat.underline
+                                  ? _contentFormat.underlineColor
+                                  : null,
+                              decorationThickness:
+                                  _contentFormat.underline ? 2.5 : null,
+                              backgroundColor: _contentFormat.highlight
+                                  ? _contentFormat.highlightColor
+                                  : Colors.transparent,
+                              height: 1.8,
+                            ),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.only(
+                                  left: 0, right: 8, top: 10, bottom: 10),
+                              hintText:
+                                  'Escribe aquí...\n\nPresiona Enter para crear párrafos separados',
+                              fillColor: Colors.transparent,
+                              filled: true,
+                            ),
+                            textAlign: TextAlign.left,
+                            onChanged: (_) {
+                              _saveNote(pop: false);
+                            },
                           ),
-                          textAlign:
-                              TextAlign.left, // 🎯 Forzar alineación izquierda
-                          onChanged: (_) {
-                            // 💾 Guardar inmediatamente SIN reorganizar layout
-                            _saveNote(pop: false);
-                          },
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
 
-            // ---- Área clipeada para imágenes flotantes (aún más espacio abajo) ----
-            Positioned(
-              top: 155, // Perfecto arriba
-              left: 16, // Padding left del ListView
-              right: 16, // Padding right del ListView
-              bottom: 10.0, // Aún menos para dar más espacio abajo
-              child: ClipRect(
-                child: Stack(
-                  children: [
-                    // ---- Imágenes flotantes (limitadas al área de contenido) ----
-                    ..._floatingImages.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final img = entry.value;
+            // ---- Área clipeada para imágenes y textos flotantes (limitadas al contenido) ----
+            if (_contentRectInStack != null)
+              Positioned.fromRect(
+                rect: _contentRectInStack!,
+                child: ClipRect(
+                  child: Stack(
+                    children: [
+                      // Imágenes flotantes
+                      ..._floatingImages.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final img = entry.value;
 
-                      // 🎯 Ajustar posición según el scroll de manera más precisa
-                      final scrollOffset = _scrollController.hasClients
-                          ? _scrollController.offset
-                          : 0.0;
-                      // 🎯 Mantener la posición relativa al contenido, no al viewport
-                      final adjustedY = img.y - scrollOffset;
+                        final scrollOffset = _scrollController.hasClients
+                            ? _scrollController.offset
+                            : 0.0;
+                        final adjustedY = img.y - scrollOffset;
 
-                      return Positioned(
-                        key: ValueKey('floating_${idx}_${img.filePath}'),
-                        left: img
-                            .x, // 🎯 Sin compensación - usar posición directa
-                        top:
-                            adjustedY, // 🎯 Sin compensación - usar posición ajustada por scroll
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.deferToChild,
-                          onTap: () {
-                            setState(() {
-                              _activeImageIndex =
-                                  _activeImageIndex == idx ? null : idx;
-                            });
-                            // 💾 Guardar estado de selección para mantener consistencia
-                            _saveNote(pop: false);
-                          },
-                          onPanStart: (details) {
-                            // Si está bloqueado, mostrar mensaje y no permitir movimiento
-                            if (img.isLocked) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      '🔒 Imagen bloqueada. Toca el candado para desbloquear.'),
-                                  duration: Duration(seconds: 2),
-                                  backgroundColor: Colors.orange,
-                                ),
-                              );
-                            }
-                          },
-                          onPanUpdate: (details) {
-                            // Solo permitir movimiento si NO está bloqueado
-                            if (!img.isLocked) {
-                              setState(() {
-                                // 🎯 Actualizar posición directamente
-                                _floatingImages[idx].x += details.delta.dx;
-                                // 🎯 Para Y: actualizar posición absoluta
-                                _floatingImages[idx].y += details.delta.dy;
-                              });
-                              // 💾 Guardar después de múltiples updates para mejor rendimiento
-                            }
-                          },
-                          onPanEnd: (_) {
-                            if (!img.isLocked) {
-                              // 💾 Guardar una sola vez al final del movimiento
-                              _saveNote(pop: false);
-                            }
-                          },
-                          child: _ResizableImage(
-                            filePath: img.filePath,
-                            width: img.width,
-                            height: img.height,
-                            selected: _activeImageIndex == idx,
-                            isLocked: img.isLocked,
-                            onSelect: () {
+                        return Positioned(
+                          key: ValueKey('floating_${idx}_${img.filePath}'),
+                          left: img.x,
+                          top: adjustedY,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.deferToChild,
+                            onTap: () {
                               setState(() {
                                 _activeImageIndex =
                                     _activeImageIndex == idx ? null : idx;
                               });
-                              // 💾 Guardar estado de selección inmediatamente
                               _saveNote(pop: false);
                             },
-                            onResize: (w, h) {
-                              setState(() {
-                                _floatingImages[idx].width = w;
-                                _floatingImages[idx].height = h;
-                              });
-                              _saveNote(pop: false);
+                            onPanStart: (details) {
+                              if (img.isLocked) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        '🔒 Imagen bloqueada. Toca el candado para desbloquear.'),
+                                    duration: Duration(seconds: 2),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
                             },
-                            // 🔒 CALLBACK PARA ALTERNAR CANDADO
-                            onToggleLock: () {
-                              setState(() {
-                                _floatingImages[idx].isLocked =
-                                    !_floatingImages[idx].isLocked;
-                              });
-                              _saveNote(pop: false);
-
-                              // Mostrar confirmación del cambio
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(_floatingImages[idx].isLocked
-                                      ? '🔒 Imagen bloqueada'
-                                      : '🔓 Imagen desbloqueada'),
-                                  duration: const Duration(seconds: 2),
-                                  backgroundColor: _floatingImages[idx].isLocked
-                                      ? Colors.red.shade400
-                                      : Colors.green.shade400,
-                                ),
-                              );
+                            onPanUpdate: (details) {
+                              if (!img.isLocked) {
+                                setState(() {
+                                  _floatingImages[idx].x += details.delta.dx;
+                                  _floatingImages[idx].y += details.delta.dy;
+                                });
+                              }
                             },
-                            // 🔴 CALLBACK PARA ELIMINAR IMAGEN
-                            onDelete: () {
-                              setState(() {
-                                _floatingImages.removeAt(idx);
-                                _activeImageIndex = null; // Deseleccionar
-                              });
-                              _saveNote(pop: false);
-
-                              // Mostrar confirmación de eliminación
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('✅ Imagen eliminada'),
-                                  duration: Duration(seconds: 2),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
+                            onPanEnd: (_) {
+                              if (!img.isLocked) {
+                                _saveNote(pop: false);
+                              }
                             },
-                          ),
-                        ),
-                      );
-                    }),
+                            child: _ResizableImage(
+                              filePath: img.filePath,
+                              width: img.width,
+                              height: img.height,
+                              selected: _activeImageIndex == idx,
+                              isLocked: img.isLocked,
+                              onSelect: () {
+                                setState(() {
+                                  _activeImageIndex =
+                                      _activeImageIndex == idx ? null : idx;
+                                });
+                                _saveNote(pop: false);
+                              },
+                              onResize: (w, h) {
+                                setState(() {
+                                  _floatingImages[idx].width = w;
+                                  _floatingImages[idx].height = h;
+                                });
+                                _saveNote(pop: false);
+                              },
+                              onToggleLock: () {
+                                setState(() {
+                                  _floatingImages[idx].isLocked =
+                                      !_floatingImages[idx].isLocked;
+                                });
+                                _saveNote(pop: false);
 
-                    // ---- Textos flotantes (limitados al área de contenido) ----
-                    ..._floatingTexts.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final text = entry.value;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(_floatingImages[idx].isLocked
+                                        ? '🔒 Imagen bloqueada'
+                                        : '🔓 Imagen desbloqueada'),
+                                    duration: const Duration(seconds: 2),
+                                    backgroundColor:
+                                        _floatingImages[idx].isLocked
+                                            ? Colors.red.shade400
+                                            : Colors.green.shade400,
+                                  ),
+                                );
+                              },
+                              onDelete: () {
+                                setState(() {
+                                  _floatingImages.removeAt(idx);
+                                  _activeImageIndex = null;
+                                });
+                                _saveNote(pop: false);
 
-                      // 🎯 Ajustar posición según el scroll
-                      final scrollOffset = _scrollController.hasClients
-                          ? _scrollController.offset
-                          : 0.0;
-                      final adjustedY = text.y - scrollOffset;
-
-                      return Positioned(
-                        key: ValueKey('floating_text_${idx}_${text.text}'),
-                        left: text.x,
-                        top: adjustedY,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onDoubleTap: () {
-                            // Editar texto al hacer doble toque
-                            _editFloatingText(idx, text);
-                          },
-                          // 🎯 MANTENER PRESIONADO: Mostrar menú en abanico para texto flotante
-                          onLongPress: () {
-                            _showFloatingTextOptionsPanel(context, idx, text);
-                          },
-                          // 🎯 COPIA EXACTA DE LA LÓGICA DE IMÁGENES
-                          onPanStart: (details) {
-                            // Preparar para arrastre (similar a imágenes)
-                            // Las imágenes tienen lógica de bloqueo aquí, pero los textos no
-                          },
-                          onPanUpdate: (details) {
-                            setState(() {
-                              // 🎯 MISMA LÓGICA EXACTA que las imágenes flotantes
-                              _floatingTexts[idx].x += details.delta.dx;
-                              _floatingTexts[idx].y += details.delta.dy;
-                            });
-                            // 💾 No guardar aquí (igual que imágenes) para mejor rendimiento
-                          },
-                          onPanEnd: (_) {
-                            // 💾 Guardar una sola vez al final del movimiento (igual que imágenes)
-                            _saveNote(pop: false);
-                          },
-                          child: Container(
-                            width: text.width,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors
-                                  .transparent, // 🎨 FONDO COMPLETAMENTE TRANSPARENTE
-                              borderRadius: BorderRadius.circular(8),
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('✅ Imagen eliminada'),
+                                    duration: Duration(seconds: 2),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              },
                             ),
-                            child: Text(
-                              text.text,
-                              style: TextStyle(
-                                fontSize: text.fontSize,
-                                fontWeight: text.bold
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                decoration: text.underline
-                                    ? TextDecoration.underline
-                                    : TextDecoration.none,
-                                decorationColor: text.underlineColor != null
-                                    ? Color(text.underlineColor!)
-                                    : null,
-                                backgroundColor: text.highlight &&
-                                        text.highlightColor != null
-                                    ? Color(text.highlightColor!)
-                                    : null,
+                          ),
+                        );
+                      }),
+
+                      // Textos flotantes
+                      ..._floatingTexts.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final text = entry.value;
+
+                        final scrollOffset = _scrollController.hasClients
+                            ? _scrollController.offset
+                            : 0.0;
+                        final adjustedY = text.y - scrollOffset;
+
+                        return Positioned(
+                          key: ValueKey('floating_text_${idx}_${text.text}'),
+                          left: text.x,
+                          top: adjustedY,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onDoubleTap: () {
+                              _editFloatingText(idx, text);
+                            },
+                            onLongPress: () {
+                              _showFloatingTextOptionsPanel(context, idx, text);
+                            },
+                            onPanUpdate: (details) {
+                              setState(() {
+                                _floatingTexts[idx].x += details.delta.dx;
+                                _floatingTexts[idx].y += details.delta.dy;
+                              });
+                            },
+                            onPanEnd: (_) {
+                              _saveNote(pop: false);
+                            },
+                            child: Container(
+                              width: text.width,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                text.text,
+                                style: TextStyle(
+                                  fontSize: text.fontSize,
+                                  fontWeight: text.bold
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  decoration: text.underline
+                                      ? TextDecoration.underline
+                                      : TextDecoration.none,
+                                  decorationColor: text.underlineColor != null
+                                      ? Color(text.underlineColor!)
+                                      : null,
+                                  backgroundColor: text.highlight &&
+                                          text.highlightColor != null
+                                      ? Color(text.highlightColor!)
+                                      : null,
+                                ),
                               ),
                             ),
                           ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+
+            // ===== Capa de dibujo libre - SOLO en área de contenido =====
+            if (_contentRectInStack != null &&
+                (_drawingStrokes.isNotEmpty || _isDrawingMode))
+              Positioned.fromRect(
+                rect: _contentRectInStack!,
+                child: _isDrawingMode
+                    ? GestureDetector(
+                        onPanStart: _onDrawStart,
+                        onPanUpdate: _onDrawUpdate,
+                        onPanEnd: _onDrawEnd,
+                        behavior: HitTestBehavior.opaque,
+                        child: CustomPaint(
+                          painter: DrawingPainter(
+                            strokes: _drawingStrokes,
+                            currentStroke: _currentStroke,
+                            scrollOffset: currentScroll,
+                          ),
                         ),
-                      );
-                    }),
-                  ], // Cierre del Stack interno de imágenes y textos flotantes
-                ),
+                      )
+                    : IgnorePointer(
+                        child: CustomPaint(
+                          painter: DrawingPainter(
+                            strokes: _drawingStrokes,
+                            currentStroke: null,
+                            scrollOffset: currentScroll,
+                          ),
+                        ),
+                      ),
               ),
-            ), // Cierre del Positioned y ClipRect
-            
-            // ===== Capa de dibujo libre =====
-            // Siempre mostrar los trazos guardados, el trazo actual solo en modo dibujo
-            Positioned.fill(
-              child: CustomPaint(
-                painter: DrawingPainter(
-                  strokes: _drawingStrokes,
-                  currentStroke: _isDrawingMode ? _currentStroke : null,
-                ),
-              ),
-            ),
           ],
-        ), // Cierre del Stack
-        ), // Cierre del GestureDetector
+        ),
       ),
 
       // ======= BARRA INFERIOR =======
@@ -2259,38 +2262,24 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               _buildIconBox(
                 icon: Image.asset('assets/abc.png', width: 32, height: 32),
                 onTap: () async {
-                  // 🎯 LÓGICA ORIGINAL: Crear párrafo y limpiar campo
-                  if (_hiddenController.text.trim().isNotEmpty) {
+                  // NUEVA LÓGICA DE TOGGLE SOLO PARA LAS 4 HERRAMIENTAS DE DIBUJO:
+                  // Si estás en modo dibujo -> salir del modo dibujo con un toque (sin afectar formato de texto)
+                  if (_isDrawingMode) {
                     setState(() {
-                      _contentParts.add(
-                        _TextPart(
-                          _hiddenController.text.trim(),
-                          _contentFormat.bold,
-                          _contentFormat.underline,
-                          _contentFormat.underline
-                              ? _contentFormat.underlineColor.value
-                              : null,
-                          _contentFormat.highlight,
-                          _contentFormat.highlight
-                              ? _contentFormat.highlightColor.value
-                              : null,
-                          false,
-                        ),
-                      );
-                      _hiddenController
-                          .clear(); // 🎯 Limpiar para nuevo "Escribe aquí"
-                      _contentFormat =
-                          const TextFormatValue(); // 🎯 Resetear formato como antes
+                      _isDrawingMode = false; // 😌 Vuelves a escribir texto
                     });
-                    _saveNote();
-                  } else {
-                    setState(() {
-                      _contentFormat =
-                          const TextFormatValue(); // 🎯 Resetear formato si no hay texto
-                    });
+                    FocusScope.of(context).requestFocus(_hiddenFocus);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            '✍️ Modo dibujo desactivado. Puedes escribir.'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                    return; // No abrimos el panel en este toque
                   }
 
-                  // 🎯 ABRIR PANEL SIN REORGANIZAR EL CONTENIDO
+                  // Si NO estás en modo dibujo -> abrir panel normal
                   await showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
@@ -2300,28 +2289,86 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       child: TextFormatPanel(
                         value: _contentFormat,
                         onChanged: (val) {
-                          // 🎯 Actualizar formato SIN reorganizar el layout
-                          _contentFormat = val;
+                          // Comportamiento DIFERENTE para los 3 primeros vs los 4 nuevos
                           
-                          // 🎨 Activar modo dibujo si alguna herramienta está seleccionada
-                          _isDrawingMode = val.pencil || val.pen || val.crayon || val.brush;
-                          
-                          // 💾 Guardar formato inmediatamente SIN setState innecesario
-                          _saveNote(pop: false);
-                          // 🎯 Solo refrescar si es absolutamente necesario
-                          if (mounted) {
-                            setState(() {});
+                          // Comportamiento RESTAURADO: Los 3 primeros crean nuevos párrafos independientes
+                          if ((val.bold && !_contentFormat.bold) ||
+                              (val.underline && !_contentFormat.underline) ||
+                              (val.highlight && !_contentFormat.highlight)) {
+                            
+                            // Guardar texto actual si existe
+                            final String currentText = _hiddenController.text.trim();
+                            if (currentText.isNotEmpty) {
+                              setState(() {
+                                _contentParts.add(_TextPart(
+                                  currentText,
+                                  _contentFormat.bold,
+                                  _contentFormat.underline,
+                                  _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                                  _contentFormat.highlight,
+                                  _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+                                  false,
+                                ));
+                              });
+                              _hiddenController.clear();
+                            }
+                            
+                            // Aplicar SOLO el nuevo formato seleccionado (crear nuevo párrafo)
+                            setState(() {
+                              if (val.bold && !_contentFormat.bold) {
+                                _contentFormat = const TextFormatValue().copyWith(bold: true);
+                              } else if (val.underline && !_contentFormat.underline) {
+                                _contentFormat = const TextFormatValue().copyWith(
+                                  underline: true,
+                                  underlineColor: val.underlineColor,
+                                );
+                              } else if (val.highlight && !_contentFormat.highlight) {
+                                _contentFormat = const TextFormatValue().copyWith(
+                                  highlight: true,
+                                  highlightColor: val.highlightColor,
+                                );
+                              }
+                            });
+                            
+                            _saveNote(pop: false);
+                            Navigator.pop(ctx);
+                            FocusScope.of(context).requestFocus(_hiddenFocus);
+                            return;
                           }
+                          
+                          // Para las 4 herramientas de dibujo -> comportamiento actual (acumulativo)
+                          _contentFormat = val;
+
+                          // Activar/desactivar modo dibujo: SOLO por las 4 herramientas (y borrador)
+                          final drawingActive = val.pencil ||
+                              val.pen ||
+                              val.crayon ||
+                              val.brush ||
+                              val.eraser;
+
+                          if (drawingActive != _isDrawingMode) {
+                            setState(() {
+                              _isDrawingMode = drawingActive;
+                            });
+                          }
+
+                          _saveNote(pop: false);
                         },
                         onClose: () {
                           Navigator.pop(ctx);
-                          FocusScope.of(context).requestFocus(_hiddenFocus);
+                          // Si sigue desactivado, enfocamos texto
+                          if (!_isDrawingMode && mounted) {
+                            FocusScope.of(context).requestFocus(_hiddenFocus);
+                          }
                         },
                       ),
                     ),
                   );
 
-                  FocusScope.of(context).requestFocus(_hiddenFocus);
+                  // Volver foco a escribir si no quedaste en modo dibujo
+                  if (!_isDrawingMode) {
+                    FocusScope.of(context).requestFocus(_hiddenFocus);
+                  }
                 },
               ),
               _buildIconBox(
@@ -2340,14 +2387,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       final defaultW = 240.0;
                       final defaultH = 160.0;
                       final size = MediaQuery.of(context).size;
-                      final startX = (size.width - defaultW) / 2 +
-                          16; // +16 para compensar el padding del ClipRect
-                      // Ubicación inicial razonable bajo el encabezado
-                      final startY = 220.0 +
-                          16; // +16 para compensar el padding del ClipRect
+                      final startX = (size.width - defaultW) / 2 + 16;
+                      final startY = 220.0 + 16;
 
                       setState(() {
-                        // 🔵 Agregar SIEMPRE como imagen flotante
                         _floatingImages.add(
                           FloatingImage(
                             filePath: selectedImage.path,
@@ -2360,6 +2403,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         _activeImageIndex = _floatingImages.length - 1;
                       });
                       _saveNote();
+                      _scheduleUpdateContentRect();
                     }
                   });
                 },
@@ -2367,7 +2411,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               _buildIconBox(
                 icon: Image.asset('assets/IA.png', width: 32, height: 32),
                 onTap: () {
-                  // Abrir el mapa mental generado desde la nota actual
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => MindMapFromNoteScreen(note: widget.note),
@@ -2446,7 +2489,6 @@ class _ResizableImageState extends State<_ResizableImage> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanStart: (d) {
-        // 🔒 Si está bloqueado, no permitir redimensionamiento
         if (widget.isLocked) {
           return;
         }
@@ -2455,7 +2497,6 @@ class _ResizableImageState extends State<_ResizableImage> {
         _startH = _h;
       },
       onPanUpdate: (d) {
-        // 🔒 Si está bloqueado, no permitir redimensionamiento
         if (widget.isLocked) {
           return;
         }
@@ -2497,7 +2538,6 @@ class _ResizableImageState extends State<_ResizableImage> {
                 blurRadius: 4)
           ],
         ),
-        // 🔒 Agregar ícono de candado en handles cuando está bloqueado
         child: widget.isLocked
             ? const Icon(
                 Icons.lock,
@@ -2550,22 +2590,15 @@ class _ResizableImageState extends State<_ResizableImage> {
               Positioned(right: 0, top: 0, child: _handleAt(1)),
               Positioned(left: 0, bottom: 0, child: _handleAt(2)),
               Positioned(right: 0, bottom: 0, child: _handleAt(3)),
-
-              // 🔴 BOTÓN ELIMINAR EN ESQUINA SUPERIOR IZQUIERDA
               if (widget.onDelete != null)
                 Positioned(
-                  top: (_handle / 2) + -22, // 🎯 Esquina superior de la imagen
-                  left:
-                      (_handle / 2) + -22, // 🎯 Esquina IZQUIERDA de la imagen
+                  top: (_handle / 2) + -22,
+                  left: (_handle / 2) + -22,
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(
-                          22), // 🎯 Área redondeada para mejor toque
+                      borderRadius: BorderRadius.circular(22),
                       onTap: () {
-                        print(
-                            '🔴 Botón X presionado!'); // 🐛 Debug para verificar que funciona
-                        // Mostrar confirmación antes de eliminar
                         showDialog(
                           context: context,
                           builder: (ctx) => AlertDialog(
@@ -2593,27 +2626,22 @@ class _ResizableImageState extends State<_ResizableImage> {
                         );
                       },
                       child: Container(
-                        width:
-                            44, // 🎯 Área táctil MUY grande para máxima sensibilidad
-                        height:
-                            44, // 🎯 Área táctil MUY grande para máxima sensibilidad
+                        width: 44,
+                        height: 44,
                         decoration: const BoxDecoration(
-                          color: Colors
-                              .transparent, // 🎯 Fondo transparente para área extra
+                          color: Colors.transparent,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: Container(
-                            width:
-                                30, // 🎯 Ícono un poco más grande para mejor visibilidad
+                            width: 30,
                             height: 30,
                             decoration: const BoxDecoration(
                               color: Colors.red,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                      Colors.black38, // 🎯 Sombra más visible
+                                  color: Colors.black38,
                                   blurRadius: 6,
                                   offset: Offset(0, 3),
                                 ),
@@ -2622,7 +2650,7 @@ class _ResizableImageState extends State<_ResizableImage> {
                             child: const Icon(
                               Icons.close,
                               color: Colors.white,
-                              size: 20, // 🎯 Ícono un poco más grande
+                              size: 20,
                             ),
                           ),
                         ),
@@ -2630,36 +2658,27 @@ class _ResizableImageState extends State<_ResizableImage> {
                     ),
                   ),
                 ),
-
-              // 🔒 BOTÓN CANDADO EN ESQUINA SUPERIOR DERECHA
               if (widget.onToggleLock != null)
                 Positioned(
-                  top: (_handle / 2) + -22, // 🎯 Esquina superior de la imagen
-                  right: (_handle / 2) + -22, // 🎯 Esquina DERECHA de la imagen
+                  top: (_handle / 2) + -22,
+                  right: (_handle / 2) + -22,
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(
-                          22), // 🎯 Área redondeada para mejor toque
+                      borderRadius: BorderRadius.circular(22),
                       onTap: () {
-                        print(
-                            '🔒 Botón candado presionado!'); // 🐛 Debug para verificar que funciona
                         widget.onToggleLock!();
                       },
                       child: Container(
-                        width:
-                            44, // 🎯 Área táctil MUY grande para máxima sensibilidad
-                        height:
-                            44, // 🎯 Área táctil MUY grande para máxima sensibilidad
+                        width: 44,
+                        height: 44,
                         decoration: const BoxDecoration(
-                          color: Colors
-                              .transparent, // 🎯 Fondo transparente para área extra
+                          color: Colors.transparent,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: Container(
-                            width:
-                                30, // 🎯 Ícono un poco más grande para mejor visibilidad
+                            width: 30,
                             height: 30,
                             decoration: BoxDecoration(
                               color: widget.isLocked
@@ -2668,8 +2687,7 @@ class _ResizableImageState extends State<_ResizableImage> {
                               shape: BoxShape.circle,
                               boxShadow: const [
                                 BoxShadow(
-                                  color:
-                                      Colors.black38, // 🎯 Sombra más visible
+                                  color: Colors.black38,
                                   blurRadius: 6,
                                   offset: Offset(0, 3),
                                 ),
@@ -2677,9 +2695,9 @@ class _ResizableImageState extends State<_ResizableImage> {
                             ),
                             child: Center(
                               child: Text(
-                                widget.isLocked ? '🔒' : '🔓', // Emoji dinámico
+                                widget.isLocked ? '🔒' : '🔓',
                                 style: const TextStyle(
-                                  fontSize: 16, // 🎯 Tamaño óptimo para emoji
+                                  fontSize: 16,
                                 ),
                               ),
                             ),
@@ -2773,31 +2791,26 @@ class _FanMenuOverlayState extends State<_FanMenuOverlay>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // 🔄 Botón Mover (arriba)
                       _buildFanButton(
-                        icon: Icons.open_with, // Ícono de mover/arrastrar
+                        icon: Icons.open_with,
                         angle: -90,
                         onTap: widget.onMoveTap,
                       ),
-                      // 📋 Botón Duplicar (derecha)
                       _buildFanButton(
                         icon: Icons.copy,
                         angle: 0,
                         onTap: widget.onDuplicateTap,
                       ),
-                      // 🗑️ Botón Eliminar (abajo)
                       _buildFanButton(
                         icon: Icons.delete,
                         angle: 90,
                         onTap: widget.onDeleteTap,
                       ),
-                      // 📝 Botón Formato ABC (izquierda)
                       _buildFanButton(
-                        icon: Icons.text_format, // Ícono ABC/formato
+                        icon: Icons.text_format,
                         angle: 180,
                         onTap: widget.onFormatTap,
                       ),
-                      // Botón central (cerrar)
                       Container(
                         width: 56,
                         height: 56,
@@ -3003,56 +3016,34 @@ class SkinPanel extends StatelessWidget {
       const Color(0xFFc9ffbf),
       const Color(0xFFffafbd),
       const Color(0xFFb2fefa),
-      // 🎨 COLORES PASTEL ADICIONALES - 7 filas de 6 colores
-      // Fila 1: Rosas pastel
+      // Pasteles extra
       const Color(0xFFf8d7da),
       const Color(0xFFfce4ec),
       const Color(0xFFf3e5f5),
       const Color(0xFFede7f6),
       const Color(0xFFe8f5e8),
       const Color(0xFFe0f2f1),
-      // Fila 2: Azules pastel
       const Color(0xFFe3f2fd),
       const Color(0xFFe1f5fe),
       const Color(0xFFe0f7fa),
       const Color(0xFFf1f8e9),
       const Color(0xFFf9fbe7),
       const Color(0xFFfffde7),
-      // Fila 3: Verdes pastel
-      const Color(0xFFe8f5e8),
-      const Color(0xFFf1f8e9),
-      const Color(0xFFf9fbe7),
-      const Color(0xFFfffde7),
       const Color(0xFFfff8e1),
       const Color(0xFFfff3e0),
-      // Fila 4: Amarillos y naranjas pastel
-      const Color(0xFFfce4ec),
-      const Color(0xFFfff3e0),
-      const Color(0xFFfff8e1),
-      const Color(0xFFfffde7),
-      const Color(0xFFf9fbe7),
-      const Color(0xFFf1f8e9),
-      // Fila 5: Morados y lilas pastel
-      const Color(0xFFf3e5f5),
-      const Color(0xFFede7f6),
       const Color(0xFFe8eaf6),
-      const Color(0xFFe3f2fd),
-      const Color(0xFFe1f5fe),
-      const Color(0xFFe0f7fa),
-      // Fila 6: Tonos neutros pastel
       const Color(0xFFfafafa),
       const Color(0xFFf5f5f5),
       const Color(0xFFeceff1),
       const Color(0xFFcfd8dc),
       const Color(0xFFb0bec5),
       const Color(0xFF90a4ae),
-      // Fila 7: Mezcla de pasteles únicos
       const Color(0xFFf8bbd9),
       const Color(0xFFe7c3ff),
       const Color(0xFFc3e7ff),
       const Color(0xFFc3ffc3),
-      const Color(0xFFffffc3),
-      const Color(0xFFffc3c3),
+      const Color(0xFFFFFFC3),
+      const Color(0xFFFFC3C3),
     ];
 
     return SafeArea(
