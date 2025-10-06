@@ -2328,10 +2328,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         onChanged: (val) {
                           // Comportamiento DIFERENTE para los 3 primeros vs los 4 nuevos
                           
-                          // Comportamiento RESTAURADO: Los 3 primeros crean nuevos párrafos independientes
-                          if ((val.bold && !_contentFormat.bold) ||
-                              (val.underline && !_contentFormat.underline) ||
-                              (val.highlight && !_contentFormat.highlight)) {
+                          // CORREGIDO: Detectar CUALQUIER cambio en formatos de texto (activar, desactivar o cambiar)
+                          bool textFormatChanged = (val.bold != _contentFormat.bold) ||
+                                                  (val.underline != _contentFormat.underline) ||
+                                                  (val.highlight != _contentFormat.highlight);
+                          
+                          if (textFormatChanged) {
                             
                             // Guardar texto actual si existe
                             final String currentText = _hiddenController.text.trim();
@@ -2350,92 +2352,55 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               _hiddenController.clear();
                             }
                             
-                            // Aplicar SOLO el nuevo formato seleccionado (crear nuevo párrafo)
+                            // Aplicar el formato COMPLETO nuevo (sin arrastrar efectos anteriores)
                             setState(() {
-                              if (val.bold && !_contentFormat.bold) {
-                                _contentFormat = TextFormatValue(
-                                  bold: true,
-                                  underline: false,
-                                  highlight: false,
-                                  // Mantener herramientas de dibujo existentes
-                                  pencil: _contentFormat.pencil,
-                                  pencilColor: _contentFormat.pencilColor,
-                                  pen: _contentFormat.pen,
-                                  penColor: _contentFormat.penColor,
-                                  crayon: _contentFormat.crayon,
-                                  crayonColor: _contentFormat.crayonColor,
-                                  brush: _contentFormat.brush,
-                                  brushColor: _contentFormat.brushColor,
-                                  eraser: _contentFormat.eraser,
-                                );
-                              } else if (val.underline && !_contentFormat.underline) {
-                                _contentFormat = TextFormatValue(
-                                  bold: false,
-                                  underline: true,
-                                  underlineColor: val.underlineColor,
-                                  highlight: false,
-                                  // Mantener herramientas de dibujo existentes
-                                  pencil: _contentFormat.pencil,
-                                  pencilColor: _contentFormat.pencilColor,
-                                  pen: _contentFormat.pen,
-                                  penColor: _contentFormat.penColor,
-                                  crayon: _contentFormat.crayon,
-                                  crayonColor: _contentFormat.crayonColor,
-                                  brush: _contentFormat.brush,
-                                  brushColor: _contentFormat.brushColor,
-                                  eraser: _contentFormat.eraser,
-                                );
-                              } else if (val.highlight && !_contentFormat.highlight) {
-                                _contentFormat = TextFormatValue(
-                                  bold: false,
-                                  underline: false,
-                                  highlight: true,
-                                  highlightColor: val.highlightColor,
-                                  // Mantener herramientas de dibujo existentes
-                                  pencil: _contentFormat.pencil,
-                                  pencilColor: _contentFormat.pencilColor,
-                                  pen: _contentFormat.pen,
-                                  penColor: _contentFormat.penColor,
-                                  crayon: _contentFormat.crayon,
-                                  crayonColor: _contentFormat.crayonColor,
-                                  brush: _contentFormat.brush,
-                                  brushColor: _contentFormat.brushColor,
-                                  eraser: _contentFormat.eraser,
-                                );
-                              }
+                              _contentFormat = _contentFormat.copyWith(
+                                // Aplicar exactamente lo que viene del panel
+                                bold: val.bold,
+                                underline: val.underline,
+                                underlineColor: val.underlineColor,
+                                highlight: val.highlight,
+                                highlightColor: val.highlightColor,
+                                // Mantener herramientas de dibujo sin cambios
+                                pencil: _contentFormat.pencil,
+                                pencilColor: _contentFormat.pencilColor,
+                                pen: _contentFormat.pen,
+                                penColor: _contentFormat.penColor,
+                                crayon: _contentFormat.crayon,
+                                crayonColor: _contentFormat.crayonColor,
+                                brush: _contentFormat.brush,
+                                brushColor: _contentFormat.brushColor,
+                                eraser: _contentFormat.eraser,
+                              );
                             });
                             
                             _saveNote(pop: false);
                             
-                            // SOLUCIÓN COLORES: Solo cerrar si es BOLD (sin colores)
-                            if (val.bold && !val.underline && !val.highlight) {
-                              Navigator.pop(ctx);
-                              FocusScope.of(context).requestFocus(_hiddenFocus);
-                            }
-                            // Para underline y highlight, NO cerrar para permitir selección de color
+                            // ✨ NUEVO: No cerrar panel automáticamente - permitir preview en tiempo real
+                            // El usuario puede ver el efecto inmediatamente y cerrar manualmente
                             return;
                           }
                           
-                          // Detectar cuando se selecciona color en underline o highlight
-                          if ((val.underline && _contentFormat.underline && val.underlineColor != _contentFormat.underlineColor) ||
-                              (val.highlight && _contentFormat.highlight && val.highlightColor != _contentFormat.highlightColor)) {
-                            // Solo actualizar el color, y cerrar
+                          // SIMPLIFICADO: Detectar cambio de color (sin cerrar panel)
+                          bool colorChanged = (val.underline && val.underlineColor != _contentFormat.underlineColor) ||
+                                            (val.highlight && val.highlightColor != _contentFormat.highlightColor);
+                          
+                          if (colorChanged && !textFormatChanged) {
+                            // Solo cambio de color, sin cambio de formato
                             setState(() {
-                              if (val.underline && val.underlineColor != _contentFormat.underlineColor) {
-                                _contentFormat = _contentFormat.copyWith(underlineColor: val.underlineColor);
-                              }
-                              if (val.highlight && val.highlightColor != _contentFormat.highlightColor) {
-                                _contentFormat = _contentFormat.copyWith(highlightColor: val.highlightColor);
-                              }
+                              _contentFormat = _contentFormat.copyWith(
+                                underlineColor: val.underlineColor,
+                                highlightColor: val.highlightColor,
+                              );
                             });
                             _saveNote(pop: false);
-                            Navigator.pop(ctx);
-                            FocusScope.of(context).requestFocus(_hiddenFocus);
                             return;
                           }
                           
-                          // Para las 4 herramientas de dibujo -> comportamiento actual (acumulativo)
-                          _contentFormat = val;
+                          // ✨ PREVIEW EN TIEMPO REAL: Para cualquier cambio de formato
+                          setState(() {
+                            _contentFormat = val;
+                          });
 
                           // Activar/desactivar modo dibujo: SOLO por las 4 herramientas (y borrador)
                           final drawingActive = val.pencil ||

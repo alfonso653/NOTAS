@@ -160,7 +160,11 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                   children: [
                     // Botón Negrilla (B)
                     GestureDetector(
-                      onTap: () => _set(v.copyWith(bold: !v.bold)),
+                      onTap: () => _set(v.copyWith(
+                        bold: !v.bold,
+                        underline: false, // Desactivar subrayado
+                        highlight: false, // Desactivar resaltado
+                      )),
                       child: Container(
                         width: 50,
                         height: 50,
@@ -200,57 +204,133 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                     UnderlineButton(
                       selected: v.underline,
                       color: v.underlineColor,
-                      onTap: () => _set(v.copyWith(underline: !v.underline)),
+                      onTap: () => _set(v.copyWith(
+                        underline: !v.underline,
+                        bold: false,     // Desactivar negrita
+                        highlight: false, // Desactivar resaltado
+                      )),
                       onColorSelected: (color) => _set(
-                        v.copyWith(underline: true, underlineColor: color),
+                        v.copyWith(
+                          underline: true, 
+                          underlineColor: color,
+                          bold: false,     // Desactivar negrita
+                          highlight: false, // Desactivar resaltado
+                        ),
                       ),
                     ),
                     // Botón Resaltado (Highlight) con selección de color pastel
                     HighlightButton(
                       selected: v.highlight,
                       color: v.highlightColor,
-                      onTap: () => _set(v.copyWith(highlight: !v.highlight)),
+                      onTap: () => _set(v.copyWith(
+                        highlight: !v.highlight,
+                        bold: false,      // Desactivar negrita
+                        underline: false, // Desactivar subrayado
+                      )),
                       onColorSelected: (color) => _set(
-                        v.copyWith(highlight: true, highlightColor: color),
+                        v.copyWith(
+                          highlight: true, 
+                          highlightColor: color,
+                          bold: false,      // Desactivar negrita
+                          underline: false, // Desactivar subrayado
+                        ),
                       ),
                     ),
                     // Nuevos botones de dibujo libre
                     PencilButton(
                       selected: v.pencil,
                       color: v.pencilColor,
-                      onTap: () => _set(v.copyWith(pencil: !v.pencil)),
+                      onTap: () => _set(v.copyWith(
+                        pencil: !v.pencil,
+                        pen: false,    // Desactivar lapicero
+                        crayon: false, // Desactivar crayón
+                        brush: false,  // Desactivar pincel
+                        eraser: false, // Desactivar borrador
+                      )),
                       onColorSelected: (color) => _set(
-                        v.copyWith(pencil: true, pencilColor: color),
+                        v.copyWith(
+                          pencil: true, 
+                          pencilColor: color,
+                          pen: false,    // Desactivar lapicero
+                          crayon: false, // Desactivar crayón
+                          brush: false,  // Desactivar pincel
+                          eraser: false, // Desactivar borrador
+                        ),
                       ),
                     ),
                     PenButton(
                       selected: v.pen,
                       color: v.penColor,
-                      onTap: () => _set(v.copyWith(pen: !v.pen)),
+                      onTap: () => _set(v.copyWith(
+                        pen: !v.pen,
+                        pencil: false, // Desactivar lápiz
+                        crayon: false, // Desactivar crayón
+                        brush: false,  // Desactivar pincel
+                        eraser: false, // Desactivar borrador
+                      )),
                       onColorSelected: (color) => _set(
-                        v.copyWith(pen: true, penColor: color),
+                        v.copyWith(
+                          pen: true, 
+                          penColor: color,
+                          pencil: false, // Desactivar lápiz
+                          crayon: false, // Desactivar crayón
+                          brush: false,  // Desactivar pincel
+                          eraser: false, // Desactivar borrador
+                        ),
                       ),
                     ),
                     CrayonButton(
                       selected: v.crayon,
                       color: v.crayonColor,
-                      onTap: () => _set(v.copyWith(crayon: !v.crayon)),
+                      onTap: () => _set(v.copyWith(
+                        crayon: !v.crayon,
+                        pencil: false, // Desactivar lápiz
+                        pen: false,    // Desactivar lapicero
+                        brush: false,  // Desactivar pincel
+                        eraser: false, // Desactivar borrador
+                      )),
                       onColorSelected: (color) => _set(
-                        v.copyWith(crayon: true, crayonColor: color),
+                        v.copyWith(
+                          crayon: true, 
+                          crayonColor: color,
+                          pencil: false, // Desactivar lápiz
+                          pen: false,    // Desactivar lapicero
+                          brush: false,  // Desactivar pincel
+                          eraser: false, // Desactivar borrador
+                        ),
                       ),
                     ),
                     BrushButton(
                       selected: v.brush,
                       color: v.brushColor,
-                      onTap: () => _set(v.copyWith(brush: !v.brush)),
+                      onTap: () => _set(v.copyWith(
+                        brush: !v.brush,
+                        pencil: false, // Desactivar lápiz
+                        pen: false,    // Desactivar lapicero
+                        crayon: false, // Desactivar crayón
+                        eraser: false, // Desactivar borrador
+                      )),
                       onColorSelected: (color) => _set(
-                        v.copyWith(brush: true, brushColor: color),
+                        v.copyWith(
+                          brush: true, 
+                          brushColor: color,
+                          pencil: false, // Desactivar lápiz
+                          pen: false,    // Desactivar lapicero
+                          crayon: false, // Desactivar crayón
+                          eraser: false, // Desactivar borrador
+                        ),
                       ),
                     ),
                     // Botón Borrador
                     EraserButton(
                       selected: v.eraser,
-                      onTap: () => _set(v.copyWith(eraser: !v.eraser)),
+                      onTap: () => _set(v.copyWith(
+                        eraser: !v.eraser,
+                        pencil: false, // Desactivar lápiz
+                        pen: false,    // Desactivar lapicero
+                        crayon: false, // Desactivar crayón
+                        brush: false,  // Desactivar pincel
+                      )),
                     ),
                   ],
                 ),
