@@ -1174,9 +1174,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     _scrollController = ScrollController();
     _scrollController.addListener(() {
-      // OPTIMIZADO: Solo recalcular área de contenido, sin setState innecesario
+      // OPTIMIZADO: Solo recalcular área de contenido
       if (mounted) {
         _scheduleUpdateContentRect();
+        
+        // CORREGIDO: Actualizar trazos de dibujo solo si hay algunos
+        if (_drawingStrokes.isNotEmpty || _currentStroke != null) {
+          setState(() {});
+        }
       }
     });
 
@@ -2450,10 +2455,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     ),
                   );
 
-                  // Volver foco a escribir si no quedaste en modo dibujo
-                  if (!_isDrawingMode) {
-                    FocusScope.of(context).requestFocus(_hiddenFocus);
-                  }
+                  // CORREGIDO: No hacer focus automático para evitar scroll no deseado
+                  // El usuario puede estar en cualquier parte de la nota
                 },
               ),
               _buildIconBox(
