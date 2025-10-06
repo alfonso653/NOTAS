@@ -2296,6 +2296,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   if (_isDrawingMode) {
                     setState(() {
                       _isDrawingMode = false; // 😌 Vuelves a escribir texto
+                      // Resetear todas las herramientas de dibujo pero mantener formato de texto
+                      _contentFormat = _contentFormat.copyWith(
+                        pencil: false,
+                        pen: false,
+                        crayon: false,
+                        brush: false,
+                        eraser: false,
+                      );
                     });
                     FocusScope.of(context).requestFocus(_hiddenFocus);
                     ScaffoldMessenger.of(context).showSnackBar(

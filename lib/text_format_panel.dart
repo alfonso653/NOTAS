@@ -319,7 +319,7 @@ class HighlightButton extends StatelessWidget {
               'assets/crayon.png',
               width: 26,
               height: 26,
-              color: selected ? Colors.white : Colors.black54,
+              color: selected ? Colors.white : null,
             ),
           ),
         ),
@@ -414,15 +414,15 @@ class PencilButton extends StatelessWidget {
   }) : super(key: key);
 
   static const List<Color> pencilColors = [
-    Color(0xFF424242), // Grafito oscuro
-    Color(0xFF757575), // Grafito medio
-    Color(0xFF9E9E9E), // Grafito claro
-    Color(0xFF1976D2), // Azul
-    Color(0xFFD32F2F), // Rojo
-    Color(0xFF388E3C), // Verde
-    Color(0xFFF57C00), // Naranja
-    Color(0xFF7B1FA2), // Morado
-    Color(0xFF5D4037), // Marrón
+    Color(0xFFE8E8E8), // Grafito pastel
+    Color(0xFFB8B8B8), // Grafito suave
+    Color(0xFFD1C4E9), // Lavanda pastel
+    Color(0xFFBBDEFB), // Azul cielo pastel
+    Color(0xFFFFCDD2), // Rosa pastel
+    Color(0xFFC8E6C9), // Verde menta pastel
+    Color(0xFFFFE0B2), // Durazno pastel
+    Color(0xFFE1BEE7), // Lila pastel
+    Color(0xFFD7CCC8), // Beige pastel
   ];
 
   @override
@@ -545,15 +545,15 @@ class PenButton extends StatelessWidget {
   }) : super(key: key);
 
   static const List<Color> penColors = [
-    Color(0xFF000000), // Negro
-    Color(0xFF1976D2), // Azul clásico
-    Color(0xFFD32F2F), // Rojo
-    Color(0xFF388E3C), // Verde
-    Color(0xFF7B1FA2), // Morado
-    Color(0xFFF57C00), // Naranja
-    Color(0xFF795548), // Marrón
-    Color(0xFF607D8B), // Azul gris
-    Color(0xFFE91E63), // Rosa
+    Color(0xFFECEFF1), // Gris perla pastel
+    Color(0xFFB3E5FC), // Azul cielo pastel
+    Color(0xFFFFCDD2), // Rosa coral pastel
+    Color(0xFFC8E6C9), // Verde agua pastel
+    Color(0xFFE1BEE7), // Violeta pastel
+    Color(0xFFFFE0B2), // Crema dorado pastel
+    Color(0xFFD7CCC8), // Café con leche pastel
+    Color(0xFFCFD8DC), // Azul grisáceo pastel
+    Color(0xFFF8BBD9), // Rosa suave pastel
   ];
 
   @override
@@ -676,15 +676,15 @@ class CrayonButton extends StatelessWidget {
   }) : super(key: key);
 
   static const List<Color> crayonColors = [
-    Color(0xFFFF1744), // Rojo vibrante
-    Color(0xFFFF9800), // Naranja vibrante
-    Color(0xFFFFEB3B), // Amarillo vibrante
-    Color(0xFF4CAF50), // Verde vibrante
-    Color(0xFF2196F3), // Azul vibrante
-    Color(0xFF9C27B0), // Morado vibrante
-    Color(0xFFE91E63), // Rosa vibrante
-    Color(0xFF795548), // Marrón
-    Color(0xFF607D8B), // Gris azulado
+    Color(0xFFFFC1CC), // Rojo cereza pastel
+    Color(0xFFFFDDB3), // Naranja melocotón pastel
+    Color(0xFFFFF9C4), // Amarillo mantequilla pastel
+    Color(0xFFDCEDC8), // Verde lima pastel
+    Color(0xFFBBDEFB), // Azul bebé pastel
+    Color(0xFFE1BEE7), // Morado lavanda pastel
+    Color(0xFFF8BBD9), // Rosa chicle pastel
+    Color(0xFFEFEBE9), // Marrón crema pastel
+    Color(0xFFECEFF1), // Gris nube pastel
   ];
 
   @override
@@ -807,15 +807,15 @@ class BrushButton extends StatelessWidget {
   }) : super(key: key);
 
   static const List<Color> brushColors = [
-    Color(0xFF8E24AA), // Morado artístico
-    Color(0xFF3F51B5), // Índigo
-    Color(0xFF00ACC1), // Cian
-    Color(0xFF43A047), // Verde bosque
-    Color(0xFFFB8C00), // Ámbar
-    Color(0xFFE53935), // Rojo fuego
-    Color(0xFFAD1457), // Rosa profundo
-    Color(0xFF6D4C41), // Marrón chocolate
-    Color(0xFF546E7A), // Azul gris
+    Color(0xFFE1BEE7), // Morado orchídea pastel
+    Color(0xFFC5CAE9), // Índigo suave pastel
+    Color(0xFFB2EBF2), // Cian aguamarina pastel
+    Color(0xFFDCEDC8), // Verde menta pastel
+    Color(0xFFFFE0B2), // Ámbar dorado pastel
+    Color(0xFFFFCDD2), // Rojo coral pastel
+    Color(0xFFF8BBD9), // Rosa ballet pastel
+    Color(0xFFEFEBE9), // Chocolate blanco pastel
+    Color(0xFFCFD8DC), // Azul niebla pastel
   ];
 
   @override
@@ -961,7 +961,7 @@ class EraserButton extends StatelessWidget {
           'assets/borrador.png',
           width: 24,
           height: 24,
-          color: selected ? Colors.grey.shade700 : Colors.black54,
+          color: selected ? Colors.grey.shade700 : null,
         ),
       ),
     );
