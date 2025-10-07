@@ -481,6 +481,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   // ========= Header Collapsible =========
   bool _isHeaderCollapsed = false;
 
+  // ========= Floating Buttons Collapsible =========
+  bool _isFloatingButtonsCollapsed = false;
+
   // ========= Helpers =========
 
   /// 🔄 Convertir párrafo en texto flotante arrastrable
@@ -1111,6 +1114,24 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _isHeaderCollapsed = widget.note.isHeaderCollapsed ?? false;
   }
 
+  // ========= Floating Buttons Collapsible Methods =========
+
+  void _toggleFloatingButtonsCollapse() {
+    setState(() {
+      _isFloatingButtonsCollapsed = !_isFloatingButtonsCollapsed;
+    });
+    _saveFloatingButtonsCollapseState();
+  }
+
+  void _saveFloatingButtonsCollapseState() {
+    widget.note.isFloatingButtonsCollapsed = _isFloatingButtonsCollapsed;
+    _saveNote(pop: false);
+  }
+
+  void _loadFloatingButtonsCollapseState() {
+    _isFloatingButtonsCollapsed = widget.note.isFloatingButtonsCollapsed ?? false;
+  }
+
   // ========= Header Flotante Mini - Widgets =========
   
   Widget _buildMiniFloatingHeader() {
@@ -1312,6 +1333,85 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     );
   }
 
+  // ========= Floating Buttons Collapsible - Widgets =========
+  
+  Widget _buildMiniFloatingButtons() {
+    return Container(
+      key: const ValueKey('mini-buttons'),
+      width: 50,
+      height: 30,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.blue.shade100.withOpacity(0.9),
+            Colors.white.withOpacity(0.9),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.blue.shade200, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: GestureDetector(
+        onTap: _toggleFloatingButtonsCollapse,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.unfold_more,
+              size: 16,
+              color: Colors.blue.shade600,
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.mic,
+              size: 14,
+              color: Colors.green.shade600,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedFloatingButtons() {
+    return Column(
+      key: const ValueKey('expanded-buttons'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Botón colapsar en la parte superior
+        GestureDetector(
+          onTap: _toggleFloatingButtonsCollapse,
+          child: Container(
+            width: 60,
+            height: 25,
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.grey.shade300, width: 0.5),
+            ),
+            child: Icon(
+              Icons.unfold_less,
+              size: 16,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ),
+        
+        // Botón de audio (el original)
+        AudioButton(noteId: widget.note.id.toString()),
+      ],
+    );
+  }
+
   void _saveNote({bool pop = false}) {
     // OPTIMIZACIÓN: Cancelar timer anterior y programar nuevo guardado
     _saveDebounceTimer?.cancel();
@@ -1446,6 +1546,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     // Cargar estado del header collapsible
     _loadHeaderCollapseState();
+    _loadFloatingButtonsCollapseState();
 
     // Restaurar imágenes y textos flotantes
     _floatingImages.clear();
@@ -2656,8 +2757,26 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         ),
       ),
 
-      // ======= BOTÓN DE AUDIO =======
-      floatingActionButton: AudioButton(noteId: widget.note.id.toString()),
+      // ======= BOTONES FLOTANTES COLAPSIBLES =======
+      floatingActionButton: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          transitionBuilder: (child, animation) {
+            return ScaleTransition(
+              scale: animation,
+              child: FadeTransition(
+                opacity: animation,
+                child: child,
+              ),
+            );
+          },
+          child: _isFloatingButtonsCollapsed
+              ? _buildMiniFloatingButtons()
+              : _buildExpandedFloatingButtons(),
+        ),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
