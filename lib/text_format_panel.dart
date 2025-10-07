@@ -418,59 +418,74 @@ class HighlightButton extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ...pastelColors
-                    .map((c) => GestureDetector(
-                          onTap: () {
-                            print('Color seleccionado: $c'); // Debug
-                            onColorSelected(c);
-                          },
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            margin: EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: color == c
-                                    ? Colors.black87
-                                    : Colors.grey.shade300,
-                                width: 2,
-                              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Calcular ancho disponible para los colores
+                double availableWidth = MediaQuery.of(context).size.width - 100; // Reservar espacio para márgenes
+                int totalColors = pastelColors.length + 1; // +1 para el botón de quitar
+                double maxCircleSize = (availableWidth / totalColors) - 8; // -8 para márgenes
+                double circleSize = maxCircleSize.clamp(16.0, 24.0); // Mínimo 16, máximo 24
+                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                spacing = spacing.clamp(2.0, 4.0); // Espaciado entre 2 y 4
+                
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...pastelColors
+                          .map((c) => GestureDetector(
+                                onTap: () {
+                                  print('Color seleccionado: $c'); // Debug
+                                  onColorSelected(c);
+                                },
+                                child: Container(
+                                  width: circleSize,
+                                  height: circleSize,
+                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: color == c
+                                          ? Colors.black87
+                                          : Colors.grey.shade300,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                      // Botón para quitar resaltado
+                      GestureDetector(
+                        onTap: () {
+                          print('Quitar resaltado'); // Debug
+                          onTap(); // Desactiva el resaltado
+                        },
+                        child: Container(
+                          width: circleSize,
+                          height: circleSize,
+                          margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.red.shade300,
+                              width: 1.5,
                             ),
                           ),
-                        ))
-                    .toList(),
-                // Botón para quitar resaltado
-                GestureDetector(
-                  onTap: () {
-                    print('Quitar resaltado'); // Debug
-                    onTap(); // Desactiva el resaltado
-                  },
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    margin: EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.red.shade300,
-                        width: 2,
+                          child: Center(
+                            child: Text(
+                              '🚫',
+                              style: TextStyle(fontSize: circleSize * 0.5),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '🚫',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -555,53 +570,67 @@ class PencilButton extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ...pencilColors
-                    .map((c) => GestureDetector(
-                          onTap: () => onColorSelected(c),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            margin: EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: color == c
-                                    ? Colors.black87
-                                    : Colors.grey.shade300,
-                                width: 2,
-                              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                double availableWidth = MediaQuery.of(context).size.width - 100;
+                int totalColors = pencilColors.length + 1;
+                double maxCircleSize = (availableWidth / totalColors) - 8;
+                double circleSize = maxCircleSize.clamp(16.0, 24.0);
+                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                spacing = spacing.clamp(2.0, 4.0);
+                
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...pencilColors
+                          .map((c) => GestureDetector(
+                                onTap: () => onColorSelected(c),
+                                child: Container(
+                                  width: circleSize,
+                                  height: circleSize,
+                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: color == c
+                                          ? Colors.black87
+                                          : Colors.grey.shade300,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                      // Botón para quitar lápiz
+                      GestureDetector(
+                        onTap: onTap,
+                        child: Container(
+                          width: circleSize,
+                          height: circleSize,
+                          margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.red.shade300,
+                              width: 1.5,
                             ),
                           ),
-                        ))
-                    .toList(),
-                // Botón para quitar lápiz
-                GestureDetector(
-                  onTap: onTap,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    margin: EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.red.shade300,
-                        width: 2,
+                          child: Center(
+                            child: Text(
+                              '🚫',
+                              style: TextStyle(fontSize: circleSize * 0.5),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '🚫',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -686,53 +715,67 @@ class PenButton extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ...penColors
-                    .map((c) => GestureDetector(
-                          onTap: () => onColorSelected(c),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            margin: EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: color == c
-                                    ? Colors.black87
-                                    : Colors.grey.shade300,
-                                width: 2,
-                              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                double availableWidth = MediaQuery.of(context).size.width - 100;
+                int totalColors = penColors.length + 1;
+                double maxCircleSize = (availableWidth / totalColors) - 8;
+                double circleSize = maxCircleSize.clamp(16.0, 24.0);
+                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                spacing = spacing.clamp(2.0, 4.0);
+                
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...penColors
+                          .map((c) => GestureDetector(
+                                onTap: () => onColorSelected(c),
+                                child: Container(
+                                  width: circleSize,
+                                  height: circleSize,
+                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: color == c
+                                          ? Colors.black87
+                                          : Colors.grey.shade300,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                      // Botón para quitar lapicero
+                      GestureDetector(
+                        onTap: onTap,
+                        child: Container(
+                          width: circleSize,
+                          height: circleSize,
+                          margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.red.shade300,
+                              width: 1.5,
                             ),
                           ),
-                        ))
-                    .toList(),
-                // Botón para quitar lapicero
-                GestureDetector(
-                  onTap: onTap,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    margin: EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.red.shade300,
-                        width: 2,
+                          child: Center(
+                            child: Text(
+                              '🚫',
+                              style: TextStyle(fontSize: circleSize * 0.5),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '🚫',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -817,53 +860,67 @@ class CrayonButton extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ...crayonColors
-                    .map((c) => GestureDetector(
-                          onTap: () => onColorSelected(c),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            margin: EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: color == c
-                                    ? Colors.black87
-                                    : Colors.grey.shade300,
-                                width: 2,
-                              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                double availableWidth = MediaQuery.of(context).size.width - 100;
+                int totalColors = crayonColors.length + 1;
+                double maxCircleSize = (availableWidth / totalColors) - 8;
+                double circleSize = maxCircleSize.clamp(16.0, 24.0);
+                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                spacing = spacing.clamp(2.0, 4.0);
+                
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...crayonColors
+                          .map((c) => GestureDetector(
+                                onTap: () => onColorSelected(c),
+                                child: Container(
+                                  width: circleSize,
+                                  height: circleSize,
+                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: color == c
+                                          ? Colors.black87
+                                          : Colors.grey.shade300,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                      // Botón para quitar crayola
+                      GestureDetector(
+                        onTap: onTap,
+                        child: Container(
+                          width: circleSize,
+                          height: circleSize,
+                          margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.red.shade300,
+                              width: 1.5,
                             ),
                           ),
-                        ))
-                    .toList(),
-                // Botón para quitar crayola
-                GestureDetector(
-                  onTap: onTap,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    margin: EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.red.shade300,
-                        width: 2,
+                          child: Center(
+                            child: Text(
+                              '🚫',
+                              style: TextStyle(fontSize: circleSize * 0.5),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '🚫',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -948,53 +1005,67 @@ class BrushButton extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ...brushColors
-                    .map((c) => GestureDetector(
-                          onTap: () => onColorSelected(c),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            margin: EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: color == c
-                                    ? Colors.black87
-                                    : Colors.grey.shade300,
-                                width: 2,
-                              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                double availableWidth = MediaQuery.of(context).size.width - 100;
+                int totalColors = brushColors.length + 1;
+                double maxCircleSize = (availableWidth / totalColors) - 8;
+                double circleSize = maxCircleSize.clamp(16.0, 24.0);
+                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                spacing = spacing.clamp(2.0, 4.0);
+                
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...brushColors
+                          .map((c) => GestureDetector(
+                                onTap: () => onColorSelected(c),
+                                child: Container(
+                                  width: circleSize,
+                                  height: circleSize,
+                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: color == c
+                                          ? Colors.black87
+                                          : Colors.grey.shade300,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                      // Botón para quitar pincel
+                      GestureDetector(
+                        onTap: onTap,
+                        child: Container(
+                          width: circleSize,
+                          height: circleSize,
+                          margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.red.shade300,
+                              width: 1.5,
                             ),
                           ),
-                        ))
-                    .toList(),
-                // Botón para quitar pincel
-                GestureDetector(
-                  onTap: onTap,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    margin: EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.red.shade300,
-                        width: 2,
+                          child: Center(
+                            child: Text(
+                              '🚫',
+                              style: TextStyle(fontSize: circleSize * 0.5),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '🚫',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
