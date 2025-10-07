@@ -1412,6 +1412,109 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     );
   }
 
+  // ========= Convert Drawing Strokes to Floating Image =========
+  
+  Future<void> _convertStrokesToFloatingImage() async {
+    if (_drawingStrokes.isEmpty) return;
+    
+    try {
+      // Calcular los bounds de todos los trazos
+      double minX = double.infinity;
+      double maxX = double.negativeInfinity;
+      double minY = double.infinity;
+      double maxY = double.negativeInfinity;
+      
+      for (final stroke in _drawingStrokes) {
+        for (final point in stroke.points) {
+          minX = min(minX, point.dx);
+          maxX = max(maxX, point.dx);
+          minY = min(minY, point.dy);
+          maxY = max(maxY, point.dy);
+        }
+      }
+      
+      // Añadir padding alrededor del dibujo
+      const padding = 20.0;
+      minX -= padding;
+      maxX += padding;
+      minY -= padding;
+      maxY += padding;
+      
+      final width = maxX - minX;
+      final height = maxY - minY;
+      
+      // Crear un CustomPainter para los trazos
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      
+      // Fondo transparente
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, width, height),
+        Paint()..color = Colors.transparent,
+      );
+      
+      // Dibujar todos los trazos ajustados a la nueva posición
+      for (final stroke in _drawingStrokes) {
+        final paint = Paint()
+          ..color = stroke.color
+          ..strokeWidth = stroke.strokeWidth
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..style = PaintingStyle.stroke;
+        
+        final path = Path();
+        for (int i = 0; i < stroke.points.length; i++) {
+          final adjustedPoint = Offset(
+            stroke.points[i].dx - minX,
+            stroke.points[i].dy - minY,
+          );
+          
+          if (i == 0) {
+            path.moveTo(adjustedPoint.dx, adjustedPoint.dy);
+          } else {
+            path.lineTo(adjustedPoint.dx, adjustedPoint.dy);
+          }
+        }
+        canvas.drawPath(path, paint);
+      }
+      
+      // Convertir a imagen
+      final picture = recorder.endRecording();
+      final img = await picture.toImage(width.toInt(), height.toInt());
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      
+      if (byteData != null) {
+        // Guardar la imagen en un archivo temporal
+        final directory = await getTemporaryDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final file = File('${directory.path}/drawing_$timestamp.png');
+        await file.writeAsBytes(byteData.buffer.asUint8List());
+        
+        // Crear FloatingImage
+        setState(() {
+          _floatingImages.add(
+            FloatingImage(
+              filePath: file.path,
+              x: minX,
+              y: minY,
+              width: width,
+              height: height,
+            ),
+          );
+          _activeImageIndex = _floatingImages.length - 1;
+          
+          // Limpiar los trazos originales
+          _drawingStrokes.clear();
+        });
+        
+        _saveNote();
+        _scheduleUpdateContentRect();
+      }
+    } catch (e) {
+      print('Error converting strokes to image: $e');
+    }
+  }
+
   void _saveNote({bool pop = false}) {
     // OPTIMIZACIÓN: Cancelar timer anterior y programar nuevo guardado
     _saveDebounceTimer?.cancel();
@@ -2556,8 +2659,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 icon: Image.asset('assets/abc.png', width: 32, height: 32),
                 onTap: () async {
                   // NUEVA LÓGICA DE TOGGLE SOLO PARA LAS 4 HERRAMIENTAS DE DIBUJO:
-                  // Si estás en modo dibujo -> salir del modo dibujo con un toque (sin afectar formato de texto)
+                  // Si estás en modo dibujo -> convertir trazos a imagen flotante y salir del modo dibujo
                   if (_isDrawingMode) {
+                    // ¡MAGIA! Convertir trazos a imagen flotante manejable
+                    await _convertStrokesToFloatingImage();
+                    
                     setState(() {
                       _isDrawingMode = false; // 😌 Vuelves a escribir texto
                       // Resetear todas las herramientas de dibujo pero mantener formato de texto
@@ -2573,8 +2679,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                            '✍️ Modo dibujo desactivado. Puedes escribir.'),
-                        duration: Duration(seconds: 1),
+                            '🎨✨ ¡Dibujo convertido a imagen manejable!'),
+                        duration: Duration(seconds: 2),
                       ),
                     );
                     return; // No abrimos el panel en este toque
