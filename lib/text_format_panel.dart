@@ -206,14 +206,14 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       color: v.underlineColor,
                       onTap: () => _set(v.copyWith(
                         underline: !v.underline,
-                        bold: false,     // Desactivar negrita
+                        bold: false, // Desactivar negrita
                         highlight: false, // Desactivar resaltado
                       )),
                       onColorSelected: (color) => _set(
                         v.copyWith(
-                          underline: true, 
+                          underline: true,
                           underlineColor: color,
-                          bold: false,     // Desactivar negrita
+                          bold: false, // Desactivar negrita
                           highlight: false, // Desactivar resaltado
                         ),
                       ),
@@ -224,14 +224,14 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       color: v.highlightColor,
                       onTap: () => _set(v.copyWith(
                         highlight: !v.highlight,
-                        bold: false,      // Desactivar negrita
+                        bold: false, // Desactivar negrita
                         underline: false, // Desactivar subrayado
                       )),
                       onColorSelected: (color) => _set(
                         v.copyWith(
-                          highlight: true, 
+                          highlight: true,
                           highlightColor: color,
-                          bold: false,      // Desactivar negrita
+                          bold: false, // Desactivar negrita
                           underline: false, // Desactivar subrayado
                         ),
                       ),
@@ -242,18 +242,18 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       color: v.pencilColor,
                       onTap: () => _set(v.copyWith(
                         pencil: !v.pencil,
-                        pen: false,    // Desactivar lapicero
+                        pen: false, // Desactivar lapicero
                         crayon: false, // Desactivar crayón
-                        brush: false,  // Desactivar pincel
+                        brush: false, // Desactivar pincel
                         eraser: false, // Desactivar borrador
                       )),
                       onColorSelected: (color) => _set(
                         v.copyWith(
-                          pencil: true, 
+                          pencil: true,
                           pencilColor: color,
-                          pen: false,    // Desactivar lapicero
+                          pen: false, // Desactivar lapicero
                           crayon: false, // Desactivar crayón
-                          brush: false,  // Desactivar pincel
+                          brush: false, // Desactivar pincel
                           eraser: false, // Desactivar borrador
                         ),
                       ),
@@ -265,16 +265,16 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                         pen: !v.pen,
                         pencil: false, // Desactivar lápiz
                         crayon: false, // Desactivar crayón
-                        brush: false,  // Desactivar pincel
+                        brush: false, // Desactivar pincel
                         eraser: false, // Desactivar borrador
                       )),
                       onColorSelected: (color) => _set(
                         v.copyWith(
-                          pen: true, 
+                          pen: true,
                           penColor: color,
                           pencil: false, // Desactivar lápiz
                           crayon: false, // Desactivar crayón
-                          brush: false,  // Desactivar pincel
+                          brush: false, // Desactivar pincel
                           eraser: false, // Desactivar borrador
                         ),
                       ),
@@ -285,17 +285,17 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       onTap: () => _set(v.copyWith(
                         crayon: !v.crayon,
                         pencil: false, // Desactivar lápiz
-                        pen: false,    // Desactivar lapicero
-                        brush: false,  // Desactivar pincel
+                        pen: false, // Desactivar lapicero
+                        brush: false, // Desactivar pincel
                         eraser: false, // Desactivar borrador
                       )),
                       onColorSelected: (color) => _set(
                         v.copyWith(
-                          crayon: true, 
+                          crayon: true,
                           crayonColor: color,
                           pencil: false, // Desactivar lápiz
-                          pen: false,    // Desactivar lapicero
-                          brush: false,  // Desactivar pincel
+                          pen: false, // Desactivar lapicero
+                          brush: false, // Desactivar pincel
                           eraser: false, // Desactivar borrador
                         ),
                       ),
@@ -306,16 +306,16 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       onTap: () => _set(v.copyWith(
                         brush: !v.brush,
                         pencil: false, // Desactivar lápiz
-                        pen: false,    // Desactivar lapicero
+                        pen: false, // Desactivar lapicero
                         crayon: false, // Desactivar crayón
                         eraser: false, // Desactivar borrador
                       )),
                       onColorSelected: (color) => _set(
                         v.copyWith(
-                          brush: true, 
+                          brush: true,
                           brushColor: color,
                           pencil: false, // Desactivar lápiz
-                          pen: false,    // Desactivar lapicero
+                          pen: false, // Desactivar lapicero
                           crayon: false, // Desactivar crayón
                           eraser: false, // Desactivar borrador
                         ),
@@ -327,9 +327,9 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                       onTap: () => _set(v.copyWith(
                         eraser: !v.eraser,
                         pencil: false, // Desactivar lápiz
-                        pen: false,    // Desactivar lapicero
+                        pen: false, // Desactivar lapicero
                         crayon: false, // Desactivar crayón
-                        brush: false,  // Desactivar pincel
+                        brush: false, // Desactivar pincel
                       )),
                     ),
                   ],
@@ -421,13 +421,18 @@ class HighlightButton extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // Calcular ancho disponible para los colores
-                double availableWidth = MediaQuery.of(context).size.width - 100; // Reservar espacio para márgenes
-                int totalColors = pastelColors.length + 1; // +1 para el botón de quitar
-                double maxCircleSize = (availableWidth / totalColors) - 8; // -8 para márgenes
-                double circleSize = maxCircleSize.clamp(16.0, 24.0); // Mínimo 16, máximo 24
-                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                double availableWidth = MediaQuery.of(context).size.width -
+                    100; // Reservar espacio para márgenes
+                int totalColors =
+                    pastelColors.length + 1; // +1 para el botón de quitar
+                double maxCircleSize =
+                    (availableWidth / totalColors) - 8; // -8 para márgenes
+                double circleSize =
+                    maxCircleSize.clamp(16.0, 24.0); // Mínimo 16, máximo 24
+                double spacing = (availableWidth - (totalColors * circleSize)) /
+                    (totalColors + 1);
                 spacing = spacing.clamp(2.0, 4.0); // Espaciado entre 2 y 4
-                
+
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -442,7 +447,8 @@ class HighlightButton extends StatelessWidget {
                                 child: Container(
                                   width: circleSize,
                                   height: circleSize,
-                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  margin: EdgeInsets.symmetric(
+                                      horizontal: spacing / 2),
                                   decoration: BoxDecoration(
                                     color: c,
                                     shape: BoxShape.circle,
@@ -576,9 +582,10 @@ class PencilButton extends StatelessWidget {
                 int totalColors = pencilColors.length + 1;
                 double maxCircleSize = (availableWidth / totalColors) - 8;
                 double circleSize = maxCircleSize.clamp(16.0, 24.0);
-                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                double spacing = (availableWidth - (totalColors * circleSize)) /
+                    (totalColors + 1);
                 spacing = spacing.clamp(2.0, 4.0);
-                
+
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -590,7 +597,8 @@ class PencilButton extends StatelessWidget {
                                 child: Container(
                                   width: circleSize,
                                   height: circleSize,
-                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  margin: EdgeInsets.symmetric(
+                                      horizontal: spacing / 2),
                                   decoration: BoxDecoration(
                                     color: c,
                                     shape: BoxShape.circle,
@@ -721,9 +729,10 @@ class PenButton extends StatelessWidget {
                 int totalColors = penColors.length + 1;
                 double maxCircleSize = (availableWidth / totalColors) - 8;
                 double circleSize = maxCircleSize.clamp(16.0, 24.0);
-                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                double spacing = (availableWidth - (totalColors * circleSize)) /
+                    (totalColors + 1);
                 spacing = spacing.clamp(2.0, 4.0);
-                
+
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -735,7 +744,8 @@ class PenButton extends StatelessWidget {
                                 child: Container(
                                   width: circleSize,
                                   height: circleSize,
-                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  margin: EdgeInsets.symmetric(
+                                      horizontal: spacing / 2),
                                   decoration: BoxDecoration(
                                     color: c,
                                     shape: BoxShape.circle,
@@ -866,9 +876,10 @@ class CrayonButton extends StatelessWidget {
                 int totalColors = crayonColors.length + 1;
                 double maxCircleSize = (availableWidth / totalColors) - 8;
                 double circleSize = maxCircleSize.clamp(16.0, 24.0);
-                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                double spacing = (availableWidth - (totalColors * circleSize)) /
+                    (totalColors + 1);
                 spacing = spacing.clamp(2.0, 4.0);
-                
+
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -880,7 +891,8 @@ class CrayonButton extends StatelessWidget {
                                 child: Container(
                                   width: circleSize,
                                   height: circleSize,
-                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  margin: EdgeInsets.symmetric(
+                                      horizontal: spacing / 2),
                                   decoration: BoxDecoration(
                                     color: c,
                                     shape: BoxShape.circle,
@@ -1011,9 +1023,10 @@ class BrushButton extends StatelessWidget {
                 int totalColors = brushColors.length + 1;
                 double maxCircleSize = (availableWidth / totalColors) - 8;
                 double circleSize = maxCircleSize.clamp(16.0, 24.0);
-                double spacing = (availableWidth - (totalColors * circleSize)) / (totalColors + 1);
+                double spacing = (availableWidth - (totalColors * circleSize)) /
+                    (totalColors + 1);
                 spacing = spacing.clamp(2.0, 4.0);
-                
+
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -1025,7 +1038,8 @@ class BrushButton extends StatelessWidget {
                                 child: Container(
                                   width: circleSize,
                                   height: circleSize,
-                                  margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+                                  margin: EdgeInsets.symmetric(
+                                      horizontal: spacing / 2),
                                   decoration: BoxDecoration(
                                     color: c,
                                     shape: BoxShape.circle,

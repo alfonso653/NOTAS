@@ -1,4 +1,3 @@
-// (Declaración de _dropInsertIndex movida a la clase correspondiente)
 import 'dart:async'; // Para Timer
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +20,7 @@ import 'note.dart';
 import 'note_provider.dart';
 import 'audio_mic_fab.dart';
 import 'camera_gallery_widget.dart';
-import 'mindmap_test_screen.dart';
+
 import 'mindmap_from_note_screen.dart';
 
 /// =========================
@@ -470,7 +469,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // OPTIMIZACIÓN: Debounce para _saveNote
   Timer? _saveDebounceTimer;
-  
+
   // OPTIMIZACIÓN: Cache para evitar cálculos repetitivos
   Timer? _contentRectUpdateTimer;
 
@@ -478,6 +477,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   final List<DrawingStroke> _drawingStrokes = <DrawingStroke>[];
   bool _isDrawingMode = false;
   DrawingStroke? _currentStroke;
+
+  // ========= Header Collapsible =========
+  bool _isHeaderCollapsed = false;
 
   // ========= Helpers =========
 
@@ -1091,6 +1093,225 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
+  // ========= Header Collapsible Methods =========
+
+  void _toggleHeaderCollapse() {
+    setState(() {
+      _isHeaderCollapsed = !_isHeaderCollapsed;
+    });
+    _saveHeaderCollapseState();
+  }
+
+  void _saveHeaderCollapseState() {
+    widget.note.isHeaderCollapsed = _isHeaderCollapsed;
+    _saveNote(pop: false);
+  }
+
+  void _loadHeaderCollapseState() {
+    _isHeaderCollapsed = widget.note.isHeaderCollapsed ?? false;
+  }
+
+  // ========= Header Flotante Mini - Widgets =========
+  
+  Widget _buildMiniFloatingHeader() {
+    return Row(
+      key: const ValueKey('mini'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Indicador de categoría minimalista
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: _categoriaController.text.isNotEmpty 
+                ? Colors.blue.shade400 
+                : Colors.grey.shade400,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        
+        // Texto de categoría ultra compacto
+        Expanded(
+          child: Text(
+            _categoriaController.text.isNotEmpty 
+                ? _categoriaController.text 
+                : 'Sin categoría',
+            style: TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              letterSpacing: 0.2,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+        
+        const SizedBox(width: 4),
+        
+        // Botón expandir ultra compacto
+        GestureDetector(
+          onTap: _toggleHeaderCollapse,
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade100.withOpacity(0.8),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.expand_more,
+              size: 12,
+              color: Colors.blue.shade600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExpandedFloatingHeader() {
+    return Column(
+      key: const ValueKey('expanded'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Primera fila: Fecha y hora
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200, width: 0.5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.access_time, size: 12, color: Colors.blue.shade600),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatDateTime(widget.note.date),
+                    style: TextStyle(
+                      color: Colors.blue.shade700,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            // Botón colapsar
+            GestureDetector(
+              onTap: _toggleHeaderCollapse,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: AnimatedRotation(
+                  turns: 0.5,
+                  duration: const Duration(milliseconds: 300),
+                  child: Icon(
+                    Icons.expand_less,
+                    size: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 8),
+        
+        // Segunda fila: Categoría y selector
+        Row(
+          children: [
+            // Indicador de categoría
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: _categoriaController.text.isNotEmpty 
+                    ? Colors.green.shade400 
+                    : Colors.grey.shade400,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            
+            // Texto de categoría
+            Expanded(
+              child: Text(
+                _categoriaController.text.isNotEmpty 
+                    ? _categoriaController.text 
+                    : 'Sin categoría',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            
+            const SizedBox(width: 8),
+            
+            // Selector de categoría compacto
+            GestureDetector(
+              onTap: () async {
+                final selected = await showMenu<String>(
+                  context: context,
+                  position: const RelativeRect.fromLTRB(200, 80, 16, 0),
+                  items: const [
+                    PopupMenuItem(value: 'Sermón', child: Text('📖  Sermón')),
+                    PopupMenuItem(value: 'Estudio Bíblico', child: Text('📚  Estudio Bíblico')),
+                    PopupMenuItem(value: 'Reflexión', child: Text('🤔  Reflexión')),
+                    PopupMenuItem(value: 'Devocional', child: Text('❤️  Devocional')),
+                    PopupMenuItem(value: 'Testimonio', child: Text('🌟  Testimonio')),
+                    PopupMenuItem(value: 'Apuntes Generales', child: Text('📓  Apuntes Generales')),
+                    PopupMenuItem(value: 'Discipulado', child: Text('🏫  Discipulado')),
+                    PopupMenuItem(value: 'Conexion', child: Text('🔗  Conexion')),
+                    PopupMenuItem(value: 'Música', child: Text('🎵  Música')),
+                    PopupMenuItem(value: 'Cita', child: Text('💬  Cita')),
+                    PopupMenuItem(value: 'Versículo', child: Text('📜  Versículo')),
+                    PopupMenuItem(value: 'Oración', child: Text('🙏  Oración')),
+                    PopupMenuItem(value: 'Culto', child: Text('⛪  Culto')),
+                    PopupMenuItem(value: 'Otro', child: Text('🌀  Otro')),
+                  ],
+                );
+                if (selected != null) {
+                  setState(() {
+                    _categoriaController.text = selected;
+                  });
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200, width: 0.5),
+                ),
+                child: Icon(
+                  Icons.folder_outlined,
+                  size: 14,
+                  color: Colors.orange.shade600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   void _saveNote({bool pop = false}) {
     // OPTIMIZACIÓN: Cancelar timer anterior y programar nuevo guardado
     _saveDebounceTimer?.cancel();
@@ -1115,12 +1336,15 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         partsToSave.add(
           _TextPart(
             pendingText,
-            _contentFormat.bold,    // RESTAURADO: negrilla se aplica al texto principal
-            _contentFormat.underline, // RESTAURADO: subrayado se aplica al texto principal
+            _contentFormat
+                .bold, // RESTAURADO: negrilla se aplica al texto principal
+            _contentFormat
+                .underline, // RESTAURADO: subrayado se aplica al texto principal
             _contentFormat.underline
                 ? _contentFormat.underlineColor.value
                 : null,
-            _contentFormat.highlight, // RESTAURADO: resaltado se aplica al texto principal
+            _contentFormat
+                .highlight, // RESTAURADO: resaltado se aplica al texto principal
             _contentFormat.highlight
                 ? _contentFormat.highlightColor.value
                 : null,
@@ -1177,7 +1401,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       // OPTIMIZADO: Solo recalcular área de contenido
       if (mounted) {
         _scheduleUpdateContentRect();
-        
+
         // CORREGIDO: Actualizar trazos de dibujo solo si hay algunos
         if (_drawingStrokes.isNotEmpty || _currentStroke != null) {
           setState(() {});
@@ -1220,6 +1444,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _categoriaController.addListener(_onAnyChange);
     _hiddenController.addListener(_onAnyChange);
 
+    // Cargar estado del header collapsible
+    _loadHeaderCollapseState();
+
     // Restaurar imágenes y textos flotantes
     _floatingImages.clear();
     for (final img in widget.note.floatingImages) {
@@ -1259,8 +1486,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     // OPTIMIZACIÓN: Limpiar timers para evitar memory leaks
     _saveDebounceTimer?.cancel();
     _contentRectUpdateTimer?.cancel();
-    
-    _performSave(pop: false); // Guardado final sin debounce
+
+    // Solo guardar si el widget aún está montado
+    if (mounted) {
+      _performSave(pop: false); // Guardado final sin debounce
+    }
     _blinkController.dispose();
     _titleController.removeListener(_onAnyChange);
     _categoriaController.removeListener(_onAnyChange);
@@ -1429,129 +1659,62 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             // ---- Contenido principal (debajo) ----
             Column(
               children: [
-                // Cabecera (fecha/categoría)
-                Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                // Header Flotante Mini - Compacto y elegante
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOutCubic,
+                  margin: EdgeInsets.symmetric(
+                    horizontal: _isHeaderCollapsed ? 50 : 10,
+                    vertical: _isHeaderCollapsed ? 4 : 8,
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: _isHeaderCollapsed ? 8 : 16,
+                    vertical: _isHeaderCollapsed ? 6 : 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
+                    gradient: LinearGradient(
+                      colors: _isHeaderCollapsed
+                          ? [
+                              Colors.blue.shade50.withOpacity(0.95),
+                              Colors.white.withOpacity(0.95),
+                            ]
+                          : [
+                              Colors.white.withOpacity(0.85),
+                              Colors.blue.shade50.withOpacity(0.85),
+                            ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(_isHeaderCollapsed ? 20 : 12),
+                    border: Border.all(
+                      color: _isHeaderCollapsed 
+                          ? Colors.blue.shade200.withOpacity(0.7)
+                          : Colors.grey.shade300,
+                      width: _isHeaderCollapsed ? 1 : 1.5,
+                    ),
+                    boxShadow: [
                       BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 6,
-                          offset: Offset(0, 2)),
+                        color: Colors.black.withOpacity(_isHeaderCollapsed ? 0.06 : 0.12),
+                        blurRadius: _isHeaderCollapsed ? 3 : 6,
+                        offset: Offset(0, _isHeaderCollapsed ? 1 : 2),
+                        spreadRadius: _isHeaderCollapsed ? 0 : 0.5,
+                      ),
                     ],
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(6),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 350),
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(
+                        scale: animation,
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
                         ),
-                        child: const Text('⏳',
-                            style:
-                                TextStyle(fontSize: 16, color: Colors.black)),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _formatDateTime(widget.note.date),
-                              style: const TextStyle(
-                                  color: Colors.black54, fontSize: 13.5),
-                            ),
-                            if (_categoriaController.text.isNotEmpty)
-                              Row(
-                                children: [
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      _categoriaController.text,
-                                      style: const TextStyle(
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.normal,
-                                        fontSize: 13.5,
-                                        shadows: [
-                                          Shadow(
-                                            blurRadius: 1.5,
-                                            color: Colors.black12,
-                                            offset: Offset(0, 1),
-                                          )
-                                        ],
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Text('📂',
-                            style:
-                                TextStyle(fontSize: 18, color: Colors.black)),
-                        onPressed: () async {
-                          final selected = await showMenu<String>(
-                            context: context,
-                            position:
-                                const RelativeRect.fromLTRB(200, 80, 16, 0),
-                            items: const [
-                              PopupMenuItem(
-                                  value: 'Sermón', child: Text('📖  Sermón')),
-                              PopupMenuItem(
-                                  value: 'Estudio Bíblico',
-                                  child: Text('📚  Estudio Bíblico')),
-                              PopupMenuItem(
-                                  value: 'Reflexión',
-                                  child: Text('🤔  Reflexión')),
-                              PopupMenuItem(
-                                  value: 'Devocional',
-                                  child: Text('❤️  Devocional')),
-                              PopupMenuItem(
-                                  value: 'Testimonio',
-                                  child: Text('🌟  Testimonio')),
-                              PopupMenuItem(
-                                  value: 'Apuntes Generales',
-                                  child: Text('📓  Apuntes Generales')),
-                              PopupMenuItem(
-                                  value: 'Discipulado',
-                                  child: Text('🏫  Discipulado')),
-                              PopupMenuItem(
-                                  value: 'Conexion',
-                                  child: Text('🔗  Conexion')),
-                              PopupMenuItem(
-                                  value: 'Música', child: Text('🎵  Música')),
-                              PopupMenuItem(
-                                  value: 'Cita', child: Text('💬  Cita')),
-                              PopupMenuItem(
-                                  value: 'Versículo',
-                                  child: Text('📜  Versículo')),
-                              PopupMenuItem(
-                                  value: 'Oración', child: Text('🙏  Oración')),
-                              PopupMenuItem(
-                                  value: 'Culto', child: Text('⛪  Culto')),
-                              PopupMenuItem(
-                                  value: 'Otro', child: Text('🌀  Otro')),
-                            ],
-                          );
-                          if (selected != null) {
-                            setState(() {
-                              _categoriaController.text = selected;
-                            });
-                          }
-                        },
-                        tooltip: 'Seleccionar categoría',
-                      ),
-                    ],
+                      );
+                    },
+                    child: _isHeaderCollapsed
+                        ? _buildMiniFloatingHeader()
+                        : _buildExpandedFloatingHeader(),
                   ),
                 ),
 
@@ -2327,31 +2490,36 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         value: _contentFormat,
                         onChanged: (val) {
                           // Comportamiento DIFERENTE para los 3 primeros vs los 4 nuevos
-                          
+
                           // CORREGIDO: Detectar CUALQUIER cambio en formatos de texto (activar, desactivar o cambiar)
-                          bool textFormatChanged = (val.bold != _contentFormat.bold) ||
-                                                  (val.underline != _contentFormat.underline) ||
-                                                  (val.highlight != _contentFormat.highlight);
-                          
+                          bool textFormatChanged =
+                              (val.bold != _contentFormat.bold) ||
+                                  (val.underline != _contentFormat.underline) ||
+                                  (val.highlight != _contentFormat.highlight);
+
                           if (textFormatChanged) {
-                            
                             // Guardar texto actual si existe
-                            final String currentText = _hiddenController.text.trim();
+                            final String currentText =
+                                _hiddenController.text.trim();
                             if (currentText.isNotEmpty) {
                               setState(() {
                                 _contentParts.add(_TextPart(
                                   currentText,
                                   _contentFormat.bold,
                                   _contentFormat.underline,
-                                  _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                                  _contentFormat.underline
+                                      ? _contentFormat.underlineColor.value
+                                      : null,
                                   _contentFormat.highlight,
-                                  _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+                                  _contentFormat.highlight
+                                      ? _contentFormat.highlightColor.value
+                                      : null,
                                   false,
                                 ));
                               });
                               _hiddenController.clear();
                             }
-                            
+
                             // Aplicar el formato COMPLETO nuevo (sin arrastrar efectos anteriores)
                             setState(() {
                               _contentFormat = _contentFormat.copyWith(
@@ -2373,18 +2541,22 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 eraser: _contentFormat.eraser,
                               );
                             });
-                            
+
                             _saveNote(pop: false);
-                            
+
                             // ✨ NUEVO: No cerrar panel automáticamente - permitir preview en tiempo real
                             // El usuario puede ver el efecto inmediatamente y cerrar manualmente
                             return;
                           }
-                          
+
                           // SIMPLIFICADO: Detectar cambio de color (sin cerrar panel)
-                          bool colorChanged = (val.underline && val.underlineColor != _contentFormat.underlineColor) ||
-                                            (val.highlight && val.highlightColor != _contentFormat.highlightColor);
-                          
+                          bool colorChanged = (val.underline &&
+                                  val.underlineColor !=
+                                      _contentFormat.underlineColor) ||
+                              (val.highlight &&
+                                  val.highlightColor !=
+                                      _contentFormat.highlightColor);
+
                           if (colorChanged && !textFormatChanged) {
                             // Solo cambio de color, sin cambio de formato
                             setState(() {
@@ -2396,7 +2568,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             _saveNote(pop: false);
                             return;
                           }
-                          
+
                           // ✨ PREVIEW EN TIEMPO REAL: Para cualquier cambio de formato
                           setState(() {
                             _contentFormat = val;

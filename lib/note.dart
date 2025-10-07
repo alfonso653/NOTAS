@@ -16,6 +16,7 @@ class Note {
   List<Map<String, dynamic>> floatingImages;
   List<Map<String, dynamic>> floatingTexts;
   List<Map<String, dynamic>> drawingStrokes; // Trazos de dibujo libre
+  bool? isHeaderCollapsed; // Estado de cabecera colapsada
 
   Note({
     required this.id,
@@ -32,6 +33,7 @@ class Note {
     List<Map<String, dynamic>>? drawingStrokes,
     this.mindMapNodes,
     this.mindMapConnections,
+    this.isHeaderCollapsed,
   })  : floatingImages = floatingImages ?? [],
         floatingTexts = floatingTexts ?? [],
         drawingStrokes = drawingStrokes ?? [];
@@ -76,7 +78,7 @@ class Note {
               .map((e) => Map<String, dynamic>.from(e))
               .toList()
           : null,
-    );
+    )..isHeaderCollapsed = json['isHeaderCollapsed'];
   }
 
   Map<String, dynamic> toJson() {
@@ -95,6 +97,7 @@ class Note {
       'drawingStrokes': drawingStrokes,
       if (mindMapNodes != null) 'mindMapNodes': mindMapNodes,
       if (mindMapConnections != null) 'mindMapConnections': mindMapConnections,
+      if (isHeaderCollapsed != null) 'isHeaderCollapsed': isHeaderCollapsed,
     };
   }
 }
