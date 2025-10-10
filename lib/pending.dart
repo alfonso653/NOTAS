@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Modelo de tarea pendiente
@@ -11,6 +12,7 @@ class PendingTask {
   DateTime dateTime;
   DateTime? endDateTime; // Hora de finalización opcional
   bool completed;
+  String colorHex; // Color de la tarea en formato hexadecimal
 
   PendingTask({
     required this.id,
@@ -20,6 +22,7 @@ class PendingTask {
     required this.dateTime,
     this.endDateTime,
     this.completed = false,
+    this.colorHex = '#6B73FF', // Color azul por defecto
   });
 
   Map<String, dynamic> toJson() => {
@@ -30,6 +33,7 @@ class PendingTask {
         'dateTime': dateTime.toIso8601String(),
         'endDateTime': endDateTime?.toIso8601String(),
         'completed': completed,
+        'colorHex': colorHex,
       };
 
   factory PendingTask.fromJson(Map<String, dynamic> json) => PendingTask(
@@ -40,6 +44,7 @@ class PendingTask {
         dateTime: DateTime.parse(json['dateTime'] as String),
         endDateTime: json['endDateTime'] != null ? DateTime.parse(json['endDateTime'] as String) : null,
         completed: (json['completed'] as bool?) ?? false,
+        colorHex: json['colorHex'] as String? ?? '#6B73FF',
       );
 
   /// Duración de la tarea en minutos
@@ -75,6 +80,9 @@ class PendingTask {
     final overlapMinutes = taskEnd.difference(taskStart).inMinutes;
     return overlapMinutes / 60.0;
   }
+
+  /// Obtiene el color de la tarea como objeto Color de Flutter
+  Color get color => TaskColors.hexToColor(colorHex);
 }
 
 /// Provider para gestionar tareas de la agenda
@@ -140,5 +148,51 @@ class PendingProvider extends ChangeNotifier {
       _saveTasks();
       notifyListeners();
     }
+  }
+}
+
+/// Paleta de colores pasteles para las tareas
+class TaskColors {
+  static const List<String> pastelColors = [
+    '#6B73FF', // Azul (default)
+    '#FF4757', // Rojo vibrante
+    '#2ED573', // Verde lima
+    '#FFA502', // Naranja brillante
+    '#FF6B9D', // Rosa fucsia
+    '#5352ED', // Púrpura
+    '#FF3838', // Rojo coral
+    '#00D2D3', // Turquesa
+    '#FFD32A', // Amarillo sol
+    '#FF9F43', // Mandarina
+    '#A4B0BE', // Gris azulado
+    '#8B5CF6', // Violeta
+    '#06FFA5', // Verde neón
+    '#F8B500', // Ámbar
+    '#E056FD', // Magenta
+    '#26C6DA', // Cian
+    '#FF7675', // Salmón claro
+    '#74B9FF', // Azul cielo
+    '#FDCB6E', // Dorado suave
+    '#6C5CE7', // Índigo
+  ];
+
+  static const List<String> colorNames = [
+    'Azul', 'Rojo', 'Lima', 'Naranja', 'Fucsia',
+    'Púrpura', 'Coral', 'Turquesa', 'Sol', 'Mandarina',
+    'Gris', 'Violeta', 'Neón', 'Ámbar', 'Magenta',
+    'Cian', 'Salmón', 'Cielo', 'Dorado', 'Índigo'
+  ];
+
+  /// Convierte color hex a Color de Flutter
+  static Color hexToColor(String hexString) {
+    final buffer = StringBuffer();
+    if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
+    buffer.write(hexString.replaceFirst('#', ''));
+    return Color(int.parse(buffer.toString(), radix: 16));
+  }
+
+  /// Convierte Color de Flutter a hex
+  static String colorToHex(Color color) {
+    return '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
   }
 }

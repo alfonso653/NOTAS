@@ -72,6 +72,7 @@ flutter:
     - assets/fontsabc/color_picker.png
     - assets/borrador.png
     - assets/crayon.png
+    - assets/data/calendar/
 
   fonts:
     - family: Nunito

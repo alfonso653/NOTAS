@@ -260,7 +260,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                 decoration: BoxDecoration(
                   color: task.completed 
                       ? Colors.grey[300]
-                      : const Color(0xFF6B73FF),
+                      : task.color,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
@@ -569,6 +569,7 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
   int? _endHour;
   int? _endMinute;
   bool _hasEndTime = false;
+  String _selectedColorHex = TaskColors.pastelColors[0]; // Color por defecto
   
   static bool _lastEndTimePreference = false; // Recordar la última preferencia
 
@@ -629,6 +630,62 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
                 border: OutlineInputBorder(),
               ),
               maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            
+            // Color Selector
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Color',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 50,
+                  child: GridView.builder(
+                    scrollDirection: Axis.horizontal,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 1.0,
+                      crossAxisSpacing: 3,
+                      mainAxisSpacing: 3,
+                    ),
+                    itemCount: TaskColors.pastelColors.length,
+                    itemBuilder: (context, index) {
+                      final colorHex = TaskColors.pastelColors[index];
+                      final colorName = TaskColors.colorNames[index];
+                      final color = TaskColors.hexToColor(colorHex);
+                      final isSelected = _selectedColorHex == colorHex;
+                      
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedColorHex = colorHex;
+                          });
+                        },
+                        child: Tooltip(
+                          message: colorName,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected ? Colors.black87 : Colors.grey[300]!,
+                                width: isSelected ? 2.5 : 0.8,
+                              ),
+                            ),
+                            child: isSelected 
+                              ? const Icon(Icons.check, color: Colors.white, size: 14)
+                              : null,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             
@@ -788,6 +845,18 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
           _endHour!,
           _endMinute!,
         );
+        
+        // Verificar que la hora de fin sea posterior a la hora de inicio
+        if (!endDateTime.isAfter(taskDateTime)) {
+          // Si la hora de fin es antes o igual a la hora de inicio, mostrar error
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('La hora de finalización debe ser posterior a la hora de inicio'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return; // No guardar la tarea
+        }
       }
 
       final task = PendingTask(
@@ -797,7 +866,15 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
         categoria: 'Agenda',
         dateTime: taskDateTime,
         endDateTime: endDateTime,
+        colorHex: _selectedColorHex,
       );
+
+      // Debug: Imprimir información de la tarea
+      print('🔍 GUARDANDO TAREA:');
+      print('📝 Título: ${task.title}');
+      print('🕐 Inicio: ${taskDateTime.hour}:${taskDateTime.minute.toString().padLeft(2, '0')}');
+      print('🕑 Fin: ${endDateTime?.hour}:${endDateTime?.minute.toString().padLeft(2, '0')}');
+      print('⏱️ Duración: ${endDateTime != null ? endDateTime.difference(taskDateTime).inMinutes : 'Sin fin'} minutos');
 
       widget.pendingProvider.addTask(task);
       Navigator.of(context).pop();
@@ -830,6 +907,7 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
   int? _endHour;
   int? _endMinute;
   bool _hasEndTime = false;
+  late String _selectedColorHex;
 
   @override
   void initState() {
@@ -839,6 +917,7 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
     _descriptionController.text = widget.task.description;
     _selectedHour = widget.task.dateTime.hour;
     _selectedMinute = widget.task.dateTime.minute;
+    _selectedColorHex = widget.task.colorHex;
     
     // Configurar hora de finalización si existe
     if (widget.task.endDateTime != null) {
@@ -893,6 +972,62 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
                 border: OutlineInputBorder(),
               ),
               maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            
+            // Color Selector
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Color',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 50,
+                  child: GridView.builder(
+                    scrollDirection: Axis.horizontal,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 1.0,
+                      crossAxisSpacing: 3,
+                      mainAxisSpacing: 3,
+                    ),
+                    itemCount: TaskColors.pastelColors.length,
+                    itemBuilder: (context, index) {
+                      final colorHex = TaskColors.pastelColors[index];
+                      final colorName = TaskColors.colorNames[index];
+                      final color = TaskColors.hexToColor(colorHex);
+                      final isSelected = _selectedColorHex == colorHex;
+                      
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedColorHex = colorHex;
+                          });
+                        },
+                        child: Tooltip(
+                          message: colorName,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected ? Colors.black87 : Colors.grey[300]!,
+                                width: isSelected ? 2.5 : 0.8,
+                              ),
+                            ),
+                            child: isSelected 
+                              ? const Icon(Icons.check, color: Colors.white, size: 14)
+                              : null,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             
@@ -1051,6 +1186,18 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
           _endHour!,
           _endMinute!,
         );
+        
+        // Verificar que la hora de fin sea posterior a la hora de inicio
+        if (!endDateTime.isAfter(taskDateTime)) {
+          // Si la hora de fin es antes o igual a la hora de inicio, mostrar error
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('La hora de finalización debe ser posterior a la hora de inicio'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return; // No actualizar la tarea
+        }
       }
 
       // Actualizar la tarea existente
@@ -1062,6 +1209,7 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
         dateTime: taskDateTime,
         endDateTime: endDateTime,
         completed: widget.task.completed, // Mantener el estado de completado
+        colorHex: _selectedColorHex,
       );
 
       widget.pendingProvider.updateTask(updatedTask);

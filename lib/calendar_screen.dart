@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'pending.dart';
 import 'day_view_screen.dart';
+import 'daily_verse_widget.dart';
 
 /// Pantalla principal del calendario infinito
 class CalendarScreen extends StatefulWidget {
@@ -185,9 +186,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
               
-              // Calendario fijo (sin PageView)
+              // Calendario - Ahora más compacto para hacer espacio al versículo
               Expanded(
+                flex: 3, // 3/5 del espacio disponible para el calendario
                 child: _buildCalendarGrid(_focusedMonth, provider.tasks),
+              ),
+              
+              // Área para versículo diario (el área roja que marcaste)
+              Expanded(
+                flex: 2, // 2/5 del espacio disponible para el versículo
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.all(16),
+                  child: DailyVerseWidget(
+                    selectedDate: _selectedDate,
+                  ),
+                ),
               ),
             ],
           ),
