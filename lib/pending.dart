@@ -39,7 +39,7 @@ class PendingTask {
       );
 }
 
-/// Provider para gestionar tareas pendientes
+/// Provider para gestionar tareas de la agenda
 class PendingProvider extends ChangeNotifier {
   List<PendingTask> tasks = [];
 

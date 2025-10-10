@@ -1605,8 +1605,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       if (mounted) {
         _scheduleUpdateContentRect();
 
-        // CORREGIDO: Actualizar trazos de dibujo solo si hay algunos
-        if (_drawingStrokes.isNotEmpty || _currentStroke != null) {
+        // CORREGIDO: Actualizar trazos de dibujo, imágenes flotantes y textos flotantes cuando hay scroll
+        if (_drawingStrokes.isNotEmpty || _currentStroke != null || _floatingImages.isNotEmpty || _floatingTexts.isNotEmpty) {
           setState(() {});
         }
       }
@@ -2406,7 +2406,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               contentPadding: EdgeInsets.only(
                                   left: 0, right: 8, top: 10, bottom: 10),
                               hintText:
-                                  'Escribe aquí...\n\nPresiona Enter para crear párrafos separados',
+                                  'Construye...',
                               fillColor: Colors.transparent,
                               filled: true,
                             ),

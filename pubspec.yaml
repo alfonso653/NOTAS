@@ -22,6 +22,7 @@ dependencies:
   auto_size_text: ^3.0.0
   image_picker: ^1.0.7
   permission_handler: ^11.0.0
+  intl: ^0.18.0
 
   # (Opcionales: solo si los usas en otras partes de tu app)
   screenshot: ^2.1.0

@@ -8,6 +8,7 @@ import 'notes_module.dart';
 import 'note.dart';
 import 'note_provider.dart';
 import 'pending.dart';
+import 'calendar_screen.dart';
 
 void main() {
   runApp(const NotesApp());
@@ -552,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
           child: Text(
-            _selectedIndex == 0 ? 'Enseñanzas' : 'Pendientes',
+            _selectedIndex == 0 ? 'Enseñanzas' : 'Agenda',
             key: ValueKey(_selectedIndex),
             style: const TextStyle(
               fontFamily: 'Nunito',
@@ -712,7 +713,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             )
-          : const PendingScreen(),
+          : const CalendarScreen(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -731,7 +732,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Image.asset('assets/pendientes.gif', width: 28, height: 28),
             activeIcon:
                 Image.asset('assets/pendientes.gif', width: 32, height: 32),
-            label: 'Pendientes',
+            label: 'Agenda',
           ),
         ],
       ),
@@ -950,7 +951,7 @@ class NoteListScreen extends StatelessWidget {
   }
 }
 
-// --- Pantalla de pendientes ---
+// --- Pantalla de agenda ---
 class PendingScreen extends StatelessWidget {
   const PendingScreen(
       {Key? key, this.searchQuery = '', this.searchCategory = ''})
@@ -1010,7 +1011,7 @@ class PendingScreen extends StatelessWidget {
                     if (pending.isEmpty)
                       const Padding(
                         padding: EdgeInsets.only(top: 32),
-                        child: Text('No tienes tareas pendientes.',
+                        child: Text('No tienes tareas en tu agenda.',
                             style: TextStyle(color: Colors.grey)),
                       ),
                     ...pending.map((task) => TaskCard(
