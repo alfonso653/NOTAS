@@ -27,17 +27,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _selectedDate = _today; // Siempre empezar con la fecha actual seleccionada
     _focusedMonth = DateTime(_today.year, _today.month, 1);
     _scrollController = ScrollController();
-    
+
     // Actualizar la fecha actual cada minuto
     _startDateUpdateTimer();
   }
-  
+
   void _startDateUpdateTimer() {
     Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) {
         final newToday = DateTime.now();
-        if (_today.day != newToday.day || 
-            _today.month != newToday.month || 
+        if (_today.day != newToday.day ||
+            _today.month != newToday.month ||
             _today.year != newToday.year) {
           setState(() {
             _today = newToday;
@@ -48,8 +48,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     });
   }
-
-
 
   @override
   void dispose() {
@@ -72,7 +70,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   /// Obtiene las tareas para una fecha específica
-  List<PendingTask> _getTasksForDate(DateTime date, List<PendingTask> allTasks) {
+  List<PendingTask> _getTasksForDate(
+      DateTime date, List<PendingTask> allTasks) {
     return allTasks.where((task) {
       return task.dateTime.year == date.year &&
           task.dateTime.month == date.month &&
@@ -132,7 +131,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     color: const Color(0xFF6B73FF).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.today, color: Color(0xFF6B73FF), size: 20),
+                  child: const Icon(Icons.today,
+                      color: Color(0xFF6B73FF), size: 20),
                 ),
                 onPressed: () {
                   final now = DateTime.now();
@@ -149,7 +149,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             children: [
               // Header con días de la semana
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -170,28 +171,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
               // Controles de navegación de mes
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.chevron_left, color: Color(0xFF6B73FF)),
+                      icon: const Icon(Icons.chevron_left,
+                          color: Color(0xFF6B73FF)),
                       onPressed: _previousMonth,
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.chevron_right, color: Color(0xFF6B73FF)),
+                      icon: const Icon(Icons.chevron_right,
+                          color: Color(0xFF6B73FF)),
                       onPressed: _nextMonth,
                     ),
                   ],
                 ),
               ),
-              
+
               // Calendario - Ahora más compacto para hacer espacio al versículo
               Expanded(
                 flex: 3, // 3/5 del espacio disponible para el calendario
                 child: _buildCalendarGrid(_focusedMonth, provider.tasks),
               ),
-              
+
               // Área para versículo diario (el área roja que marcaste)
               Expanded(
                 flex: 2, // 2/5 del espacio disponible para el versículo
@@ -216,9 +220,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final lastDayOfMonth = DateTime(monthDate.year, monthDate.month + 1, 0);
     final firstDayWeekday = firstDayOfMonth.weekday % 7; // Domingo = 0
     final daysInMonth = lastDayOfMonth.day;
-    
+
     // Debug: Verificar que el mes se está calculando correctamente
-    print('📅 Mostrando: ${DateFormat('MMMM yyyy').format(monthDate)} - Días: $daysInMonth');
+    print(
+        '📅 Mostrando: ${DateFormat('MMMM yyyy').format(monthDate)} - Días: $daysInMonth');
 
     return GridView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -233,7 +238,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (index < firstDayWeekday) {
           // Días del mes anterior
           final prevMonth = DateTime(monthDate.year, monthDate.month - 1, 1);
-          final lastDayPrevMonth = DateTime(monthDate.year, monthDate.month, 0).day;
+          final lastDayPrevMonth =
+              DateTime(monthDate.year, monthDate.month, 0).day;
           final day = lastDayPrevMonth - (firstDayWeekday - index - 1);
           final date = DateTime(prevMonth.year, prevMonth.month, day);
           return _buildCalendarDay(date, allTasks, isOtherMonth: true);
@@ -254,7 +260,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   /// Construye un día individual del calendario
-  Widget _buildCalendarDay(DateTime date, List<PendingTask> allTasks, {bool isOtherMonth = false}) {
+  Widget _buildCalendarDay(DateTime date, List<PendingTask> allTasks,
+      {bool isOtherMonth = false}) {
     final tasks = _getTasksForDate(date, allTasks);
     final isSelected = _selectedDate.year == date.year &&
         _selectedDate.month == date.month &&
@@ -312,7 +319,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       borderRadius: BorderRadius.circular(10),
                     )
                   : null,
-              padding: isToday 
+              padding: isToday
                   ? const EdgeInsets.symmetric(horizontal: 6, vertical: 2)
                   : EdgeInsets.zero,
               child: Text(
@@ -335,45 +342,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   : SingleChildScrollView(
                       child: Column(
                         children: tasks.take(3).map((task) {
-                          return Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.only(top: 1),
-                            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: task.completed
-                                  ? Colors.grey.withOpacity(0.3)
-                                  : const Color(0xFF6B73FF).withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: Text(
-                              task.title,
-                              style: TextStyle(
-                                fontSize: 8,
-                                color: task.completed ? Colors.grey[600] : Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList() +
-                        (tasks.length > 3
-                            ? [
-                                Container(
-                                  width: double.infinity,
-                                  margin: const EdgeInsets.only(top: 1),
-                                  child: Text(
-                                    '+${tasks.length - 3} más',
-                                    style: const TextStyle(
-                                      fontSize: 7,
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
+                              return Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(top: 1),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 2, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: task.completed
+                                      ? Colors.grey.withOpacity(0.3)
+                                      : const Color(0xFF6B73FF)
+                                          .withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(2),
                                 ),
-                              ]
-                            : []),
+                                child: Text(
+                                  task.title,
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: task.completed
+                                        ? Colors.grey[600]
+                                        : Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList() +
+                            (tasks.length > 3
+                                ? [
+                                    Container(
+                                      width: double.infinity,
+                                      margin: const EdgeInsets.only(top: 1),
+                                      child: Text(
+                                        '+${tasks.length - 3} más',
+                                        style: const TextStyle(
+                                          fontSize: 7,
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ]
+                                : []),
                       ),
                     ),
             ),
@@ -382,10 +393,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-
-
-
-
 
   /// Selector de mes y año
   void _showMonthYearSelector() {
@@ -480,8 +487,18 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
 
   Widget _buildMonthGrid() {
     const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre'
     ];
 
     return GridView.builder(
@@ -495,7 +512,7 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
       itemBuilder: (context, index) {
         final month = index + 1;
         final isSelected = month == selectedMonth;
-        
+
         return GestureDetector(
           onTap: () {
             widget.onDateSelected(DateTime(selectedYear, month, 1));
@@ -523,8 +540,9 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
   Widget _buildYearGrid() {
     final currentYear = DateTime.now().year;
     final startYear = currentYear - 20; // Más años hacia atrás
-    final endYear = currentYear + 20;   // Más años hacia adelante (total ~40 años)
-    
+    final endYear =
+        currentYear + 20; // Más años hacia adelante (total ~40 años)
+
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
@@ -536,7 +554,7 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
       itemBuilder: (context, index) {
         final year = startYear + index;
         final isSelected = year == selectedYear;
-        
+
         return GestureDetector(
           onTap: () {
             setState(() {

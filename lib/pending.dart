@@ -42,7 +42,9 @@ class PendingTask {
         description: json['description'] as String? ?? '',
         categoria: json['categoria'] as String? ?? '',
         dateTime: DateTime.parse(json['dateTime'] as String),
-        endDateTime: json['endDateTime'] != null ? DateTime.parse(json['endDateTime'] as String) : null,
+        endDateTime: json['endDateTime'] != null
+            ? DateTime.parse(json['endDateTime'] as String)
+            : null,
         completed: (json['completed'] as bool?) ?? false,
         colorHex: json['colorHex'] as String? ?? '#6B73FF',
       );
@@ -67,7 +69,8 @@ class PendingTask {
       return dateTime.hour == hour ? 1.0 : 0.0;
     }
 
-    final hourStart = DateTime(dateTime.year, dateTime.month, dateTime.day, hour);
+    final hourStart =
+        DateTime(dateTime.year, dateTime.month, dateTime.day, hour);
     final hourEnd = hourStart.add(const Duration(hours: 1));
 
     final taskStart = dateTime.isAfter(hourStart) ? dateTime : hourStart;
@@ -177,10 +180,26 @@ class TaskColors {
   ];
 
   static const List<String> colorNames = [
-    'Azul', 'Rojo', 'Lima', 'Naranja', 'Fucsia',
-    'Púrpura', 'Coral', 'Turquesa', 'Sol', 'Mandarina',
-    'Gris', 'Violeta', 'Neón', 'Ámbar', 'Magenta',
-    'Cian', 'Salmón', 'Cielo', 'Dorado', 'Índigo'
+    'Azul',
+    'Rojo',
+    'Lima',
+    'Naranja',
+    'Fucsia',
+    'Púrpura',
+    'Coral',
+    'Turquesa',
+    'Sol',
+    'Mandarina',
+    'Gris',
+    'Violeta',
+    'Neón',
+    'Ámbar',
+    'Magenta',
+    'Cian',
+    'Salmón',
+    'Cielo',
+    'Dorado',
+    'Índigo'
   ];
 
   /// Convierte color hex a Color de Flutter

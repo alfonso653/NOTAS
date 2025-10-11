@@ -1129,11 +1129,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   void _loadFloatingButtonsCollapseState() {
-    _isFloatingButtonsCollapsed = widget.note.isFloatingButtonsCollapsed ?? false;
+    _isFloatingButtonsCollapsed =
+        widget.note.isFloatingButtonsCollapsed ?? false;
   }
 
   // ========= Header Flotante Mini - Widgets =========
-  
+
   Widget _buildMiniFloatingHeader() {
     return Row(
       key: const ValueKey('mini'),
@@ -1144,19 +1145,19 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: _categoriaController.text.isNotEmpty 
-                ? Colors.blue.shade400 
+            color: _categoriaController.text.isNotEmpty
+                ? Colors.blue.shade400
                 : Colors.grey.shade400,
             shape: BoxShape.circle,
           ),
         ),
         const SizedBox(width: 6),
-        
+
         // Texto de categoría ultra compacto
         Expanded(
           child: Text(
-            _categoriaController.text.isNotEmpty 
-                ? _categoriaController.text 
+            _categoriaController.text.isNotEmpty
+                ? _categoriaController.text
                 : 'Sin categoría',
             style: TextStyle(
               color: Colors.black87,
@@ -1168,9 +1169,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             maxLines: 1,
           ),
         ),
-        
+
         const SizedBox(width: 4),
-        
+
         // Botón expandir ultra compacto
         GestureDetector(
           onTap: _toggleHeaderCollapse,
@@ -1211,7 +1212,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.access_time, size: 12, color: Colors.blue.shade600),
+                  Icon(Icons.access_time,
+                      size: 12, color: Colors.blue.shade600),
                   const SizedBox(width: 4),
                   Text(
                     _formatDateTime(widget.note.date),
@@ -1247,9 +1249,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ),
           ],
         ),
-        
+
         const SizedBox(height: 8),
-        
+
         // Segunda fila: Categoría y selector
         Row(
           children: [
@@ -1258,19 +1260,19 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               width: 10,
               height: 10,
               decoration: BoxDecoration(
-                color: _categoriaController.text.isNotEmpty 
-                    ? Colors.green.shade400 
+                color: _categoriaController.text.isNotEmpty
+                    ? Colors.green.shade400
                     : Colors.grey.shade400,
                 shape: BoxShape.circle,
               ),
             ),
             const SizedBox(width: 8),
-            
+
             // Texto de categoría
             Expanded(
               child: Text(
-                _categoriaController.text.isNotEmpty 
-                    ? _categoriaController.text 
+                _categoriaController.text.isNotEmpty
+                    ? _categoriaController.text
                     : 'Sin categoría',
                 style: TextStyle(
                   color: Colors.black87,
@@ -1281,9 +1283,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 maxLines: 1,
               ),
             ),
-            
+
             const SizedBox(width: 8),
-            
+
             // Selector de categoría compacto
             GestureDetector(
               onTap: () async {
@@ -1292,16 +1294,26 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   position: const RelativeRect.fromLTRB(200, 80, 16, 0),
                   items: const [
                     PopupMenuItem(value: 'Sermón', child: Text('📖  Sermón')),
-                    PopupMenuItem(value: 'Estudio Bíblico', child: Text('📚  Estudio Bíblico')),
-                    PopupMenuItem(value: 'Reflexión', child: Text('🤔  Reflexión')),
-                    PopupMenuItem(value: 'Devocional', child: Text('❤️  Devocional')),
-                    PopupMenuItem(value: 'Testimonio', child: Text('🌟  Testimonio')),
-                    PopupMenuItem(value: 'Apuntes Generales', child: Text('📓  Apuntes Generales')),
-                    PopupMenuItem(value: 'Discipulado', child: Text('🏫  Discipulado')),
-                    PopupMenuItem(value: 'Conexion', child: Text('🔗  Conexion')),
+                    PopupMenuItem(
+                        value: 'Estudio Bíblico',
+                        child: Text('📚  Estudio Bíblico')),
+                    PopupMenuItem(
+                        value: 'Reflexión', child: Text('🤔  Reflexión')),
+                    PopupMenuItem(
+                        value: 'Devocional', child: Text('❤️  Devocional')),
+                    PopupMenuItem(
+                        value: 'Testimonio', child: Text('🌟  Testimonio')),
+                    PopupMenuItem(
+                        value: 'Apuntes Generales',
+                        child: Text('📓  Apuntes Generales')),
+                    PopupMenuItem(
+                        value: 'Discipulado', child: Text('🏫  Discipulado')),
+                    PopupMenuItem(
+                        value: 'Conexion', child: Text('🔗  Conexion')),
                     PopupMenuItem(value: 'Música', child: Text('🎵  Música')),
                     PopupMenuItem(value: 'Cita', child: Text('💬  Cita')),
-                    PopupMenuItem(value: 'Versículo', child: Text('📜  Versículo')),
+                    PopupMenuItem(
+                        value: 'Versículo', child: Text('📜  Versículo')),
                     PopupMenuItem(value: 'Oración', child: Text('🙏  Oración')),
                     PopupMenuItem(value: 'Culto', child: Text('⛪  Culto')),
                     PopupMenuItem(value: 'Otro', child: Text('🌀  Otro')),
@@ -1334,7 +1346,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   // ========= Floating Buttons Collapsible - Widgets =========
-  
+
   Widget _buildMiniFloatingButtons() {
     return Container(
       key: const ValueKey('mini-buttons'),
@@ -1405,7 +1417,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ),
           ),
         ),
-        
+
         // Botón de audio (el original)
         AudioButton(noteId: widget.note.id.toString()),
       ],
@@ -1413,17 +1425,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   // ========= Convert Drawing Strokes to Floating Image =========
-  
+
   Future<void> _convertStrokesToFloatingImage() async {
     if (_drawingStrokes.isEmpty) return;
-    
+
     try {
       // Calcular los bounds de todos los trazos
       double minX = double.infinity;
       double maxX = double.negativeInfinity;
       double minY = double.infinity;
       double maxY = double.negativeInfinity;
-      
+
       for (final stroke in _drawingStrokes) {
         for (final point in stroke.points) {
           minX = min(minX, point.dx);
@@ -1432,27 +1444,27 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           maxY = max(maxY, point.dy);
         }
       }
-      
+
       // Añadir padding alrededor del dibujo
       const padding = 20.0;
       minX -= padding;
       maxX += padding;
       minY -= padding;
       maxY += padding;
-      
+
       final width = maxX - minX;
       final height = maxY - minY;
-      
+
       // Crear un CustomPainter para los trazos
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
-      
+
       // Fondo transparente
       canvas.drawRect(
         Rect.fromLTWH(0, 0, width, height),
         Paint()..color = Colors.transparent,
       );
-      
+
       // Dibujar todos los trazos ajustados a la nueva posición
       for (final stroke in _drawingStrokes) {
         final paint = Paint()
@@ -1461,14 +1473,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ..strokeCap = StrokeCap.round
           ..strokeJoin = StrokeJoin.round
           ..style = PaintingStyle.stroke;
-        
+
         final path = Path();
         for (int i = 0; i < stroke.points.length; i++) {
           final adjustedPoint = Offset(
             stroke.points[i].dx - minX,
             stroke.points[i].dy - minY,
           );
-          
+
           if (i == 0) {
             path.moveTo(adjustedPoint.dx, adjustedPoint.dy);
           } else {
@@ -1477,19 +1489,19 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         }
         canvas.drawPath(path, paint);
       }
-      
+
       // Convertir a imagen
       final picture = recorder.endRecording();
       final img = await picture.toImage(width.toInt(), height.toInt());
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-      
+
       if (byteData != null) {
         // Guardar la imagen en un archivo temporal
         final directory = await getTemporaryDirectory();
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final file = File('${directory.path}/drawing_$timestamp.png');
         await file.writeAsBytes(byteData.buffer.asUint8List());
-        
+
         // Crear FloatingImage
         setState(() {
           _floatingImages.add(
@@ -1502,11 +1514,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ),
           );
           _activeImageIndex = _floatingImages.length - 1;
-          
+
           // Limpiar los trazos originales
           _drawingStrokes.clear();
         });
-        
+
         _saveNote();
         _scheduleUpdateContentRect();
       }
@@ -1606,7 +1618,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         _scheduleUpdateContentRect();
 
         // CORREGIDO: Actualizar trazos de dibujo, imágenes flotantes y textos flotantes cuando hay scroll
-        if (_drawingStrokes.isNotEmpty || _currentStroke != null || _floatingImages.isNotEmpty || _floatingTexts.isNotEmpty) {
+        if (_drawingStrokes.isNotEmpty ||
+            _currentStroke != null ||
+            _floatingImages.isNotEmpty ||
+            _floatingTexts.isNotEmpty) {
           setState(() {});
         }
       }
@@ -1889,16 +1904,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(_isHeaderCollapsed ? 20 : 12),
+                    borderRadius:
+                        BorderRadius.circular(_isHeaderCollapsed ? 20 : 12),
                     border: Border.all(
-                      color: _isHeaderCollapsed 
+                      color: _isHeaderCollapsed
                           ? Colors.blue.shade200.withOpacity(0.7)
                           : Colors.grey.shade300,
                       width: _isHeaderCollapsed ? 1 : 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(_isHeaderCollapsed ? 0.06 : 0.12),
+                        color: Colors.black
+                            .withOpacity(_isHeaderCollapsed ? 0.06 : 0.12),
                         blurRadius: _isHeaderCollapsed ? 3 : 6,
                         offset: Offset(0, _isHeaderCollapsed ? 1 : 2),
                         spreadRadius: _isHeaderCollapsed ? 0 : 0.5,
@@ -2405,8 +2422,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               focusedBorder: InputBorder.none,
                               contentPadding: EdgeInsets.only(
                                   left: 0, right: 8, top: 10, bottom: 10),
-                              hintText:
-                                  'Construye...',
+                              hintText: 'Construye...',
                               fillColor: Colors.transparent,
                               filled: true,
                             ),
@@ -2663,7 +2679,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   if (_isDrawingMode) {
                     // ¡MAGIA! Convertir trazos a imagen flotante manejable
                     await _convertStrokesToFloatingImage();
-                    
+
                     setState(() {
                       _isDrawingMode = false; // 😌 Vuelves a escribir texto
                       // Resetear todas las herramientas de dibujo pero mantener formato de texto
@@ -2678,8 +2694,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     FocusScope.of(context).requestFocus(_hiddenFocus);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text(
-                            '🎨✨ ¡Dibujo convertido a imagen manejable!'),
+                        content:
+                            Text('🎨✨ ¡Dibujo convertido a imagen manejable!'),
                         duration: Duration(seconds: 2),
                       ),
                     );
