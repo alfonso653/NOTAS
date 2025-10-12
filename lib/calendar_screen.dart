@@ -8,20 +8,52 @@ import 'daily_verse_widget.dart';
 
 // 🌍 Funciones globales para formateo en español (sin afectar selectores)
 String formatMonthYearSpanish(DateTime date) {
-  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const months = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre'
+  ];
   final monthName = months[date.month - 1];
   return '${monthName[0].toUpperCase()}${monthName.substring(1)} ${date.year}';
 }
 
 String formatFullDateSpanish(DateTime date) {
-  const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  
+  const days = [
+    'domingo',
+    'lunes',
+    'martes',
+    'miércoles',
+    'jueves',
+    'viernes',
+    'sábado'
+  ];
+  const months = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre'
+  ];
+
   final dayName = days[date.weekday % 7];
   final monthName = months[date.month - 1];
-  
+
   return '${dayName[0].toUpperCase()}${dayName.substring(1)}, ${date.day} de $monthName de ${date.year}';
 }
 
@@ -73,8 +105,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _scrollController.dispose();
     super.dispose();
   }
-
-
 
   /// Navegar al mes siguiente
   void _nextMonth() {
@@ -140,7 +170,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF6B73FF).withOpacity(0.8),
+                      color: const Color(0xFF374151).withOpacity(0.8),
                     ),
                   ),
                 ),
@@ -149,11 +179,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 icon: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6B73FF).withOpacity(0.1),
+                    color: const Color(0xFF374151).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.today,
-                      color: Color(0xFF6B73FF), size: 20),
+                      color: Color(0xFF374151), size: 20),
                 ),
                 onPressed: () {
                   final now = DateTime.now();
@@ -181,7 +211,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 day,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF6B73FF),
+                                  color: Color(0xFF374151),
                                   fontSize: 14,
                                 ),
                               ),
@@ -198,13 +228,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.chevron_left,
-                          color: Color(0xFF6B73FF)),
+                          color: Color(0xFF374151)),
                       onPressed: _previousMonth,
                     ),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.chevron_right,
-                          color: Color(0xFF6B73FF)),
+                          color: Color(0xFF374151)),
                       onPressed: _nextMonth,
                     ),
                   ],
@@ -305,24 +335,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: isSelected && isToday
-              ? const Color(0xFF6B73FF).withOpacity(0.2)
+              ? const Color(0xFF374151).withOpacity(0.2)
               : isSelected
-                  ? const Color(0xFF6B73FF).withOpacity(0.1)
+                  ? const Color(0xFF374151).withOpacity(0.1)
                   : isToday
-                      ? const Color(0xFF6B73FF).withOpacity(0.15)
+                      ? const Color(0xFF374151).withOpacity(0.15)
                       : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: isSelected && isToday
-              ? Border.all(color: const Color(0xFF6B73FF), width: 2.5)
+              ? Border.all(color: const Color(0xFF374151), width: 2.5)
               : isSelected
-                  ? Border.all(color: const Color(0xFF6B73FF), width: 2)
+                  ? Border.all(color: const Color(0xFF374151), width: 2)
                   : isToday
-                      ? Border.all(color: const Color(0xFF6B73FF), width: 2)
+                      ? Border.all(color: const Color(0xFF374151), width: 2)
                       : null,
           boxShadow: isToday
               ? [
                   BoxShadow(
-                    color: const Color(0xFF6B73FF).withOpacity(0.3),
+                    color: const Color(0xFF374151).withOpacity(0.3),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   )
@@ -336,7 +366,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Container(
               decoration: isToday
                   ? BoxDecoration(
-                      color: const Color(0xFF6B73FF),
+                      color: const Color(0xFF374151),
                       borderRadius: BorderRadius.circular(10),
                     )
                   : null,
@@ -371,8 +401,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 decoration: BoxDecoration(
                                   color: task.completed
                                       ? Colors.grey.withOpacity(0.3)
-                                      : const Color(0xFF6B73FF)
-                                          .withOpacity(0.8),
+                                      : task.color.withOpacity(0.8),
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                                 child: Text(
@@ -486,7 +515,7 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF6B73FF),
+                    color: Color(0xFF374151),
                   ),
                 ),
               ),
@@ -540,7 +569,7 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF6B73FF) : Colors.grey[100],
+              color: isSelected ? const Color(0xFF374151) : Colors.grey[100],
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
@@ -585,7 +614,7 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF6B73FF) : Colors.grey[100],
+              color: isSelected ? const Color(0xFF374151) : Colors.grey[100],
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
@@ -623,6 +652,9 @@ class _AddTaskCalendarFormState extends State<AddTaskCalendarForm> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   late DateTime _selectedDate;
+  bool _isAllDay = false;
+  String _repeatType = 'none';
+  List<int> _customDays = [];
 
   @override
   void initState() {
@@ -635,6 +667,63 @@ class _AddTaskCalendarFormState extends State<AddTaskCalendarForm> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _showCustomDaysDialog() async {
+    final days = [
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo'
+    ];
+    List<int> tempSelected = List.from(_customDays);
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Seleccionar días'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: days.asMap().entries.map((entry) {
+              final index = entry.key + 1; // 1=Lunes, 7=Domingo
+              final day = entry.value;
+              return CheckboxListTile(
+                title: Text(day),
+                value: tempSelected.contains(index),
+                onChanged: (value) {
+                  setDialogState(() {
+                    if (value == true) {
+                      tempSelected.add(index);
+                    } else {
+                      tempSelected.remove(index);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _customDays = tempSelected;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -671,7 +760,7 @@ class _AddTaskCalendarFormState extends State<AddTaskCalendarForm> {
         const SizedBox(height: 12),
         Row(
           children: [
-            const Icon(Icons.calendar_today, color: Color(0xFF6B73FF)),
+            const Icon(Icons.calendar_today, color: Color(0xFF374151)),
             const SizedBox(width: 8),
             Text(
               formatFullDateSpanish(_selectedDate),
@@ -696,6 +785,66 @@ class _AddTaskCalendarFormState extends State<AddTaskCalendarForm> {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        // Checkbox Todo el día con dropdown
+        Row(
+          children: [
+            Checkbox(
+              value: _isAllDay,
+              onChanged: (value) {
+                setState(() {
+                  _isAllDay = value ?? false;
+                });
+              },
+            ),
+            const Text('Todo el día'),
+          ],
+        ),
+        if (_isAllDay)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.repeat, size: 16, color: Color(0xFF374151)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButton<String>(
+                    value: _repeatType,
+                    isExpanded: true,
+                    underline: Container(),
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'none', child: Text('Sin repetir')),
+                      DropdownMenuItem(
+                          value: 'daily', child: Text('Todos los días')),
+                      DropdownMenuItem(
+                          value: 'saturday', child: Text('Los sábados')),
+                      DropdownMenuItem(
+                          value: 'sunday', child: Text('Los domingos')),
+                      DropdownMenuItem(
+                          value: 'weekly',
+                          child: Text('Este día todas las semanas')),
+                      DropdownMenuItem(
+                          value: 'weekdays', child: Text('De lunes a viernes')),
+                      DropdownMenuItem(
+                          value: 'yearly', child: Text('Anualmente este día')),
+                      DropdownMenuItem(
+                          value: 'custom', child: Text('Personalizado')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _repeatType = value ?? 'none';
+                        if (_repeatType == 'custom') {
+                          _showCustomDaysDialog();
+                        }
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -709,17 +858,26 @@ class _AddTaskCalendarFormState extends State<AddTaskCalendarForm> {
             Expanded(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6B73FF),
+                  backgroundColor: const Color(0xFF374151),
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () {
                   if (_titleController.text.isNotEmpty) {
+                    final dateTime = _isAllDay
+                        ? DateTime(_selectedDate.year, _selectedDate.month,
+                            _selectedDate.day, 0, 0)
+                        : _selectedDate;
                     final task = PendingTask(
                       id: DateTime.now().millisecondsSinceEpoch.toString(),
                       title: _titleController.text,
                       description: _descriptionController.text,
                       categoria: 'General',
-                      dateTime: _selectedDate,
+                      dateTime: dateTime,
+                      isAllDay: _isAllDay,
+                      repeatType: _isAllDay && _repeatType != 'none'
+                          ? _repeatType
+                          : null,
+                      customDays: _repeatType == 'custom' ? _customDays : null,
                     );
                     widget.pendingProvider.addTask(task);
                     Navigator.of(context).pop();

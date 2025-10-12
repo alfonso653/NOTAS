@@ -155,7 +155,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         ),
         child: const Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B73FF)),
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF374151)),
           ),
         ),
       );
@@ -215,13 +215,13 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               borderRadius: BorderRadius.circular(15),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6B73FF).withOpacity(0.1),
+                  color: const Color(0xFF374151).withOpacity(0.1),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
               ],
               border: Border.all(
-                color: const Color(0xFF6B73FF).withOpacity(0.2),
+                color: const Color(0xFF374151).withOpacity(0.2),
                 width: 1,
               ),
             ),
@@ -261,84 +261,84 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-        // Indicador de contenido
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.menu_book,
-              size: 14,
-              color: const Color(0xFF6B73FF).withOpacity(0.7),
-            ),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                'Versículo del día',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF6B73FF).withOpacity(0.7),
+            // Indicador de contenido
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.menu_book,
+                  size: 14,
+                  color: const Color(0xFF374151).withOpacity(0.7),
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-
-        // Versículo principal - Completamente responsive
-        Expanded(
-          flex: 3,
-          child: Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width - 60,
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'Versículo del día',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF374151).withOpacity(0.7),
                     ),
-                    child: Text(
-                      '"${_verseData!['verse']}"',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                        height: 1.3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+
+            // Versículo principal - Completamente responsive
+            Expanded(
+              flex: 3,
+              child: Center(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width - 60,
+                        ),
+                        child: Text(
+                          '"${_verseData!['verse']}"',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            height: 1.3,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: null,
+                          softWrap: true,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: null,
-                      softWrap: true,
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
 
-        // Referencia bíblica - Texto responsive
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          decoration: BoxDecoration(
-            color: const Color(0xFF6B73FF).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              _verseData!['reference'] ?? '',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF6B73FF),
-                fontStyle: FontStyle.italic,
+            // Referencia bíblica - Texto responsive
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF374151).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(15),
               ),
-              textAlign: TextAlign.center,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _verseData!['reference'] ?? '',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF374151),
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
-          ),
-        ),
           ],
         ),
 
@@ -353,10 +353,10 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6B73FF).withOpacity(0.1),
+                  color: const Color(0xFF374151).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF6B73FF).withOpacity(0.3),
+                    color: const Color(0xFF374151).withOpacity(0.3),
                     width: 1,
                   ),
                 ),
@@ -390,8 +390,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.amber.shade50,
-                  Colors.amber.shade100.withOpacity(0.7),
+                  const Color(0xFFF8FAFC),
+                  const Color(0xFFE2E8F0).withOpacity(0.7),
                 ],
               ),
             ),
@@ -402,13 +402,13 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade200.withOpacity(0.3),
+                    color: const Color(0xFFCBD5E1).withOpacity(0.3),
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: Icon(
                     Icons.open_in_browser,
                     size: 32,
-                    color: Colors.amber.shade700,
+                    color: const Color(0xFF64748B),
                   ),
                 ),
 
@@ -420,22 +420,23 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Colors.amber.shade800,
+                    color: const Color(0xFF475569),
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Subtítulo
                 Text(
                   'La IA de Google te explicará el significado y contexto',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.amber.shade600,
+                    color: const Color(0xFF64748B),
                   ),
                   textAlign: TextAlign.center,
-                ),                const SizedBox(height: 24),
+                ),
+                const SizedBox(height: 24),
 
                 // Botones
                 Row(
@@ -449,7 +450,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                             side: BorderSide(
-                              color: Colors.amber.shade300,
+                              color: const Color(0xFF94A3B8),
                               width: 1,
                             ),
                           ),
@@ -457,7 +458,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                         child: Text(
                           'Cancelar',
                           style: TextStyle(
-                            color: Colors.amber.shade700,
+                            color: const Color(0xFF475569),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -471,10 +472,11 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          _searchQuoteInGoogle(_verseData!['quote'], _verseData!['author'] ?? '');
+                          _searchQuoteInGoogle(_verseData!['quote'],
+                              _verseData!['author'] ?? '');
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber.shade600,
+                          backgroundColor: const Color(0xFF64748B),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -504,10 +506,11 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   Future<void> _searchQuoteInGoogle(String quote, String author) async {
     try {
       // Construir la búsqueda optimizada para el modo AI de Google
-      String searchQuery = 'Dame fuentes y busca en la red la frase "$quote" $author por favor';
-      
+      String searchQuery =
+          'Dame fuentes y busca en la red la frase "$quote" $author por favor';
+
       print('🤖 Buscando con IA de Google: $searchQuery');
-      
+
       // Intentar diferentes URLs para modo IA
       List<String> aiUrls = [
         // Método 1: Google search con modo IA (preferido)
@@ -517,17 +520,21 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         // Método 3: Búsqueda normal optimizada para IA
         'https://www.google.com/search?q=${Uri.encodeComponent(searchQuery)}',
       ];
-      
+
       bool launched = false;
-      
+
       // Intentar cada URL hasta que una funcione
       for (int i = 0; i < aiUrls.length && !launched; i++) {
         final Uri uri = Uri.parse(aiUrls[i]);
-        String urlType = i == 0 ? 'Google IA' : i == 1 ? 'Gemini' : 'Google normal';
-        
+        String urlType = i == 0
+            ? 'Google IA'
+            : i == 1
+                ? 'Gemini'
+                : 'Google normal';
+
         try {
           print('🔄 Intentando abrir $urlType...');
-          
+
           // Intento 1: Modo plataforma por defecto
           if (await canLaunchUrl(uri)) {
             await launchUrl(uri, mode: LaunchMode.platformDefault);
@@ -535,7 +542,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
             print('✅ $urlType abierto con platformDefault');
             break;
           }
-          
+
           // Intento 2: Modo aplicación externa
           if (!launched) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -543,13 +550,12 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
             print('✅ $urlType abierto con externalApplication');
             break;
           }
-          
         } catch (e) {
           print('❌ $urlType falló: $e');
           // Continuar con la siguiente URL
         }
       }
-      
+
       // Intento final: navegador interno con la primera URL
       if (!launched) {
         try {
@@ -561,18 +567,18 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
           print('❌ inAppWebView también falló: $e');
         }
       }
-      
+
       // Si nada funcionó, mostrar error
       if (!launched) {
         throw Exception('Todos los métodos de apertura fallaron');
       }
-      
     } catch (e) {
       print('💥 Error al buscar con IA: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('No se pudo abrir la búsqueda con IA\n(Puede ser limitación del emulador)'),
+            content: Text(
+                'No se pudo abrir la búsqueda con IA\n(Puede ser limitación del emulador)'),
             backgroundColor: Colors.red.shade400,
             duration: Duration(seconds: 3),
           ),
@@ -598,8 +604,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFF6B73FF).withOpacity(0.1),
-                  const Color(0xFF6B73FF).withOpacity(0.05),
+                  const Color(0xFF374151).withOpacity(0.1),
+                  const Color(0xFF374151).withOpacity(0.05),
                 ],
               ),
             ),
@@ -610,13 +616,13 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6B73FF).withOpacity(0.1),
+                    color: const Color(0xFF374151).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: Icon(
                     Icons.menu_book,
                     size: 32,
-                    color: const Color(0xFF6B73FF),
+                    color: const Color(0xFF374151),
                   ),
                 ),
 
@@ -628,19 +634,19 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF6B73FF),
+                    color: const Color(0xFF374151),
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Subtítulo
                 Text(
                   'Se abrirá el capítulo completo de ${_verseData!['reference']} en la Biblia online',
                   style: TextStyle(
                     fontSize: 14,
-                    color: const Color(0xFF6B73FF).withOpacity(0.7),
+                    color: const Color(0xFF374151).withOpacity(0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -659,7 +665,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                             side: BorderSide(
-                              color: const Color(0xFF6B73FF).withOpacity(0.3),
+                              color: const Color(0xFF374151).withOpacity(0.3),
                               width: 1,
                             ),
                           ),
@@ -667,7 +673,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                         child: Text(
                           'Cancelar',
                           style: TextStyle(
-                            color: const Color(0xFF6B73FF),
+                            color: const Color(0xFF374151),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -684,7 +690,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                           _openFullChapter(_verseData!['reference']);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B73FF),
+                          backgroundColor: const Color(0xFF374151),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -714,13 +720,13 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   Future<void> _openFullChapter(String reference) async {
     try {
       print('📖 Abriendo capítulo completo: $reference');
-      
+
       // Parsear la referencia bíblica para obtener solo libro y capítulo (sin versículo)
       String cleanReference = reference.trim();
       String chapterReference = _extractChapterOnly(cleanReference);
-      
+
       print('📖 Referencia del capítulo: $chapterReference');
-      
+
       // URLs de diferentes sitios bíblicos para el capítulo completo
       List<String> bibleUrls = [
         // Biblia Gateway - capítulo completo
@@ -730,17 +736,21 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         // YouVersion Bible - capítulo completo
         'https://www.bible.com/search/bible?q=${Uri.encodeComponent(chapterReference)}',
       ];
-      
+
       bool launched = false;
-      
+
       // Intentar cada URL hasta que una funcione
       for (int i = 0; i < bibleUrls.length && !launched; i++) {
         final Uri uri = Uri.parse(bibleUrls[i]);
-        String siteName = i == 0 ? 'Bible Gateway' : i == 1 ? 'Biblia.es' : 'YouVersion';
-        
+        String siteName = i == 0
+            ? 'Bible Gateway'
+            : i == 1
+                ? 'Biblia.es'
+                : 'YouVersion';
+
         try {
           print('🔄 Intentando abrir $siteName...');
-          
+
           // Intento 1: Modo plataforma por defecto
           if (await canLaunchUrl(uri)) {
             await launchUrl(uri, mode: LaunchMode.platformDefault);
@@ -748,7 +758,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
             print('✅ $siteName abierto con platformDefault');
             break;
           }
-          
+
           // Intento 2: Modo aplicación externa
           if (!launched) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -756,13 +766,12 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
             print('✅ $siteName abierto con externalApplication');
             break;
           }
-          
         } catch (e) {
           print('❌ $siteName falló: $e');
           // Continuar con la siguiente URL
         }
       }
-      
+
       // Intento final: navegador interno
       if (!launched) {
         try {
@@ -774,18 +783,18 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
           print('❌ inAppWebView también falló: $e');
         }
       }
-      
+
       // Si nada funcionó, mostrar error
       if (!launched) {
         throw Exception('Todos los métodos de apertura fallaron');
       }
-      
     } catch (e) {
       print('💥 Error al abrir capítulo bíblico: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('No se pudo abrir el capítulo bíblico\n(Puede ser limitación del emulador)'),
+            content: Text(
+                'No se pudo abrir el capítulo bíblico\n(Puede ser limitación del emulador)'),
             backgroundColor: Colors.red.shade400,
             duration: Duration(seconds: 3),
           ),
@@ -798,22 +807,21 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   String _extractChapterOnly(String reference) {
     try {
       // Ejemplos de referencias: "Salmo 95:2", "Juan 3:16", "1 Corintios 13:4-7"
-      
+
       // Buscar el último número seguido de dos puntos
       RegExp regExp = RegExp(r'^(.+?)(\d+):(\d+)');
       Match? match = regExp.firstMatch(reference.trim());
-      
+
       if (match != null) {
         String book = match.group(1)?.trim() ?? '';
         String chapter = match.group(2) ?? '';
-        
+
         // Retornar solo libro y capítulo
         return '$book $chapter';
       }
-      
+
       // Si no encuentra el patrón, devolver la referencia original
       return reference;
-      
     } catch (e) {
       print('❌ Error parseando referencia bíblica: $e');
       return reference;
@@ -843,7 +851,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                 Icon(
                   Icons.psychology,
                   size: 14,
-                  color: Colors.amber.shade700.withOpacity(0.7),
+                  color: const Color(0xFF64748B).withOpacity(0.8),
                 ),
                 const SizedBox(width: 4),
                 Flexible(
@@ -852,7 +860,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: Colors.amber.shade700.withOpacity(0.7),
+                      color: const Color(0xFF64748B).withOpacity(0.8),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -877,7 +885,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                           '"${_verseData!['quote']}"',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.amber.shade800,
+                            color: const Color(0xFF475569),
                             fontStyle: FontStyle.italic,
                             fontWeight: FontWeight.w500,
                             height: 1.3,
@@ -900,10 +908,10 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
+                  color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(
-                    color: Colors.amber.shade200,
+                    color: const Color(0xFFCBD5E1),
                     width: 1,
                   ),
                 ),
@@ -913,7 +921,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                     '— ${_verseData!['author']}',
                     style: TextStyle(
                       fontSize: 10,
-                      color: Colors.amber.shade700,
+                      color: const Color(0xFF64748B),
                       fontWeight: FontWeight.w600,
                     ),
                     textAlign: TextAlign.center,
@@ -934,10 +942,10 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.amber.shade100.withOpacity(0.8),
+                  color: const Color(0xFFE2E8F0).withOpacity(0.8),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.amber.shade300,
+                    color: const Color(0xFF94A3B8),
                     width: 1,
                   ),
                 ),

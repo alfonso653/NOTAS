@@ -13,6 +13,19 @@ class PendingTask {
   DateTime? endDateTime; // Hora de finalización opcional
   bool completed;
   String colorHex; // Color de la tarea en formato hexadecimal
+  bool isAllDay; // Tarea de todo el día
+  String? repeatType; // Tipo de repetición
+  List<int>? customDays; // Días personalizados (1=Lunes, 7=Domingo)
+  
+  // Propiedades de alarma (sonido fuerte)
+  bool hasAlarm;
+  int? alarmMinutesBefore;
+  int? alarmMinutesAfter;
+  
+  // Propiedades de notificación (silenciosa)
+  bool hasNotification;
+  int? notificationMinutesBefore;
+  int? notificationMinutesAfter;
 
   PendingTask({
     required this.id,
@@ -22,32 +35,67 @@ class PendingTask {
     required this.dateTime,
     this.endDateTime,
     this.completed = false,
-    this.colorHex = '#6B73FF', // Color azul por defecto
+    this.colorHex = '#FEF7F0',
+    this.isAllDay = false,
+    this.repeatType,
+    this.customDays = const [],
+    this.hasAlarm = false,
+    this.alarmMinutesBefore,
+    this.alarmMinutesAfter,
+    this.hasNotification = false,
+    this.notificationMinutesBefore,
+    this.notificationMinutesAfter,
   });
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'description': description,
-        'categoria': categoria,
-        'dateTime': dateTime.toIso8601String(),
-        'endDateTime': endDateTime?.toIso8601String(),
-        'completed': completed,
-        'colorHex': colorHex,
-      };
+  /// Convierte a JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'categoria': categoria,
+      'dateTime': dateTime.toIso8601String(),
+      'endDateTime': endDateTime?.toIso8601String(),
+      'completed': completed,
+      'colorHex': colorHex,
+      'isAllDay': isAllDay,
+      'repeatType': repeatType,
+      'customDays': customDays,
+      // Propiedades de alarma (sonido fuerte)
+      'hasAlarm': hasAlarm,
+      'alarmMinutesBefore': alarmMinutesBefore,
+      'alarmMinutesAfter': alarmMinutesAfter,
+      // Propiedades de notificación (silenciosa)
+      'hasNotification': hasNotification,
+      'notificationMinutesBefore': notificationMinutesBefore,
+      'notificationMinutesAfter': notificationMinutesAfter,
+    };
+  }
 
-  factory PendingTask.fromJson(Map<String, dynamic> json) => PendingTask(
-        id: json['id'] as String,
-        title: json['title'] as String? ?? '',
-        description: json['description'] as String? ?? '',
-        categoria: json['categoria'] as String? ?? '',
-        dateTime: DateTime.parse(json['dateTime'] as String),
-        endDateTime: json['endDateTime'] != null
-            ? DateTime.parse(json['endDateTime'] as String)
-            : null,
-        completed: (json['completed'] as bool?) ?? false,
-        colorHex: json['colorHex'] as String? ?? '#6B73FF',
-      );
+  /// Crea desde JSON
+  factory PendingTask.fromJson(Map<String, dynamic> json) {
+    return PendingTask(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      categoria: json['categoria'] ?? '',
+      dateTime: DateTime.parse(json['dateTime']),
+      endDateTime: json['endDateTime'] != null ? DateTime.parse(json['endDateTime']) : null,
+      completed: json['completed'] ?? false,
+      colorHex: json['colorHex'] ?? '#FEF7F0',
+      isAllDay: json['isAllDay'] ?? false,
+      repeatType: json['repeatType'],
+      customDays: json['customDays'] != null ? List<int>.from(json['customDays']) : [],
+      // Propiedades de alarma (sonido fuerte)
+      hasAlarm: json['hasAlarm'] ?? false,
+      alarmMinutesBefore: json['alarmMinutesBefore'],
+      alarmMinutesAfter: json['alarmMinutesAfter'],
+      // Propiedades de notificación (silenciosa)
+      hasNotification: json['hasNotification'] ?? false,
+      notificationMinutesBefore: json['notificationMinutesBefore'],
+      notificationMinutesAfter: json['notificationMinutesAfter'],
+    );
+  }
 
   /// Duración de la tarea en minutos
   int get durationInMinutes {
@@ -60,7 +108,7 @@ class PendingTask {
     if (endDateTime == null) {
       return dateTime.hour == hour;
     }
-    
+
     // Una tarea ocurre en una hora si:
     // 1. Empieza en esa hora, O
     // 2. Termina en esa hora (incluso si es el mismo minuto), O
@@ -121,6 +169,12 @@ class PendingProvider extends ChangeNotifier {
 
   void addTask(PendingTask task) {
     tasks.insert(0, task);
+
+    // Si tiene repetición, generar tareas adicionales
+    if (task.repeatType != null && task.repeatType != 'none') {
+      _generateRepeatedTasks(task);
+    }
+
     _saveTasks();
     notifyListeners();
   }
@@ -149,6 +203,39 @@ class PendingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Encuentra todas las tareas relacionadas (repetidas) de una tarea específica
+  List<PendingTask> getRelatedTasks(PendingTask task) {
+    // Buscar tareas con el mismo título y descripción base (sin el emoji de repetición)
+    final baseDescription = task.description.startsWith('🔄 ')
+        ? task.description.substring(2)
+        : task.description;
+
+    return tasks
+        .where((t) =>
+            t.id != task.id && // No incluir la tarea actual
+            t.title == task.title &&
+            (t.description == baseDescription ||
+                t.description == '🔄 $baseDescription' ||
+                (t.description.startsWith('🔄 ') &&
+                    t.description.substring(2) == baseDescription)))
+        .toList();
+  }
+
+  /// Elimina solo una tarea específica
+  void deleteSingleTask(String id) {
+    deleteTask(id);
+  }
+
+  /// Elimina todas las tareas relacionadas (repetidas) incluyendo la actual
+  void deleteAllRelatedTasks(PendingTask mainTask) {
+    final relatedTasks = getRelatedTasks(mainTask);
+    final allTaskIds = [mainTask.id] + relatedTasks.map((t) => t.id).toList();
+
+    tasks.removeWhere((t) => allTaskIds.contains(t.id));
+    _saveTasks();
+    notifyListeners();
+  }
+
   void updateTask(PendingTask updatedTask) {
     final idx = tasks.indexWhere((t) => t.id == updatedTask.id);
     if (idx != -1) {
@@ -156,6 +243,183 @@ class PendingProvider extends ChangeNotifier {
       _saveTasks();
       notifyListeners();
     }
+  }
+
+  /// Genera tareas repetidas según el patrón especificado
+  void _generateRepeatedTasks(PendingTask originalTask) {
+    final List<DateTime> futureDates = _calculateRepeatDates(originalTask);
+
+    for (final date in futureDates) {
+      // Evitar duplicados: verificar si ya existe una tarea similar en esa fecha
+      if (!_taskExistsOnDate(originalTask.title, date)) {
+        final repeatedTask = PendingTask(
+          id: '${DateTime.now().millisecondsSinceEpoch}_${date.millisecondsSinceEpoch}',
+          title: originalTask.title,
+          description:
+              '🔄 ${originalTask.description}', // Indicador de repetición
+          categoria: originalTask.categoria,
+          dateTime: DateTime(
+            date.year,
+            date.month,
+            date.day,
+            originalTask.dateTime.hour,
+            originalTask.dateTime.minute,
+          ),
+          endDateTime: originalTask.endDateTime != null
+              ? DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                  originalTask.endDateTime!.hour,
+                  originalTask.endDateTime!.minute,
+                )
+              : null,
+          completed: false,
+          colorHex: originalTask.colorHex,
+          isAllDay: originalTask.isAllDay,
+          repeatType: null, // Las tareas generadas no se repiten a su vez
+          customDays: null,
+        );
+
+        tasks.insert(0, repeatedTask);
+      }
+    }
+  }
+
+  /// Verifica si ya existe una tarea con el mismo título en la fecha especificada
+  bool _taskExistsOnDate(String title, DateTime date) {
+    return tasks.any((task) =>
+        task.title == title &&
+        task.dateTime.year == date.year &&
+        task.dateTime.month == date.month &&
+        task.dateTime.day == date.day);
+  }
+
+  /// Calcula las fechas futuras según el tipo de repetición
+  List<DateTime> _calculateRepeatDates(PendingTask task) {
+    final List<DateTime> dates = [];
+    final startDate = task.dateTime;
+    final today = DateTime.now();
+    final maxDate = today.add(const Duration(days: 365)); // Generar hasta 1 año
+
+    switch (task.repeatType) {
+      case 'daily':
+        dates.addAll(_generateDailyDates(startDate, maxDate));
+        break;
+      case 'saturday':
+        dates.addAll(
+            _generateWeeklyDates(startDate, maxDate, DateTime.saturday));
+        break;
+      case 'sunday':
+        dates.addAll(_generateWeeklyDates(startDate, maxDate, DateTime.sunday));
+        break;
+      case 'weekly':
+        dates.addAll(
+            _generateWeeklyDates(startDate, maxDate, startDate.weekday));
+        break;
+      case 'weekdays':
+        dates.addAll(_generateWeekdaysDates(startDate, maxDate));
+        break;
+      case 'yearly':
+        dates.addAll(_generateYearlyDates(startDate, maxDate));
+        break;
+      case 'custom':
+        if (task.customDays != null) {
+          dates.addAll(
+              _generateCustomDates(startDate, maxDate, task.customDays!));
+        }
+        break;
+    }
+
+    return dates;
+  }
+
+  /// Genera fechas para repetición diaria
+  List<DateTime> _generateDailyDates(DateTime startDate, DateTime maxDate) {
+    final List<DateTime> dates = [];
+    DateTime currentDate = startDate.add(const Duration(days: 1));
+
+    while (currentDate.isBefore(maxDate)) {
+      dates.add(currentDate);
+      currentDate = currentDate.add(const Duration(days: 1));
+    }
+
+    return dates;
+  }
+
+  /// Genera fechas para repetición semanal en un día específico
+  List<DateTime> _generateWeeklyDates(
+      DateTime startDate, DateTime maxDate, int targetWeekday) {
+    final List<DateTime> dates = [];
+
+    // Para 'weekly': siguiente ocurrencia del mismo día de la semana
+    // Para 'saturday'/'sunday': siguiente ocurrencia de ese día específico
+    DateTime nextDate = _findNextWeekday(startDate, targetWeekday);
+
+    while (nextDate.isBefore(maxDate)) {
+      dates.add(nextDate);
+      nextDate = nextDate.add(const Duration(days: 7));
+    }
+
+    return dates;
+  }
+
+  /// Encuentra la próxima ocurrencia de un día de la semana específico
+  DateTime _findNextWeekday(DateTime startDate, int targetWeekday) {
+    DateTime nextDate = startDate.add(const Duration(days: 1));
+
+    while (nextDate.weekday != targetWeekday) {
+      nextDate = nextDate.add(const Duration(days: 1));
+    }
+
+    return nextDate;
+  }
+
+  /// Genera fechas para días laborables (lunes a viernes)
+  List<DateTime> _generateWeekdaysDates(DateTime startDate, DateTime maxDate) {
+    final List<DateTime> dates = [];
+    DateTime currentDate = startDate.add(const Duration(days: 1));
+
+    while (currentDate.isBefore(maxDate)) {
+      // Solo días laborables (1=Lunes, 5=Viernes)
+      if (currentDate.weekday >= 1 && currentDate.weekday <= 5) {
+        dates.add(currentDate);
+      }
+      currentDate = currentDate.add(const Duration(days: 1));
+    }
+
+    return dates;
+  }
+
+  /// Genera fechas para repetición anual
+  List<DateTime> _generateYearlyDates(DateTime startDate, DateTime maxDate) {
+    final List<DateTime> dates = [];
+    DateTime currentDate =
+        DateTime(startDate.year + 1, startDate.month, startDate.day);
+
+    while (currentDate.isBefore(maxDate)) {
+      dates.add(currentDate);
+      currentDate =
+          DateTime(currentDate.year + 1, currentDate.month, currentDate.day);
+    }
+
+    return dates;
+  }
+
+  /// Genera fechas para días personalizados
+  List<DateTime> _generateCustomDates(
+      DateTime startDate, DateTime maxDate, List<int> customDays) {
+    final List<DateTime> dates = [];
+    DateTime currentDate = startDate.add(const Duration(days: 1));
+
+    while (currentDate.isBefore(maxDate)) {
+      if (customDays.contains(currentDate.weekday)) {
+        dates.add(currentDate);
+      }
+      currentDate = currentDate.add(const Duration(days: 1));
+    }
+
+    return dates;
   }
 }
 
@@ -166,22 +430,22 @@ class TaskColors {
     '#FFB3BA', // Rosa pastel coral
     '#B5E48C', // Verde pastel mint
     '#FFD93D', // Amarillo pastel mantequilla
-    '#DDA0DD', // Púrpura pastel lavanda
+    '#DDA0DD', // Púrpura pastel lavenda
     '#87CEEB', // Azul cielo pastel
     '#F0A0A0', // Durazno pastel suave
     '#98E4D6', // Verde agua pastel
-    '#F5DEB3', // Beige pastel trigo
-    '#E6E6FA', // Lavanda pastel claro
-    '#FFE5B4', // Melocotón pastel
+    '#C4A484', // Café pastel canela
+    '#B19CD9', // Lavanda pastel medio
+    '#FFB347', // Naranja pastel cálido
     '#D8BFD8', // Ciruela pastel
     '#AFEEEE', // Turquesa pastel pálido
     '#F0E68C', // Khaki pastel dorado
     '#FFC0CB', // Rosa pastel clásico
     '#B0E0E6', // Azul pólvora pastel
-    '#FAFAD2', // Amarillo pastel limón
-    '#D3D3D3', // Gris pastel perla
-    '#F5F5DC', // Crema pastel marfil
-    '#E0FFFF', // Cian pastel cristal
+    '#E6D35C', // Amarillo pastel mostaza
+    '#A8A8A8', // Gris pastel medio
+    '#D4B996', // Beige pastel cálido
+    '#7FCDCD', // Cian pastel medio
   ];
 
   static const List<String> colorNames = [
@@ -193,18 +457,18 @@ class TaskColors {
     'Cielo',
     'Durazno',
     'Agua Marina',
-    'Trigo',
+    'Canela',
     'Lila',
-    'Melocotón',
+    'Naranja',
     'Ciruela',
     'Turquesa',
     'Dorado',
     'Rosa Clásico',
     'Pólvora',
-    'Limón',
-    'Perla',
-    'Marfil',
-    'Cristal'
+    'Mostaza',
+    'Gris Medio',
+    'Beige Cálido',
+    'Cian Medio'
   ];
 
   /// Convierte color hex a Color de Flutter

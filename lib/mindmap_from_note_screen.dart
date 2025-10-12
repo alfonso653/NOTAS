@@ -495,7 +495,7 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
       'Fe y Creencias': const Color(0xFF4CAF50),
       'Oración y Adoración': const Color(0xFF9C27B0),
       'Amor y Relaciones': const Color(0xFFE91E63),
-      'Enseñanzas': const Color(0xFF2196F3),
+      'Notas': const Color(0xFF2196F3),
       'Valores Cristianos': const Color(0xFFFF9800),
       'Vida Espiritual': const Color(0xFF00BCD4),
       'Esperanza y Futuro': const Color(0xFFFFEB3B),

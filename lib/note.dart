@@ -80,8 +80,9 @@ class Note {
               .map((e) => Map<String, dynamic>.from(e))
               .toList()
           : null,
-    )..isHeaderCollapsed = json['isHeaderCollapsed']
-     ..isFloatingButtonsCollapsed = json['isFloatingButtonsCollapsed'];
+    )
+      ..isHeaderCollapsed = json['isHeaderCollapsed']
+      ..isFloatingButtonsCollapsed = json['isFloatingButtonsCollapsed'];
   }
 
   Map<String, dynamic> toJson() {
@@ -101,7 +102,8 @@ class Note {
       if (mindMapNodes != null) 'mindMapNodes': mindMapNodes,
       if (mindMapConnections != null) 'mindMapConnections': mindMapConnections,
       if (isHeaderCollapsed != null) 'isHeaderCollapsed': isHeaderCollapsed,
-      if (isFloatingButtonsCollapsed != null) 'isFloatingButtonsCollapsed': isFloatingButtonsCollapsed,
+      if (isFloatingButtonsCollapsed != null)
+        'isFloatingButtonsCollapsed': isFloatingButtonsCollapsed,
     };
   }
 }

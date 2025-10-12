@@ -12,12 +12,17 @@ import 'note.dart';
 import 'note_provider.dart';
 import 'pending.dart';
 import 'calendar_screen.dart';
+import 'notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 🌍 Mantener inglés para selectores pero español para fechas (manual)
   await initializeDateFormatting('en_US', null);
   Intl.defaultLocale = 'en_US';
+  
+  // 📱 Inicializar servicio de notificaciones
+  await NotificationService.initialize();
+  
   runApp(const NotesApp());
 }
 
@@ -571,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
           child: Text(
-            _selectedIndex == 0 ? 'Enseñanzas' : 'Agenda',
+            _selectedIndex == 0 ? 'Notas' : 'Agenda',
             key: ValueKey(_selectedIndex),
             style: const TextStyle(
               fontFamily: 'Nunito',
@@ -744,7 +749,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Image.asset('assets/nota.gif', width: 28, height: 28),
             activeIcon: Image.asset('assets/nota.gif', width: 32, height: 32),
-            label: 'Enseñanzas',
+            label: 'Notas',
           ),
           BottomNavigationBarItem(
             icon: Image.asset('assets/pendientes.gif', width: 28, height: 28),
@@ -1077,6 +1082,9 @@ class _AddTaskFormState extends State<AddTaskForm> {
   String _categoria = '';
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  bool _isAllDay = false;
+  String _repeatType = 'none';
+  List<int> _customDays = [];
 
   void _showDatePicker() async {
     final now = DateTime.now();
@@ -1097,6 +1105,63 @@ class _AddTaskFormState extends State<AddTaskForm> {
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
+  void _showCustomDaysDialog() async {
+    final days = [
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo'
+    ];
+    List<int> tempSelected = List.from(_customDays);
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Seleccionar días'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: days.asMap().entries.map((entry) {
+              final index = entry.key + 1; // 1=Lunes, 7=Domingo
+              final day = entry.value;
+              return CheckboxListTile(
+                title: Text(day),
+                value: tempSelected.contains(index),
+                onChanged: (value) {
+                  setDialogState(() {
+                    if (value == true) {
+                      tempSelected.add(index);
+                    } else {
+                      tempSelected.remove(index);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _customDays = tempSelected;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _addTask() {
     if (_formKey.currentState!.validate() &&
         _selectedDate != null &&
@@ -1115,6 +1180,9 @@ class _AddTaskFormState extends State<AddTaskForm> {
         description: _description,
         categoria: _categoria,
         dateTime: dateTime,
+        isAllDay: _isAllDay,
+        repeatType: _isAllDay && _repeatType != 'none' ? _repeatType : null,
+        customDays: _repeatType == 'custom' ? _customDays : null,
       ));
       Navigator.of(context).pop();
     }
@@ -1169,11 +1237,80 @@ class _AddTaskFormState extends State<AddTaskForm> {
                   label: Text(_selectedTime == null
                       ? 'Hora'
                       : _selectedTime!.format(context)),
-                  onPressed: _showTimePicker,
+                  onPressed: _isAllDay ? null : _showTimePicker,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _isAllDay ? Colors.grey : null,
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          // Checkbox Todo el día con dropdown
+          Row(
+            children: [
+              Checkbox(
+                value: _isAllDay,
+                onChanged: (value) {
+                  setState(() {
+                    _isAllDay = value ?? false;
+                    if (_isAllDay) {
+                      _selectedTime = const TimeOfDay(hour: 0, minute: 0);
+                    }
+                  });
+                },
+              ),
+              const Text('Todo el día'),
+            ],
+          ),
+          if (_isAllDay)
+            Padding(
+              padding: const EdgeInsets.only(left: 16, top: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.repeat, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DropdownButton<String>(
+                      value: _repeatType,
+                      isExpanded: true,
+                      underline: Container(),
+                      style:
+                          const TextStyle(fontSize: 14, color: Colors.black87),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'none', child: Text('Sin repetir')),
+                        DropdownMenuItem(
+                            value: 'daily', child: Text('Todos los días')),
+                        DropdownMenuItem(
+                            value: 'saturday', child: Text('Los sábados')),
+                        DropdownMenuItem(
+                            value: 'sunday', child: Text('Los domingos')),
+                        DropdownMenuItem(
+                            value: 'weekly',
+                            child: Text('Este día todas las semanas')),
+                        DropdownMenuItem(
+                            value: 'weekdays',
+                            child: Text('De lunes a viernes')),
+                        DropdownMenuItem(
+                            value: 'yearly',
+                            child: Text('Anualmente este día')),
+                        DropdownMenuItem(
+                            value: 'custom', child: Text('Personalizado')),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _repeatType = value ?? 'none';
+                          if (_repeatType == 'custom') {
+                            _showCustomDaysDialog();
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 16),
           ElevatedButton(
             style: ElevatedButton.styleFrom(

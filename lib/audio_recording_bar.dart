@@ -84,7 +84,8 @@ class _WavePainter extends CustomPainter {
     final path = Path();
     for (double x = 0; x < size.width; x++) {
       double y = size.height / 2 +
-          math.sin((x / size.width * 2 * math.pi * 2) + progress * 2 * math.pi) *
+          math.sin(
+                  (x / size.width * 2 * math.pi * 2) + progress * 2 * math.pi) *
               (size.height / 3);
       if (x == 0) {
         path.moveTo(x, y);

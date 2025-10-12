@@ -83,25 +83,29 @@ class UnderlineButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ...pastelColors.map((c) => GestureDetector(
-                  onTap: () {
-                    print('Color seleccionado: $c'); // Debug
-                    onColorSelected(c);
-                  },
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    margin: EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: c,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: color == c ? Colors.black87 : Colors.grey.shade300,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                )).toList(),
+                ...pastelColors
+                    .map((c) => GestureDetector(
+                          onTap: () {
+                            print('Color seleccionado: $c'); // Debug
+                            onColorSelected(c);
+                          },
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            margin: EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: c,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: color == c
+                                    ? Colors.black87
+                                    : Colors.grey.shade300,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ))
+                    .toList(),
                 // Botón para quitar subrayado
                 GestureDetector(
                   onTap: () {
