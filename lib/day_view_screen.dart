@@ -93,7 +93,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  DateFormat('EEEE, d MMMM').format(widget.selectedDate),
+                  _formatDateSpanish(widget.selectedDate),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -399,29 +399,36 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
   // Widget para mostrar tareas en un minuto
   Widget _buildTasksForMinute(List<PendingTask> tasks) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: tasks.map((task) => Container(
-        margin: const EdgeInsets.symmetric(vertical: 1),
-        child: _buildTaskInMinute(task), // Nueva función para manejar el estado
-      )).toList(),
+    return Flexible(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: tasks.map((task) => Container(
+          margin: const EdgeInsets.symmetric(vertical: 0.5), // Menos margen
+          child: _buildTaskInMinute(task), // Nueva función para manejar el estado
+        )).toList(),
+      ),
     );
   }
 
   // 🎯 ALTERNATIVA 1: TEXTO TACHADO CON OPACIDAD (ELEGANTE)
   Widget _buildTaskInMinute_Alternative1(PendingTask task) {
-    return Text(
-      task.title,
-      style: TextStyle(
-        fontSize: 8,
-        color: task.completed ? task.color.withOpacity(0.4) : task.color,
-        fontWeight: FontWeight.w600,
-        decoration: task.completed ? TextDecoration.lineThrough : TextDecoration.none,
-        decorationColor: task.color.withOpacity(0.6),
-        decorationThickness: 1.2,
+    return Flexible(
+      child: Text(
+        task.title,
+        style: TextStyle(
+          fontFamily: 'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
+          fontSize: 7, // Reducido para evitar overflow
+          color: task.completed ? task.color.withOpacity(0.4) : task.color,
+          fontWeight: FontWeight.w500, // Menos bold para mejor fit
+          decoration: task.completed ? TextDecoration.lineThrough : TextDecoration.none,
+          decorationColor: task.color.withOpacity(0.6),
+          decorationThickness: 1.0,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -441,12 +448,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
           child: Text(
             task.title,
             style: TextStyle(
-              fontSize: 8,
+              fontFamily: 'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
+              fontSize: 7, // Reducido para evitar overflow
               color: task.completed ? task.color.withOpacity(0.6) : task.color,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500, // Menos bold
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            softWrap: false,
           ),
         ),
       ],
@@ -455,16 +464,20 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
   // 🎯 ALTERNATIVA 3: CAMBIO DE COLOR A GRIS SUAVE
   Widget _buildTaskInMinute_Alternative3(PendingTask task) {
-    return Text(
-      task.title,
-      style: TextStyle(
-        fontSize: 8,
-        color: task.completed ? Colors.grey[400] : task.color,
-        fontWeight: task.completed ? FontWeight.w400 : FontWeight.w600,
-        fontStyle: task.completed ? FontStyle.italic : FontStyle.normal,
+    return Flexible(
+      child: Text(
+        task.title,
+        style: TextStyle(
+          fontFamily: 'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
+          fontSize: 7, // Reducido para evitar overflow
+          color: task.completed ? Colors.grey[400] : task.color,
+          fontWeight: task.completed ? FontWeight.w400 : FontWeight.w500,
+          fontStyle: task.completed ? FontStyle.italic : FontStyle.normal,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -495,18 +508,22 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
   // 🎯 ALTERNATIVA 5: COMBINACIÓN SÚPER ELEGANTE (RECOMENDADA)
   Widget _buildTaskInMinute_Alternative5(PendingTask task) {
-    return Text(
-      task.title,
-      style: TextStyle(
-        fontSize: 8,
-        color: task.completed ? Colors.grey[400] : task.color,
-        fontWeight: task.completed ? FontWeight.w400 : FontWeight.w600,
-        decoration: task.completed ? TextDecoration.lineThrough : TextDecoration.none,
-        decorationColor: Colors.grey[400],
-        decorationThickness: 1.0,
+    return Flexible(
+      child: Text(
+        task.title,
+        style: TextStyle(
+          fontFamily: 'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
+          fontSize: 7, // Reducido para evitar overflow
+          color: task.completed ? Colors.grey[400] : task.color,
+          fontWeight: task.completed ? FontWeight.w400 : FontWeight.w500,
+          decoration: task.completed ? TextDecoration.lineThrough : TextDecoration.none,
+          decorationColor: Colors.grey[400],
+          decorationThickness: 0.8,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -773,11 +790,12 @@ class _DayViewScreenState extends State<DayViewScreen> {
                         Text(
                           task.title,
                           style: TextStyle(
+                            fontFamily: 'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
                             color: task.completed
                                 ? Colors.grey[600]
                                 : Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11,
+                            fontWeight: FontWeight.w500, // Menos bold para mejor fit
+                            fontSize: 10, // Reducido para evitar overflow
                             decoration: task.completed
                                 ? TextDecoration.lineThrough
                                 : null,
@@ -938,6 +956,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   Text(
                     task.title,
                     style: const TextStyle(
+                      fontFamily: 'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
@@ -989,7 +1008,19 @@ class _DayViewScreenState extends State<DayViewScreen> {
     );
   }
 
-  // 🎯 ALTERNATIVA 4: CONTRASTE INTELIGENTE ADAPTATIVO (SÚPER ELEGANTE Y DISCRETO)
+  // � Formateo manual de fechas en español (sin afectar selectores de hora)
+  String _formatDateSpanish(DateTime date) {
+    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    
+    final dayName = days[date.weekday % 7];
+    final monthName = months[date.month - 1];
+    
+    return '${dayName[0].toUpperCase()}${dayName.substring(1)}, ${date.day} de $monthName';
+  }
+
+  // �🎯 ALTERNATIVA 4: CONTRASTE INTELIGENTE ADAPTATIVO (SÚPER ELEGANTE Y DISCRETO)
   Widget _buildVisibleEditButton(PendingTask task) {
     // Detecta automáticamente si el color de fondo es claro u oscuro
     final bgLuminance = task.color.computeLuminance();

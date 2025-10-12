@@ -3,6 +3,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'notes_module.dart';
 import 'note.dart';
@@ -10,7 +13,11 @@ import 'note_provider.dart';
 import 'pending.dart';
 import 'calendar_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // 🌍 Mantener inglés para selectores pero español para fechas (manual)
+  await initializeDateFormatting('en_US', null);
+  Intl.defaultLocale = 'en_US';
   runApp(const NotesApp());
 }
 
@@ -28,6 +35,17 @@ class NotesApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Notas',
+        // 🌍 Localización básica (selectores mantienen formato original)
+        locale: const Locale('en', 'US'),
+        localizationsDelegates: [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('en', 'US'), // Inglés para selectores
+          Locale('es', 'ES'), // Español para fechas (manual)
+        ],
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
           useMaterial3: true,

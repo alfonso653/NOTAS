@@ -6,6 +6,25 @@ import 'pending.dart';
 import 'day_view_screen.dart';
 import 'daily_verse_widget.dart';
 
+// 🌍 Funciones globales para formateo en español (sin afectar selectores)
+String formatMonthYearSpanish(DateTime date) {
+  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  final monthName = months[date.month - 1];
+  return '${monthName[0].toUpperCase()}${monthName.substring(1)} ${date.year}';
+}
+
+String formatFullDateSpanish(DateTime date) {
+  const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  
+  final dayName = days[date.weekday % 7];
+  final monthName = months[date.month - 1];
+  
+  return '${dayName[0].toUpperCase()}${dayName.substring(1)}, ${date.day} de $monthName de ${date.year}';
+}
+
 /// Pantalla principal del calendario infinito
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -55,6 +74,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.dispose();
   }
 
+
+
   /// Navegar al mes siguiente
   void _nextMonth() {
     setState(() {
@@ -94,7 +115,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    DateFormat('MMMM yyyy').format(_focusedMonth),
+                    formatMonthYearSpanish(_focusedMonth),
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -653,7 +674,7 @@ class _AddTaskCalendarFormState extends State<AddTaskCalendarForm> {
             const Icon(Icons.calendar_today, color: Color(0xFF6B73FF)),
             const SizedBox(width: 8),
             Text(
-              DateFormat('EEEE, d MMMM yyyy').format(_selectedDate),
+              formatFullDateSpanish(_selectedDate),
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
             const Spacer(),
