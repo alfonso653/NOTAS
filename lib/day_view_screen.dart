@@ -3,6 +3,21 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'pending.dart';
 
+/// Clase auxiliar para manejar información de rangos de tiempo
+class TaskRangeInfo {
+  final PendingTask task;
+  final bool isStart;
+  final bool isEnd;
+  final bool isMiddle;
+  
+  TaskRangeInfo({
+    required this.task,
+    required this.isStart,
+    required this.isEnd,
+    required this.isMiddle,
+  });
+}
+
 /// Pantalla de vista diaria con franjas horarias
 class DayViewScreen extends StatefulWidget {
   final DateTime selectedDate;
@@ -18,6 +33,7 @@ class DayViewScreen extends StatefulWidget {
 
 class _DayViewScreenState extends State<DayViewScreen> {
   late ScrollController _scrollController;
+  final Set<int> _expandedHours = <int>{}; // Tracking de horas expandidas
 
   @override
   void initState() {
@@ -126,40 +142,70 @@ class _DayViewScreenState extends State<DayViewScreen> {
         final hourTasks = _getTasksForHour(dayTasks, hour);
         final isCurrentHour = _isCurrentHour(hour);
 
-        return Container(
-          constraints: const BoxConstraints(minHeight: 60),
-          decoration: BoxDecoration(
-            color: isCurrentHour
-                ? const Color(0xFF6B73FF).withOpacity(0.05)
-                : Colors.transparent,
-            border: Border(
-              bottom: BorderSide(color: Colors.grey[200]!, width: 0.5),
-            ),
-          ),
-          child: Row(
-            children: [
-              // Hora (lado izquierdo)
-              Container(
-                width: 60,
-                color: Colors.grey[50],
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4, right: 8),
-                    child: Text(
-                      _formatHour(hour),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isCurrentHour
-                            ? const Color(0xFF6B73FF)
-                            : Colors.grey[600],
-                        fontWeight:
-                            isCurrentHour ? FontWeight.w700 : FontWeight.w500,
+        final isExpanded = _expandedHours.contains(hour);
+        final isEvenHour = hour % 2 == 0; // Para alternar fondos sutilmente
+        
+        return Column(
+          children: [
+            Container(
+              constraints: const BoxConstraints(minHeight: 60),
+              decoration: BoxDecoration(
+                color: isCurrentHour
+                    ? const Color(0xFF6B73FF).withOpacity(0.05)
+                    : isEvenHour 
+                        ? Colors.transparent
+                        : Colors.grey.withOpacity(0.06), // Más evidente para mejor separación
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[200]!, width: 0.5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Hora (lado izquierdo) - Ahora clickeable
+                  GestureDetector(
+                    onTap: () => _toggleHourExpansion(hour),
+                    child: Container(
+                      width: 60,
+                      color: Colors.transparent, // Fondo completamente transparente
+                      child: Column(
+                        children: [
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 4, right: 8),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _formatHour(hour),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isCurrentHour
+                                          ? const Color(0xFF6B73FF)
+                                          : Colors.grey[600],
+                                      fontWeight: isCurrentHour 
+                                          ? FontWeight.w700 
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    isExpanded 
+                                        ? Icons.keyboard_arrow_up 
+                                        : Icons.keyboard_arrow_down,
+                                    size: 14,
+                                    color: isCurrentHour
+                                        ? const Color(0xFF6B73FF)
+                                        : Colors.grey[600],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ),
 
               // Línea divisoria
               Container(
@@ -171,18 +217,26 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
               // Área de tareas (lado derecho)
               Expanded(
-                child: GestureDetector(
-                  onTap: () => _showAddTaskForHour(context, provider, hour),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: hourTasks.isEmpty
-                        ? _buildEmptyHourSlot(hour, isCurrentHour)
-                        : _buildTasksForHour(hourTasks, hour),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Column(
+                    children: [
+                      // Tareas existentes (no táctiles excepto por sus botones)
+                      if (hourTasks.isNotEmpty) _buildTasksForHour(hourTasks, hour),
+                      
+                      // Botón "Agregar tarea" siempre visible
+                      _buildAddTaskButton(hour, isCurrentHour, provider),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+                ],
+              ),
+            ),
+            
+            // Minutos expandidos (si está expandida la hora)
+            if (isExpanded) _buildExpandedMinutes(hour, dayTasks, provider),
+          ],
         );
       },
     );
@@ -197,22 +251,441 @@ class _DayViewScreenState extends State<DayViewScreen> {
     return DateTime.now().hour == hour;
   }
 
-  Widget _buildEmptyHourSlot(int hour, bool isCurrentHour) {
+  // Método para alternar expansión de horas
+  void _toggleHourExpansion(int hour) {
+    setState(() {
+      if (_expandedHours.contains(hour)) {
+        _expandedHours.remove(hour);
+      } else {
+        _expandedHours.add(hour);
+      }
+    });
+  }
+
+  // Widget para mostrar minutos expandidos
+  Widget _buildExpandedMinutes(int hour, List<PendingTask> dayTasks, PendingProvider provider) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: isCurrentHour
-              ? const Color(0xFF6B73FF).withOpacity(0.4)
-              : Colors.grey[300]!,
-          width: 1,
+        color: const Color(0xFF6B73FF).withOpacity(0.02),
+        border: Border(
+          left: BorderSide(
+            color: const Color(0xFF6B73FF).withOpacity(0.3),
+            width: 2,
+          ),
         ),
-        borderRadius: BorderRadius.circular(6),
-        color: isCurrentHour
-            ? const Color(0xFF6B73FF).withOpacity(0.02)
-            : Colors.transparent,
       ),
-      child: Center(
+      child: Column(
+        children: List.generate(60, (minuteIndex) {
+          final minute = minuteIndex;
+          final minuteTasks = _getTasksForMinute(dayTasks, hour, minute);
+          final isCurrentMinute = _isCurrentMinute(hour, minute);
+          
+          // Obtener información de rangos de tareas para este minuto
+          final timeRangeInfo = _getTimeRangeInfoForMinute(dayTasks, hour, minute);
+          
+          return Container(
+            height: 30,
+            decoration: BoxDecoration(
+              color: isCurrentMinute 
+                  ? const Color(0xFF6B73FF).withOpacity(0.1)
+                  : Colors.transparent,
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey[100]!,
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Contenido principal
+                Row(
+                  children: [
+                // Minuto (lado izquierdo)
+                Container(
+                  width: 60,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Text(
+                        '${_formatHour(hour).split(' ')[0]}:${minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: isCurrentMinute
+                              ? const Color(0xFF6B73FF)
+                              : Colors.grey[500],
+                          fontWeight: isCurrentMinute
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Línea divisoria
+                Container(
+                  width: 1,
+                  height: 30,
+                  color: Colors.grey[200],
+                ),
+                
+                // Área de tareas del minuto
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.only(left: 18, right: 4), // Aún más espacio para múltiples líneas
+                    child: Row(
+                      children: [
+                        // Tareas existentes (si las hay)
+                        if (minuteTasks.isNotEmpty) 
+                          Expanded(child: _buildTasksForMinute(minuteTasks)),
+                        
+                        // Botón agregar tarea (siempre visible pero más pequeño en minutos)
+                        GestureDetector(
+                          onTap: () => _showAddTaskForMinute(context, provider, hour, minute),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            child: Text(
+                              minuteTasks.isEmpty ? 'Agregar tarea' : '+',
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: isCurrentMinute 
+                                    ? const Color(0xFF6B73FF).withOpacity(0.7)
+                                    : Colors.grey[400],
+                                fontStyle: minuteTasks.isEmpty ? FontStyle.italic : FontStyle.normal,
+                                fontWeight: minuteTasks.isEmpty ? FontWeight.normal : FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                  ],
+                ),
+                
+                // Indicadores visuales de rango de tiempo
+                if (timeRangeInfo.isNotEmpty) 
+                  _buildTimeRangeIndicators(timeRangeInfo, hour, minute),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // Obtener tareas para un minuto específico
+  List<PendingTask> _getTasksForMinute(List<PendingTask> tasks, int hour, int minute) {
+    return tasks.where((task) {
+      return task.dateTime.hour == hour && task.dateTime.minute == minute;
+    }).toList();
+  }
+
+  // Verificar si es el minuto actual
+  bool _isCurrentMinute(int hour, int minute) {
+    if (!_isToday()) return false;
+    final now = DateTime.now();
+    return now.hour == hour && now.minute == minute;
+  }
+
+  // Mostrar diálogo para agregar tarea en minuto específico
+  void _showAddTaskForMinute(BuildContext context, PendingProvider provider, int hour, int minute) {
+    // Pasar tanto la hora como el minuto exacto
+    _showAddTaskDialog(context, provider, hour: hour, minute: minute);
+  }
+
+  // Widget para mostrar tareas en un minuto
+  Widget _buildTasksForMinute(List<PendingTask> tasks) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: tasks.map((task) => Container(
+        margin: const EdgeInsets.symmetric(vertical: 1),
+        child: _buildTaskInMinute(task), // Nueva función para manejar el estado
+      )).toList(),
+    );
+  }
+
+  // 🎯 ALTERNATIVA 1: TEXTO TACHADO CON OPACIDAD (ELEGANTE)
+  Widget _buildTaskInMinute_Alternative1(PendingTask task) {
+    return Text(
+      task.title,
+      style: TextStyle(
+        fontSize: 8,
+        color: task.completed ? task.color.withOpacity(0.4) : task.color,
+        fontWeight: FontWeight.w600,
+        decoration: task.completed ? TextDecoration.lineThrough : TextDecoration.none,
+        decorationColor: task.color.withOpacity(0.6),
+        decorationThickness: 1.2,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  // 🎯 ALTERNATIVA 2: ÍCONO DE CHECK PEQUEÑO
+  Widget _buildTaskInMinute_Alternative2(PendingTask task) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (task.completed) 
+          Icon(
+            Icons.check_circle,
+            size: 6,
+            color: Colors.green[400],
+          ),
+        if (task.completed) const SizedBox(width: 2),
+        Expanded(
+          child: Text(
+            task.title,
+            style: TextStyle(
+              fontSize: 8,
+              color: task.completed ? task.color.withOpacity(0.6) : task.color,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 🎯 ALTERNATIVA 3: CAMBIO DE COLOR A GRIS SUAVE
+  Widget _buildTaskInMinute_Alternative3(PendingTask task) {
+    return Text(
+      task.title,
+      style: TextStyle(
+        fontSize: 8,
+        color: task.completed ? Colors.grey[400] : task.color,
+        fontWeight: task.completed ? FontWeight.w400 : FontWeight.w600,
+        fontStyle: task.completed ? FontStyle.italic : FontStyle.normal,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  // 🎯 ALTERNATIVA 4: BORDE IZQUIERDO CON OPACIDAD
+  Widget _buildTaskInMinute_Alternative4(PendingTask task) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: task.completed ? Colors.grey[300]! : task.color,
+            width: task.completed ? 1.0 : 2.0,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.only(left: 3),
+      child: Text(
+        task.title,
+        style: TextStyle(
+          fontSize: 8,
+          color: task.completed ? task.color.withOpacity(0.5) : task.color,
+          fontWeight: FontWeight.w600,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  // 🎯 ALTERNATIVA 5: COMBINACIÓN SÚPER ELEGANTE (RECOMENDADA)
+  Widget _buildTaskInMinute_Alternative5(PendingTask task) {
+    return Text(
+      task.title,
+      style: TextStyle(
+        fontSize: 8,
+        color: task.completed ? Colors.grey[400] : task.color,
+        fontWeight: task.completed ? FontWeight.w400 : FontWeight.w600,
+        decoration: task.completed ? TextDecoration.lineThrough : TextDecoration.none,
+        decorationColor: Colors.grey[400],
+        decorationThickness: 1.0,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  // 🎯 FUNCIÓN ACTIVA - Cambia aquí el número para probar diferentes alternativas
+  Widget _buildTaskInMinute(PendingTask task) {
+    return _buildTaskInMinute_Alternative5(task); // 🔥 ACTUALMENTE USANDO ALTERNATIVA 5
+  }
+
+  // Obtener información de rangos de tiempo para un minuto específico
+  List<TaskRangeInfo> _getTimeRangeInfoForMinute(List<PendingTask> tasks, int hour, int minute) {
+    List<TaskRangeInfo> rangeInfos = [];
+    
+    for (var task in tasks) {
+      if (task.endDateTime != null && task.occursInHour(hour)) {
+        final currentMinuteTime = DateTime(2025, 1, 1, hour, minute);
+        final taskStart = DateTime(2025, 1, 1, task.dateTime.hour, task.dateTime.minute);
+        final taskEnd = DateTime(2025, 1, 1, task.endDateTime!.hour, task.endDateTime!.minute);
+        
+        // Verificar si este minuto está dentro del rango de la tarea
+        if (currentMinuteTime.isAtSameMomentAs(taskStart) || 
+            currentMinuteTime.isAtSameMomentAs(taskEnd) ||
+            (currentMinuteTime.isAfter(taskStart) && currentMinuteTime.isBefore(taskEnd))) {
+          
+          // Determinar el tipo de posición en el rango
+          bool isStart = currentMinuteTime.isAtSameMomentAs(taskStart);
+          bool isEnd = currentMinuteTime.isAtSameMomentAs(taskEnd);
+          bool isMiddle = !isStart && !isEnd;
+          
+          rangeInfos.add(TaskRangeInfo(
+            task: task,
+            isStart: isStart,
+            isEnd: isEnd,
+            isMiddle: isMiddle,
+          ));
+        }
+      }
+    }
+    
+    return rangeInfos;
+  }
+
+  // Widget para mostrar indicadores visuales de rangos de tiempo
+  Widget _buildTimeRangeIndicators(List<TaskRangeInfo> rangeInfos, int hour, int minute) {
+    return Positioned(
+      left: 61, // Posición perfectamente centrada
+      top: 2,
+      bottom: 2,
+      child: Container(
+        width: 12, // Más ancho para acomodar múltiples tareas sin superposición
+        child: Stack(
+          children: rangeInfos.asMap().entries.map((entry) {
+            int index = entry.key;
+            TaskRangeInfo info = entry.value;
+            
+            return Positioned(
+              left: index * 2.5, // Mayor separación entre líneas
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 2.5, // Líneas más delgadas pero claras
+                decoration: BoxDecoration(
+                  color: info.task.completed 
+                      ? info.task.color.withOpacity(0.3) // Opacidad para tareas completadas
+                      : info.task.color, // Color sólido para tareas activas
+                  borderRadius: BorderRadius.circular(1.25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: info.task.completed 
+                          ? info.task.color.withOpacity(0.1) // Sombra más sutil para completadas
+                          : info.task.color.withOpacity(0.3),
+                      blurRadius: 2,
+                      offset: const Offset(0.5, 0),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    // Punto de inicio más prominente y claro
+                    if (info.isStart)
+                      Positioned(
+                        top: -2,
+                        left: -2,
+                        right: -2,
+                        child: Container(
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: info.task.completed 
+                                ? info.task.color.withOpacity(0.4) // Punto inicio opaco si completada
+                                : info.task.color,
+                            borderRadius: BorderRadius.circular(3.5),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: info.task.completed 
+                                    ? info.task.color.withOpacity(0.2) // Sombra más sutil si completada
+                                    : info.task.color.withOpacity(0.7),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    
+                    // Punto de fin más prominente y claro
+                    if (info.isEnd)
+                      Positioned(
+                        bottom: -2,
+                        left: -2,
+                        right: -2,
+                        child: Container(
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: info.task.completed 
+                                ? info.task.color.withOpacity(0.4) // Punto fin opaco si completada
+                                : info.task.color,
+                            borderRadius: BorderRadius.circular(3.5),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: info.task.completed 
+                                    ? info.task.color.withOpacity(0.2) // Sombra más sutil si completada
+                                    : info.task.color.withOpacity(0.7),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    
+                    // Línea intermedia más clara y continua
+                    if (info.isMiddle)
+                      Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        decoration: BoxDecoration(
+                          color: info.task.completed 
+                              ? info.task.color.withOpacity(0.25) // Línea intermedia muy sutil si completada
+                              : info.task.color.withOpacity(0.9), // Más opaco para mayor claridad si activa
+                          borderRadius: BorderRadius.circular(1.25),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  // Botón para agregar tarea - siempre visible
+  Widget _buildAddTaskButton(int hour, bool isCurrentHour, PendingProvider provider) {
+    return GestureDetector(
+      onTap: () => _showAddTaskForHour(context, provider, hour),
+      child: Container(
+        width: double.infinity, // Ocupar todo el ancho disponible
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16), // Más padding
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isCurrentHour
+                ? const Color(0xFF6B73FF).withOpacity(0.4)
+                : Colors.grey[300]!,
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(6),
+          color: isCurrentHour
+              ? const Color(0xFF6B73FF).withOpacity(0.02)
+              : Colors.transparent,
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -223,7 +696,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   : Colors.grey[400],
               size: 16,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             Text(
               'Agregar tarea',
               style: TextStyle(
@@ -332,51 +805,12 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Botón de editar
-                      GestureDetector(
-                        onTap: () => _showEditTaskDialog(context, task),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(
-                            Icons.edit,
-                            color: Colors.white.withOpacity(0.7),
-                            size: 14,
-                          ),
-                        ),
-                      ),
+                      // 🎯 BOTONES CON VISIBILIDAD GARANTIZADA
+                      _buildVisibleEditButton(task),
                       const SizedBox(width: 2),
-                      // Botón de eliminar
-                      GestureDetector(
-                        onTap: () => _showDeleteConfirmation(context, task),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(
-                            Icons.delete_outline,
-                            color: Colors.red.withOpacity(0.8),
-                            size: 14,
-                          ),
-                        ),
-                      ),
+                      _buildVisibleDeleteButton(task), 
                       const SizedBox(width: 4),
-                      // Estado de completado
-                      GestureDetector(
-                        onTap: () {
-                          final provider = context.read<PendingProvider>();
-                          provider.toggleTaskCompletion(task.id);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          child: Icon(
-                            task.completed
-                                ? Icons.check_circle
-                                : Icons.radio_button_unchecked,
-                            color: task.completed
-                                ? Colors.green[400]
-                                : Colors.white.withOpacity(0.8),
-                            size: 16,
-                          ),
-                        ),
-                      ),
+                      _buildVisibleCompleteButton(task),
                     ],
                   ),
                 ],
@@ -444,13 +878,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
   }
 
   void _showAddTaskDialog(BuildContext context, PendingProvider provider,
-      {int? hour}) {
+      {int? hour, int? minute}) {
     showDialog(
       context: context,
       builder: (context) => AddTaskHourlyForm(
         pendingProvider: provider,
         selectedDate: widget.selectedDate,
         selectedHour: hour,
+        selectedMinute: minute,
       ),
     );
   }
@@ -553,6 +988,65 @@ class _DayViewScreenState extends State<DayViewScreen> {
       ),
     );
   }
+
+  // 🎯 ALTERNATIVA 4: CONTRASTE INTELIGENTE ADAPTATIVO (SÚPER ELEGANTE Y DISCRETO)
+  Widget _buildVisibleEditButton(PendingTask task) {
+    // Detecta automáticamente si el color de fondo es claro u oscuro
+    final bgLuminance = task.color.computeLuminance();
+    final iconColor = bgLuminance > 0.5 ? Colors.black87 : Colors.white;
+    
+    return GestureDetector(
+      onTap: () => _showEditTaskDialog(context, task),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        child: Icon(
+          Icons.edit,
+          color: iconColor,
+          size: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVisibleDeleteButton(PendingTask task) {
+    final bgLuminance = task.color.computeLuminance();
+    final iconColor = bgLuminance > 0.5 ? Colors.red[700]! : Colors.red[300]!;
+    
+    return GestureDetector(
+      onTap: () => _showDeleteConfirmation(context, task),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        child: Icon(
+          Icons.delete_outline,
+          color: iconColor,
+          size: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVisibleCompleteButton(PendingTask task) {
+    final bgLuminance = task.color.computeLuminance();
+    final checkColor = task.completed ? Colors.green[400]! : 
+                      (bgLuminance > 0.5 ? Colors.black54 : Colors.white70);
+    
+    return GestureDetector(
+      onTap: () {
+        final provider = context.read<PendingProvider>();
+        provider.toggleTaskCompletion(task.id);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        child: Icon(
+          task.completed
+              ? Icons.check_circle
+              : Icons.radio_button_unchecked,
+          color: checkColor,
+          size: 16,
+        ),
+      ),
+    );
+  }
 }
 
 /// Formulario para agregar tareas con hora específica
@@ -560,12 +1054,14 @@ class AddTaskHourlyForm extends StatefulWidget {
   final PendingProvider pendingProvider;
   final DateTime selectedDate;
   final int? selectedHour;
+  final int? selectedMinute;
 
   const AddTaskHourlyForm({
     super.key,
     required this.pendingProvider,
     required this.selectedDate,
     this.selectedHour,
+    this.selectedMinute,
   });
 
   @override
@@ -588,7 +1084,7 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
   void initState() {
     super.initState();
     _selectedHour = widget.selectedHour ?? DateTime.now().hour;
-    _selectedMinute = 0;
+    _selectedMinute = widget.selectedMinute ?? 0; // Usar minuto específico si se proporciona
     _hasEndTime = _lastEndTimePreference; // Usar la última preferencia
     if (_hasEndTime) {
       _endHour = _selectedHour + 1;

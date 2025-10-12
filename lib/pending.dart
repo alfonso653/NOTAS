@@ -60,7 +60,12 @@ class PendingTask {
     if (endDateTime == null) {
       return dateTime.hour == hour;
     }
-    return dateTime.hour <= hour && endDateTime!.hour > hour;
+    
+    // Una tarea ocurre en una hora si:
+    // 1. Empieza en esa hora, O
+    // 2. Termina en esa hora (incluso si es el mismo minuto), O
+    // 3. Atraviesa esa hora completamente
+    return (dateTime.hour <= hour && endDateTime!.hour >= hour);
   }
 
   /// Obtiene la porción de la tarea que ocurre en una hora específica (0.0 a 1.0)
@@ -157,49 +162,49 @@ class PendingProvider extends ChangeNotifier {
 /// Paleta de colores pasteles para las tareas
 class TaskColors {
   static const List<String> pastelColors = [
-    '#6B73FF', // Azul (default)
-    '#FF4757', // Rojo vibrante
-    '#2ED573', // Verde lima
-    '#FFA502', // Naranja brillante
-    '#FF6B9D', // Rosa fucsia
-    '#5352ED', // Púrpura
-    '#FF3838', // Rojo coral
-    '#00D2D3', // Turquesa
-    '#FFD32A', // Amarillo sol
-    '#FF9F43', // Mandarina
-    '#A4B0BE', // Gris azulado
-    '#8B5CF6', // Violeta
-    '#06FFA5', // Verde neón
-    '#F8B500', // Ámbar
-    '#E056FD', // Magenta
-    '#26C6DA', // Cian
-    '#FF7675', // Salmón claro
-    '#74B9FF', // Azul cielo
-    '#FDCB6E', // Dorado suave
-    '#6C5CE7', // Índigo
+    '#A8C8FF', // Azul pastel suave
+    '#FFB3BA', // Rosa pastel coral
+    '#B5E48C', // Verde pastel mint
+    '#FFD93D', // Amarillo pastel mantequilla
+    '#DDA0DD', // Púrpura pastel lavanda
+    '#87CEEB', // Azul cielo pastel
+    '#F0A0A0', // Durazno pastel suave
+    '#98E4D6', // Verde agua pastel
+    '#F5DEB3', // Beige pastel trigo
+    '#E6E6FA', // Lavanda pastel claro
+    '#FFE5B4', // Melocotón pastel
+    '#D8BFD8', // Ciruela pastel
+    '#AFEEEE', // Turquesa pastel pálido
+    '#F0E68C', // Khaki pastel dorado
+    '#FFC0CB', // Rosa pastel clásico
+    '#B0E0E6', // Azul pólvora pastel
+    '#FAFAD2', // Amarillo pastel limón
+    '#D3D3D3', // Gris pastel perla
+    '#F5F5DC', // Crema pastel marfil
+    '#E0FFFF', // Cian pastel cristal
   ];
 
   static const List<String> colorNames = [
-    'Azul',
-    'Rojo',
-    'Lima',
-    'Naranja',
-    'Fucsia',
-    'Púrpura',
-    'Coral',
-    'Turquesa',
-    'Sol',
-    'Mandarina',
-    'Gris',
-    'Violeta',
-    'Neón',
-    'Ámbar',
-    'Magenta',
-    'Cian',
-    'Salmón',
+    'Azul Suave',
+    'Rosa Coral',
+    'Verde Mint',
+    'Mantequilla',
+    'Lavanda',
     'Cielo',
+    'Durazno',
+    'Agua Marina',
+    'Trigo',
+    'Lila',
+    'Melocotón',
+    'Ciruela',
+    'Turquesa',
     'Dorado',
-    'Índigo'
+    'Rosa Clásico',
+    'Pólvora',
+    'Limón',
+    'Perla',
+    'Marfil',
+    'Cristal'
   ];
 
   /// Convierte color hex a Color de Flutter
