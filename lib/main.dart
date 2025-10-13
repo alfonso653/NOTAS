@@ -13,16 +13,17 @@ import 'note_provider.dart';
 import 'pending.dart';
 import 'calendar_screen.dart';
 import 'notification_service.dart';
+import 'notebook_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 🌍 Mantener inglés para selectores pero español para fechas (manual)
   await initializeDateFormatting('en_US', null);
   Intl.defaultLocale = 'en_US';
-  
+
   // 📱 Inicializar servicio de notificaciones
   await NotificationService.initialize();
-  
+
   runApp(const NotesApp());
 }
 
@@ -36,6 +37,8 @@ class NotesApp extends StatelessWidget {
         ChangeNotifierProvider<NoteProvider>(create: (_) => NoteProvider()),
         ChangeNotifierProvider<PendingProvider>(
             create: (_) => PendingProvider()),
+        ChangeNotifierProvider<NotebookProvider>(
+            create: (_) => NotebookProvider()..initialize()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

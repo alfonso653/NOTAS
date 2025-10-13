@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <application
         android:label="notes_module"
         android:name="${applicationName}"
@@ -44,6 +47,16 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
             </intent-filter>
         </receiver>
+
+        <!-- 🚨 SERVICIO Y RECEIVER PARA ALARMAS REALES -->
+        <service android:name=".AlarmService"
+                 android:enabled="true"
+                 android:exported="false"
+                 android:foregroundServiceType="mediaPlayback" />
+        
+        <receiver android:name=".AlarmReceiver"
+                  android:enabled="true"
+                  android:exported="false" />
         
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

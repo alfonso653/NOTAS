@@ -57,6 +57,8 @@ flutter:
     - assets/pendientes.gif
     - assets/audio.gif
     - assets/compartir.png
+    - assets/cuaderno.jpg
+    - assets/hojap.png
     - assets/fonts/Nunito-Bold.ttf
     - assets/fonts/Nunito-BoldItalic.ttf
     - assets/fonts/Nunito-Regular.ttf

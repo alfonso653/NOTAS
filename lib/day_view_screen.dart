@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'pending.dart';
 import 'notification_service.dart';
+import 'notebook_screen.dart';
 
 /// Clase auxiliar para manejar información de rangos de tiempo
 class TaskRangeInfo {
@@ -113,6 +114,18 @@ class _DayViewScreenState extends State<DayViewScreen> {
               ],
             ),
             actions: [
+              // 📓 Botón del cuaderno de marcado (primera ubicación)
+              IconButton(
+                icon: const Text(
+                  '📔',
+                  style: TextStyle(fontSize: 20),
+                ),
+                onPressed: () => showNotebook(
+                  context,
+                  date: widget.selectedDate,
+                ),
+                tooltip: 'Cuaderno del día',
+              ),
               IconButton(
                 icon: const Icon(Icons.add, color: Color(0xFF374151)),
                 onPressed: () => _showAddTaskDialog(context, provider),
@@ -349,8 +362,25 @@ class _DayViewScreenState extends State<DayViewScreen> {
                           onTap: () => _showAddTaskForMinute(
                               context, provider, hour, minute),
                           borderRadius: BorderRadius.circular(2),
-                          splashColor: const Color(0xFF374151).withOpacity(0.05),
-                          highlightColor: const Color(0xFF374151).withOpacity(0.02),
+                          splashColor:
+                              const Color(0xFF374151).withOpacity(0.05),
+                          highlightColor:
+                              const Color(0xFF374151).withOpacity(0.02),
+                          // 🔧 SOLUCIÓN: Controlar estados explícitamente
+                          overlayColor:
+                              MaterialStateProperty.resolveWith<Color?>(
+                            (Set<MaterialState> states) {
+                              if (states.contains(MaterialState.pressed)) {
+                                return const Color(0xFF374151)
+                                    .withOpacity(0.03);
+                              }
+                              if (states.contains(MaterialState.hovered)) {
+                                return const Color(0xFF374151)
+                                    .withOpacity(0.015);
+                              }
+                              return null; // Estado normal - sin overlay
+                            },
+                          ),
                           child: Container(
                             padding: const EdgeInsets.only(
                                 left: 18,
@@ -374,7 +404,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                           Icons.add,
                                           size: 10,
                                           color: isCurrentMinute
-                                              ? const Color(0xFF374151).withOpacity(0.6)
+                                              ? const Color(0xFF374151)
+                                                  .withOpacity(0.6)
                                               : Colors.grey[400],
                                         ),
                                         const SizedBox(width: 4),
@@ -383,7 +414,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                           style: TextStyle(
                                             fontSize: 8,
                                             color: isCurrentMinute
-                                                ? const Color(0xFF374151).withOpacity(0.6)
+                                                ? const Color(0xFF374151)
+                                                    .withOpacity(0.6)
                                                 : Colors.grey[400],
                                             fontWeight: FontWeight.w400,
                                             letterSpacing: 0.1,
@@ -883,9 +915,12 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       // 🎯 BOTONES CON VISIBILIDAD GARANTIZADA
                       _buildVisibleEditButton(task),
                       const SizedBox(width: 2),
+                      _buildVisibleNotebookButton(task), // 📓 CUADERNO DE MARCADO
+                      const SizedBox(width: 2),
                       _buildVisibleAlarmButton(task), // ALARMA (sonido fuerte)
                       const SizedBox(width: 2),
-                      _buildVisibleNotificationButton(task), // NOTIFICACIÓN (silenciosa)
+                      _buildVisibleNotificationButton(
+                          task), // NOTIFICACIÓN (silenciosa)
                       const SizedBox(width: 2),
                       _buildVisibleDeleteButton(task),
                       const SizedBox(width: 4),
@@ -1057,6 +1092,31 @@ class _DayViewScreenState extends State<DayViewScreen> {
     );
   }
 
+  Widget _buildVisibleNotebookButton(PendingTask task) {
+    // Detecta automáticamente si el color de fondo es claro u oscuro
+    final bgLuminance = task.color.computeLuminance();
+    final iconColor = bgLuminance > 0.5 ? Colors.black87 : Colors.white;
+
+    return GestureDetector(
+      onTap: () => showNotebook(
+        context,
+        taskId: task.id,
+        taskTitle: task.title,
+        taskDescription: task.description,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        child: Text(
+          '📔',
+          style: TextStyle(
+            fontSize: 16,
+            color: iconColor,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildVisibleDeleteButton(PendingTask task) {
     final bgLuminance = task.color.computeLuminance();
     final iconColor = bgLuminance > 0.5 ? Colors.red[700]! : Colors.red[300]!;
@@ -1076,9 +1136,13 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
   Widget _buildVisibleAlarmButton(PendingTask task) {
     final bgLuminance = task.color.computeLuminance();
-    final iconColor = bgLuminance > 0.5 
-        ? (task.hasAlarm ? const Color(0xFFB8860B) : Colors.grey[600]!) // Dorado oscuro o gris para fondos claros
-        : (task.hasAlarm ? const Color(0xFFFFD700) : Colors.grey[400]!); // Dorado claro o gris para fondos oscuros
+    final iconColor = bgLuminance > 0.5
+        ? (task.hasAlarm
+            ? const Color(0xFFB8860B)
+            : Colors.grey[600]!) // Dorado oscuro o gris para fondos claros
+        : (task.hasAlarm
+            ? const Color(0xFFFFD700)
+            : Colors.grey[400]!); // Dorado claro o gris para fondos oscuros
 
     return GestureDetector(
       onTap: () => _showAlarmDialog(context, task),
@@ -1095,16 +1159,22 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
   Widget _buildVisibleNotificationButton(PendingTask task) {
     final bgLuminance = task.color.computeLuminance();
-    final iconColor = bgLuminance > 0.5 
-        ? (task.hasNotification ? const Color(0xFF1E40AF) : Colors.grey[600]!) // Azul oscuro o gris para fondos claros
-        : (task.hasNotification ? const Color(0xFF60A5FA) : Colors.grey[400]!); // Azul claro o gris para fondos oscuros
+    final iconColor = bgLuminance > 0.5
+        ? (task.hasNotification
+            ? const Color(0xFF1E40AF)
+            : Colors.grey[600]!) // Azul oscuro o gris para fondos claros
+        : (task.hasNotification
+            ? const Color(0xFF60A5FA)
+            : Colors.grey[400]!); // Azul claro o gris para fondos oscuros
 
     return GestureDetector(
       onTap: () => _showNotificationDialog(context, task),
       child: Container(
         padding: const EdgeInsets.all(4),
         child: Icon(
-          task.hasNotification ? Icons.notifications_active : Icons.notifications_off,
+          task.hasNotification
+              ? Icons.notifications_active
+              : Icons.notifications_off,
           color: iconColor,
           size: 14,
         ),
@@ -1159,7 +1229,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    'Configurar Alarma',
+                    'Configurar DESPERTADOR',
                     style: TextStyle(
                       color: Color(0xFF374151),
                       fontWeight: FontWeight.bold,
@@ -1180,7 +1250,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Toggle para activar/desactivar alarma
                   Row(
                     children: [
@@ -1201,16 +1271,17 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       Text(
                         'Activar alarma',
                         style: TextStyle(
-                          color: hasAlarm ? const Color(0xFF374151) : Colors.grey,
+                          color:
+                              hasAlarm ? const Color(0xFF374151) : Colors.grey,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
-                  
+
                   if (hasAlarm) ...[
                     const SizedBox(height: 16),
-                    
+
                     // Tabs para ANTES y DESPUÉS
                     Container(
                       decoration: BoxDecoration(
@@ -1221,12 +1292,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
                         children: [
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => setState(() => selectedTiming = 'before'),
+                              onTap: () =>
+                                  setState(() => selectedTiming = 'before'),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: selectedTiming == 'before' 
-                                      ? const Color(0xFF374151) 
+                                  color: selectedTiming == 'before'
+                                      ? const Color(0xFF374151)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
@@ -1234,8 +1307,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                   'ANTES',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: selectedTiming == 'before' 
-                                        ? Colors.white 
+                                    color: selectedTiming == 'before'
+                                        ? Colors.white
                                         : const Color(0xFF374151),
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -1245,12 +1318,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
                           ),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => setState(() => selectedTiming = 'after'),
+                              onTap: () =>
+                                  setState(() => selectedTiming = 'after'),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: selectedTiming == 'after' 
-                                      ? const Color(0xFF374151) 
+                                  color: selectedTiming == 'after'
+                                      ? const Color(0xFF374151)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
@@ -1258,8 +1333,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                   'DESPUÉS',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: selectedTiming == 'after' 
-                                        ? Colors.white 
+                                    color: selectedTiming == 'after'
+                                        ? Colors.white
                                         : const Color(0xFF374151),
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -1270,32 +1345,40 @@ class _DayViewScreenState extends State<DayViewScreen> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Opciones según el timing seleccionado
                     if (selectedTiming == 'before') ...[
                       Column(
                         children: [
-                          _buildAlarmOption('En el momento', 0, selectedMinutesBefore, (value) {
+                          _buildAlarmOption(
+                              'En el momento', 0, selectedMinutesBefore,
+                              (value) {
                             setState(() {
                               selectedMinutesBefore = value;
                               selectedMinutesAfter = null;
                             });
                           }),
-                          _buildAlarmOption('5 minutos antes', 5, selectedMinutesBefore, (value) {
+                          _buildAlarmOption(
+                              '5 minutos antes', 5, selectedMinutesBefore,
+                              (value) {
                             setState(() {
                               selectedMinutesBefore = value;
                               selectedMinutesAfter = null;
                             });
                           }),
-                          _buildAlarmOption('10 minutos antes', 10, selectedMinutesBefore, (value) {
+                          _buildAlarmOption(
+                              '10 minutos antes', 10, selectedMinutesBefore,
+                              (value) {
                             setState(() {
                               selectedMinutesBefore = value;
                               selectedMinutesAfter = null;
                             });
                           }),
-                          _buildAlarmOption('15 minutos antes', 15, selectedMinutesBefore, (value) {
+                          _buildAlarmOption(
+                              '15 minutos antes', 15, selectedMinutesBefore,
+                              (value) {
                             setState(() {
                               selectedMinutesBefore = value;
                               selectedMinutesAfter = null;
@@ -1306,19 +1389,25 @@ class _DayViewScreenState extends State<DayViewScreen> {
                     ] else ...[
                       Column(
                         children: [
-                          _buildAlarmOption('5 minutos después', 5, selectedMinutesAfter, (value) {
+                          _buildAlarmOption(
+                              '5 minutos después', 5, selectedMinutesAfter,
+                              (value) {
                             setState(() {
                               selectedMinutesAfter = value;
                               selectedMinutesBefore = null;
                             });
                           }),
-                          _buildAlarmOption('10 minutos después', 10, selectedMinutesAfter, (value) {
+                          _buildAlarmOption(
+                              '10 minutos después', 10, selectedMinutesAfter,
+                              (value) {
                             setState(() {
                               selectedMinutesAfter = value;
                               selectedMinutesBefore = null;
                             });
                           }),
-                          _buildAlarmOption('15 minutos después', 15, selectedMinutesAfter, (value) {
+                          _buildAlarmOption(
+                              '15 minutos después', 15, selectedMinutesAfter,
+                              (value) {
                             setState(() {
                               selectedMinutesAfter = value;
                               selectedMinutesBefore = null;
@@ -1354,63 +1443,91 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       repeatType: task.repeatType,
                       customDays: task.customDays,
                       hasAlarm: hasAlarm,
-                      alarmMinutesBefore: hasAlarm ? selectedMinutesBefore : null,
+                      alarmMinutesBefore:
+                          hasAlarm ? selectedMinutesBefore : null,
                       alarmMinutesAfter: hasAlarm ? selectedMinutesAfter : null,
                       hasNotification: task.hasNotification,
                       notificationMinutesBefore: task.notificationMinutesBefore,
                       notificationMinutesAfter: task.notificationMinutesAfter,
                     );
-                    
+
                     // 🚨 Gestionar ALARMAS (sonido fuerte)
-                    if (hasAlarm && (selectedMinutesBefore != null || selectedMinutesAfter != null)) {
-                      // Programar la alarma real
-                      await NotificationService.scheduleTaskAlarm(
-                        taskId: task.id,
-                        taskTitle: task.title,
-                        taskDateTime: task.dateTime,
-                        minutesBefore: selectedMinutesBefore,
-                        minutesAfter: selectedMinutesAfter,
-                      );
-                    } else {
-                      // Cancelar alarma si se desactiva
-                      await NotificationService.cancelTaskAlarm(task.id);
+                    try {
+                      if (hasAlarm &&
+                          (selectedMinutesBefore != null ||
+                              selectedMinutesAfter != null)) {
+                        // Programar la alarma real
+                        await NotificationService.scheduleTaskAlarm(
+                          taskId: task.id,
+                          taskTitle: task.title,
+                          taskDateTime: task.dateTime,
+                          minutesBefore: selectedMinutesBefore,
+                          minutesAfter: selectedMinutesAfter,
+                        );
+                      } else {
+                        // Cancelar alarma si se desactiva
+                        await NotificationService.cancelTaskAlarm(task.id);
+                      }
+                    } catch (e) {
+                      debugPrint('❌ Error al gestionar alarma: $e');
+                      // Mostrar mensaje de error al usuario
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                'Error al configurar alarma: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                      }
                     }
-                    
+
                     Provider.of<PendingProvider>(context, listen: false)
                         .updateTask(updatedTask);
-                    
+
                     Navigator.of(context).pop();
-                    
+
                     // Mostrar confirmación mejorada
                     String message;
-                    if (hasAlarm && (selectedMinutesBefore != null || selectedMinutesAfter != null)) {
+                    if (hasAlarm &&
+                        (selectedMinutesBefore != null ||
+                            selectedMinutesAfter != null)) {
                       final timeFormat = DateFormat('HH:mm');
                       if (selectedMinutesBefore != null) {
                         if (selectedMinutesBefore == 0) {
-                          message = '🚨 ALARMA configurada para ${timeFormat.format(task.dateTime)}';
+                          message =
+                              '🚨 ALARMA configurada para ${timeFormat.format(task.dateTime)}';
                         } else {
-                          final alarmTime = task.dateTime.subtract(Duration(minutes: selectedMinutesBefore!));
-                          message = '� ALARMA configurada ${selectedMinutesBefore}min antes (${timeFormat.format(alarmTime)})';
+                          final alarmTime = task.dateTime.subtract(
+                              Duration(minutes: selectedMinutesBefore!));
+                          message =
+                              '� ALARMA configurada ${selectedMinutesBefore}min antes (${timeFormat.format(alarmTime)})';
                         }
                       } else {
-                        final alarmTime = task.dateTime.add(Duration(minutes: selectedMinutesAfter!));
-                        message = '🚨 ALARMA configurada ${selectedMinutesAfter}min después (${timeFormat.format(alarmTime)})';
+                        final alarmTime = task.dateTime
+                            .add(Duration(minutes: selectedMinutesAfter!));
+                        message =
+                            '🚨 ALARMA configurada ${selectedMinutesAfter}min después (${timeFormat.format(alarmTime)})';
                       }
                     } else {
                       message = '🔕 Alarma desactivada para ${task.title}';
                     }
-                    
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(message),
                         backgroundColor: const Color(0xFF374151),
                         duration: const Duration(seconds: 3),
-                        action: hasAlarm && (selectedMinutesBefore != null || selectedMinutesAfter != null)
+                        action: hasAlarm &&
+                                (selectedMinutesBefore != null ||
+                                    selectedMinutesAfter != null)
                             ? SnackBarAction(
                                 label: 'PROBAR',
                                 textColor: Colors.white,
                                 onPressed: () async {
-                                  await NotificationService.showTestNotification();
+                                  await NotificationService
+                                      .showTestNotification();
                                 },
                               )
                             : null,
@@ -1481,14 +1598,15 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '📝 Recordatorio silencioso (sin sonido)',
+                    '� SILENCIOSO: Sin sonido, sin vibración, solo aparece discretamente',
                     style: TextStyle(
-                      color: Colors.grey,
+                      color: Colors.green,
                       fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Toggle para activar/desactivar notificación
                   Row(
                     children: [
@@ -1509,16 +1627,18 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       Text(
                         'Activar notificación',
                         style: TextStyle(
-                          color: hasNotification ? const Color(0xFF374151) : Colors.grey,
+                          color: hasNotification
+                              ? const Color(0xFF374151)
+                              : Colors.grey,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
-                  
+
                   if (hasNotification) ...[
                     const SizedBox(height: 16),
-                    
+
                     // Tabs para ANTES y DESPUÉS
                     Container(
                       decoration: BoxDecoration(
@@ -1529,12 +1649,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
                         children: [
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => setState(() => selectedTiming = 'before'),
+                              onTap: () =>
+                                  setState(() => selectedTiming = 'before'),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: selectedTiming == 'before' 
-                                      ? const Color(0xFF1E40AF) 
+                                  color: selectedTiming == 'before'
+                                      ? const Color(0xFF1E40AF)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
@@ -1542,8 +1664,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                   'ANTES',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: selectedTiming == 'before' 
-                                        ? Colors.white 
+                                    color: selectedTiming == 'before'
+                                        ? Colors.white
                                         : const Color(0xFF374151),
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -1553,12 +1675,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
                           ),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => setState(() => selectedTiming = 'after'),
+                              onTap: () =>
+                                  setState(() => selectedTiming = 'after'),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: selectedTiming == 'after' 
-                                      ? const Color(0xFF1E40AF) 
+                                  color: selectedTiming == 'after'
+                                      ? const Color(0xFF1E40AF)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
@@ -1566,8 +1690,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                   'DESPUÉS',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: selectedTiming == 'after' 
-                                        ? Colors.white 
+                                    color: selectedTiming == 'after'
+                                        ? Colors.white
                                         : const Color(0xFF374151),
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -1578,32 +1702,40 @@ class _DayViewScreenState extends State<DayViewScreen> {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Opciones según el timing seleccionado
                     if (selectedTiming == 'before') ...[
                       Column(
                         children: [
-                          _buildNotificationOption('En el momento', 0, selectedMinutesBefore, (value) {
+                          _buildNotificationOption(
+                              'En el momento', 0, selectedMinutesBefore,
+                              (value) {
                             setState(() {
                               selectedMinutesBefore = value;
                               selectedMinutesAfter = null;
                             });
                           }),
-                          _buildNotificationOption('5 minutos antes', 5, selectedMinutesBefore, (value) {
+                          _buildNotificationOption(
+                              '5 minutos antes', 5, selectedMinutesBefore,
+                              (value) {
                             setState(() {
                               selectedMinutesBefore = value;
                               selectedMinutesAfter = null;
                             });
                           }),
-                          _buildNotificationOption('10 minutos antes', 10, selectedMinutesBefore, (value) {
+                          _buildNotificationOption(
+                              '10 minutos antes', 10, selectedMinutesBefore,
+                              (value) {
                             setState(() {
                               selectedMinutesBefore = value;
                               selectedMinutesAfter = null;
                             });
                           }),
-                          _buildNotificationOption('15 minutos antes', 15, selectedMinutesBefore, (value) {
+                          _buildNotificationOption(
+                              '15 minutos antes', 15, selectedMinutesBefore,
+                              (value) {
                             setState(() {
                               selectedMinutesBefore = value;
                               selectedMinutesAfter = null;
@@ -1614,19 +1746,25 @@ class _DayViewScreenState extends State<DayViewScreen> {
                     ] else ...[
                       Column(
                         children: [
-                          _buildNotificationOption('5 minutos después', 5, selectedMinutesAfter, (value) {
+                          _buildNotificationOption(
+                              '5 minutos después', 5, selectedMinutesAfter,
+                              (value) {
                             setState(() {
                               selectedMinutesAfter = value;
                               selectedMinutesBefore = null;
                             });
                           }),
-                          _buildNotificationOption('10 minutos después', 10, selectedMinutesAfter, (value) {
+                          _buildNotificationOption(
+                              '10 minutos después', 10, selectedMinutesAfter,
+                              (value) {
                             setState(() {
                               selectedMinutesAfter = value;
                               selectedMinutesBefore = null;
                             });
                           }),
-                          _buildNotificationOption('15 minutos después', 15, selectedMinutesAfter, (value) {
+                          _buildNotificationOption(
+                              '15 minutos después', 15, selectedMinutesAfter,
+                              (value) {
                             setState(() {
                               selectedMinutesAfter = value;
                               selectedMinutesBefore = null;
@@ -1665,49 +1803,77 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       alarmMinutesBefore: task.alarmMinutesBefore,
                       alarmMinutesAfter: task.alarmMinutesAfter,
                       hasNotification: hasNotification,
-                      notificationMinutesBefore: hasNotification ? selectedMinutesBefore : null,
-                      notificationMinutesAfter: hasNotification ? selectedMinutesAfter : null,
+                      notificationMinutesBefore:
+                          hasNotification ? selectedMinutesBefore : null,
+                      notificationMinutesAfter:
+                          hasNotification ? selectedMinutesAfter : null,
                     );
-                    
+
                     // 📝 Gestionar NOTIFICACIONES (silenciosas)
-                    if (hasNotification && (selectedMinutesBefore != null || selectedMinutesAfter != null)) {
-                      // Programar la notificación silenciosa
-                      await NotificationService.scheduleTaskNotification(
-                        taskId: task.id,
-                        taskTitle: task.title,
-                        taskDateTime: task.dateTime,
-                        minutesBefore: selectedMinutesBefore,
-                        minutesAfter: selectedMinutesAfter,
-                      );
-                    } else {
-                      // Cancelar notificación si se desactiva
-                      await NotificationService.cancelTaskNotification(task.id);
+                    try {
+                      if (hasNotification &&
+                          (selectedMinutesBefore != null ||
+                              selectedMinutesAfter != null)) {
+                        // Programar la notificación silenciosa
+                        await NotificationService.scheduleTaskNotification(
+                          taskId: task.id,
+                          taskTitle: task.title,
+                          taskDateTime: task.dateTime,
+                          minutesBefore: selectedMinutesBefore,
+                          minutesAfter: selectedMinutesAfter,
+                        );
+                      } else {
+                        // Cancelar notificación si se desactiva
+                        await NotificationService.cancelTaskNotification(
+                            task.id);
+                      }
+                    } catch (e) {
+                      debugPrint('❌ Error al gestionar notificación: $e');
+                      // Mostrar mensaje de error al usuario
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                'Error al configurar notificación: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                      }
                     }
-                    
+
                     Provider.of<PendingProvider>(context, listen: false)
                         .updateTask(updatedTask);
-                    
+
                     Navigator.of(context).pop();
-                    
+
                     // Mostrar confirmación mejorada
                     String message;
-                    if (hasNotification && (selectedMinutesBefore != null || selectedMinutesAfter != null)) {
+                    if (hasNotification &&
+                        (selectedMinutesBefore != null ||
+                            selectedMinutesAfter != null)) {
                       final timeFormat = DateFormat('HH:mm');
                       if (selectedMinutesBefore != null) {
                         if (selectedMinutesBefore == 0) {
-                          message = '📝 NOTIFICACIÓN silenciosa configurada para ${timeFormat.format(task.dateTime)}';
+                          message =
+                              '� Recordatorio SILENCIOSO configurado para ${timeFormat.format(task.dateTime)}';
                         } else {
-                          final notificationTime = task.dateTime.subtract(Duration(minutes: selectedMinutesBefore!));
-                          message = '📝 NOTIFICACIÓN configurada ${selectedMinutesBefore}min antes (${timeFormat.format(notificationTime)})';
+                          final notificationTime = task.dateTime.subtract(
+                              Duration(minutes: selectedMinutesBefore!));
+                          message =
+                              '� Recordatorio SILENCIOSO configurado ${selectedMinutesBefore}min antes (${timeFormat.format(notificationTime)})';
                         }
                       } else {
-                        final notificationTime = task.dateTime.add(Duration(minutes: selectedMinutesAfter!));
-                        message = '📝 NOTIFICACIÓN configurada ${selectedMinutesAfter}min después (${timeFormat.format(notificationTime)})';
+                        final notificationTime = task.dateTime
+                            .add(Duration(minutes: selectedMinutesAfter!));
+                        message =
+                            '� Recordatorio SILENCIOSO configurado ${selectedMinutesAfter}min después (${timeFormat.format(notificationTime)})';
                       }
                     } else {
-                      message = '🔕 Notificación desactivada para ${task.title}';
+                      message =
+                          '🔕 Recordatorio silencioso desactivado para ${task.title}';
                     }
-                    
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(message),
@@ -1733,21 +1899,22 @@ class _DayViewScreenState extends State<DayViewScreen> {
     );
   }
 
-  Widget _buildAlarmOption(String label, int minutes, int? selectedMinutes, Function(int) onSelected) {
+  Widget _buildAlarmOption(String label, int minutes, int? selectedMinutes,
+      Function(int) onSelected) {
     final isSelected = selectedMinutes == minutes;
-    
+
     return GestureDetector(
       onTap: () => onSelected(minutes),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
+          color: isSelected
               ? const Color(0xFF374151).withOpacity(0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected 
+            color: isSelected
                 ? const Color(0xFF374151)
                 : Colors.grey.withOpacity(0.3),
           ),
@@ -1773,21 +1940,22 @@ class _DayViewScreenState extends State<DayViewScreen> {
     );
   }
 
-  Widget _buildNotificationOption(String label, int minutes, int? selectedMinutes, Function(int) onSelected) {
+  Widget _buildNotificationOption(String label, int minutes,
+      int? selectedMinutes, Function(int) onSelected) {
     final isSelected = selectedMinutes == minutes;
-    
+
     return GestureDetector(
       onTap: () => onSelected(minutes),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
+          color: isSelected
               ? const Color(0xFF1E40AF).withOpacity(0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected 
+            color: isSelected
                 ? const Color(0xFF1E40AF)
                 : Colors.grey.withOpacity(0.3),
           ),
@@ -2834,6 +3002,4 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
       Navigator.of(context).pop();
     }
   }
-
-
 }

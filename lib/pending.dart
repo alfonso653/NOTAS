@@ -16,12 +16,12 @@ class PendingTask {
   bool isAllDay; // Tarea de todo el día
   String? repeatType; // Tipo de repetición
   List<int>? customDays; // Días personalizados (1=Lunes, 7=Domingo)
-  
+
   // Propiedades de alarma (sonido fuerte)
   bool hasAlarm;
   int? alarmMinutesBefore;
   int? alarmMinutesAfter;
-  
+
   // Propiedades de notificación (silenciosa)
   bool hasNotification;
   int? notificationMinutesBefore;
@@ -80,12 +80,15 @@ class PendingTask {
       description: json['description'] ?? '',
       categoria: json['categoria'] ?? '',
       dateTime: DateTime.parse(json['dateTime']),
-      endDateTime: json['endDateTime'] != null ? DateTime.parse(json['endDateTime']) : null,
+      endDateTime: json['endDateTime'] != null
+          ? DateTime.parse(json['endDateTime'])
+          : null,
       completed: json['completed'] ?? false,
       colorHex: json['colorHex'] ?? '#FEF7F0',
       isAllDay: json['isAllDay'] ?? false,
       repeatType: json['repeatType'],
-      customDays: json['customDays'] != null ? List<int>.from(json['customDays']) : [],
+      customDays:
+          json['customDays'] != null ? List<int>.from(json['customDays']) : [],
       // Propiedades de alarma (sonido fuerte)
       hasAlarm: json['hasAlarm'] ?? false,
       alarmMinutesBefore: json['alarmMinutesBefore'],
