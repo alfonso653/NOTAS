@@ -55,9 +55,6 @@ class NotificationService {
 
       debugPrint('🔧 Plugin de notificaciones inicializado: $initialized');
 
-      // Solicitar permisos
-      await _requestPermissions();
-
       // Configurar canales de notificación específicos
       await _setupNotificationChannels();
 
@@ -70,19 +67,25 @@ class NotificationService {
     }
   }
 
-  /// Solicita permisos de notificación
-  static Future<void> _requestPermissions() async {
+  /// Solicita permisos de notificación solo cuando se necesiten
+  static Future<bool> requestPermissionsIfNeeded() async {
     try {
+      bool allPermissionsGranted = true;
+
       // Permisos para Android 13+
       try {
         if (await Permission.notification.isDenied) {
           final result = await Permission.notification.request();
-          debugPrint('📱 Permiso de notificaciones: $result');
+          debugPrint('📱 Permiso de notificaciones solicitado: $result');
+          if (result != PermissionStatus.granted) {
+            allPermissionsGranted = false;
+          }
         } else {
           debugPrint('✅ Permisos de notificación ya concedidos');
         }
       } catch (e) {
         debugPrint('⚠️ Error al verificar permisos de notificación: $e');
+        allPermissionsGranted = false;
       }
 
       // Permisos específicos para notificaciones programadas
@@ -100,13 +103,20 @@ class NotificationService {
           final alarmPermission =
               await androidPlugin.requestExactAlarmsPermission();
           debugPrint('📱 Permiso de alarmas exactas Android: $alarmPermission');
+
+          if (notificationPermission != true || alarmPermission != true) {
+            allPermissionsGranted = false;
+          }
         }
       } catch (e) {
         debugPrint('⚠️ Error al solicitar permisos específicos de Android: $e');
+        allPermissionsGranted = false;
       }
+
+      return allPermissionsGranted;
     } catch (e) {
       debugPrint('❌ Error general al solicitar permisos: $e');
-      // No relanzar el error para evitar que la app se cierre
+      return false;
     }
   }
 
@@ -144,18 +154,22 @@ class NotificationService {
           audioAttributesUsage: AudioAttributesUsage.alarm,
         );
 
-        // 🔕 Canal para NOTIFICACIONES (silenciosas)
-        const AndroidNotificationChannel notificationChannel =
+        // 🔊 Canal para NOTIFICACIONES (¡SÚPER SONORAS!)
+        final AndroidNotificationChannel notificationChannel =
             AndroidNotificationChannel(
           'task_notifications_silent',
-          '🔕 NOTIFICACIONES SILENCIOSAS',
+          '🔊 NOTIFICACIONES SÚPER SONORAS',
           description:
-              'Recordatorios silenciosos que aparecen discretamente sin molestar',
-          importance: Importance.low,
-          showBadge: true,
-          enableVibration: false,
-          enableLights: false,
-          playSound: false,
+              'Recordatorios MUY SONOROS que suenan fuerte para asegurar que se escuchen',
+          importance: Importance.max, // ¡IMPORTANCIA MÁXIMA!
+          showBadge: true, // Con badge bien visible
+          enableVibration: true, // ¡CON VIBRACIÓN!
+          enableLights: true, // ¡CON LUCES!
+          playSound: true, // ¡CON SONIDO!
+          sound: const RawResourceAndroidNotificationSound(
+              'notification'), // Sonido específico
+          vibrationPattern: Int64List.fromList(
+              [0, 1000, 500, 1000, 500, 1000]), // Vibración MÁS intensa
         );
 
         // Crear los canales
@@ -171,7 +185,7 @@ class NotificationService {
   }
 
   /// Programa una ALARMA (sonido fuerte) para una tarea
-  static Future<void> scheduleTaskAlarm({
+  static Future<bool> scheduleTaskAlarm({
     required String taskId,
     required String taskTitle,
     required DateTime taskDateTime,
@@ -180,6 +194,14 @@ class NotificationService {
   }) async {
     if (!_initialized) {
       await initialize();
+    }
+
+    // Solicitar permisos solo cuando se necesiten
+    final hasPermissions = await requestPermissionsIfNeeded();
+    if (!hasPermissions) {
+      debugPrint(
+          '❌ No se pudieron obtener los permisos necesarios para la alarma');
+      return false;
     }
 
     try {
@@ -193,7 +215,8 @@ class NotificationService {
       } else if (minutesAfter != null) {
         notificationTime = taskDateTime.add(Duration(minutes: minutesAfter));
       } else {
-        return; // No hay tiempo configurado
+        debugPrint('⚠️ No hay tiempo configurado para la alarma');
+        return false; // No hay tiempo configurado
       }
 
       // Solo programar si la fecha es futura (con margen de 1 minuto)
@@ -201,7 +224,7 @@ class NotificationService {
       if (notificationTime.isBefore(now.subtract(Duration(minutes: 1)))) {
         debugPrint(
             '⚠️ La fecha de alarma ya pasó: $notificationTime (actual: $now)');
-        return;
+        return false;
       }
 
       // 🚨 PROGRAMAR ALARMA REAL CON SONIDO DE DESPERTADOR
@@ -319,13 +342,15 @@ class NotificationService {
       } else {
         debugPrint('⏰ Tiempo: $minutesAfter min después (DESPERTADOR)');
       }
+      return true;
     } catch (e) {
       debugPrint('❌ Error al programar alarma: $e');
+      return false;
     }
   }
 
   /// Programa una NOTIFICACIÓN (silenciosa) para una tarea
-  static Future<void> scheduleTaskNotification({
+  static Future<bool> scheduleTaskNotification({
     required String taskId,
     required String taskTitle,
     required DateTime taskDateTime,
@@ -334,6 +359,14 @@ class NotificationService {
   }) async {
     if (!_initialized) {
       await initialize();
+    }
+
+    // Solicitar permisos solo cuando se necesiten
+    final hasPermissions = await requestPermissionsIfNeeded();
+    if (!hasPermissions) {
+      debugPrint(
+          '❌ No se pudieron obtener los permisos necesarios para la notificación');
+      return false;
     }
 
     try {
@@ -347,7 +380,8 @@ class NotificationService {
       } else if (minutesAfter != null) {
         notificationTime = taskDateTime.add(Duration(minutes: minutesAfter));
       } else {
-        return; // No hay tiempo configurado
+        debugPrint('⚠️ No hay tiempo configurado para la notificación');
+        return false; // No hay tiempo configurado
       }
 
       // Solo programar si la fecha es futura (con margen de 1 minuto)
@@ -355,45 +389,68 @@ class NotificationService {
       if (notificationTime.isBefore(now.subtract(Duration(minutes: 1)))) {
         debugPrint(
             '⚠️ La fecha de notificación ya pasó: $notificationTime (actual: $now)');
-        return;
+        return false;
       }
 
-      // Crear el mensaje de la NOTIFICACIÓN SILENCIOSA
-      String title = '📝 Recordatorio silencioso';
+      // Crear el mensaje de la NOTIFICACIÓN ¡SÚPER SONORA!
+      String title = '� ¡RECORDATORIO SÚPER SONORO!';
       String body;
 
       if (minutesBefore != null) {
         body = minutesBefore == 0
-            ? '📝 Tarea programada: $taskTitle'
-            : '🕒 Próximamente ($minutesBefore min): $taskTitle';
+            ? '� ¡TAREA PROGRAMADA AHORA: $taskTitle!'
+            : '⏰ ¡PRÓXIMAMENTE ($minutesBefore min): $taskTitle!';
       } else {
-        body = '📋 Recordatorio: $taskTitle (después de $minutesAfter min)';
+        body =
+            '� ¡RECORDATORIO IMPORTANTE: $taskTitle! (después de $minutesAfter min)';
       }
 
-      // Configuración de NOTIFICACIÓN para Android (COMPLETAMENTE SILENCIOSA)
+      // Configuración de NOTIFICACIÓN para Android (¡SÚPER SONORA PERO DETECTABLE!)
       final androidDetails = AndroidNotificationDetails(
-        'task_notifications_quiet',
-        '📝 Recordatorios Silenciosos',
+        'task_notifications_silent', // Usar el canal correcto que ya está configurado
+        '📝 Recordatorios Súper Sonoros',
         channelDescription:
-            'Recordatorios completamente silenciosos para tareas',
-        importance: Importance.low, // Importancia baja
-        priority: Priority.low, // Prioridad baja
+            'Recordatorios MUY SONOROS que suenan fuerte para no perderse',
+        importance: Importance.max, // ¡IMPORTANCIA MÁXIMA!
+        priority: Priority.max, // ¡PRIORIDAD MÁXIMA!
         showWhen: true,
-        enableVibration: false, // Sin vibración
-        playSound: false, // Sin sonido
+        enableVibration: true, // ¡CON VIBRACIÓN FUERTE!
+        playSound: true, // ¡CON SONIDO FUERTE!
+        sound: const RawResourceAndroidNotificationSound(
+            'notification'), // Sonido específico de sistema
+        vibrationPattern: Int64List.fromList(
+            [0, 1000, 500, 1000, 500, 1000]), // Vibración MÁS intensa
         icon: '@mipmap/ic_launcher',
-        category: AndroidNotificationCategory.reminder,
-        ongoing: false, // No persistente
-        autoCancel: true, // Se cancela fácilmente
-        onlyAlertOnce: true, // Solo alerta una vez
-        visibility: NotificationVisibility.private, // Menos visible
+        category:
+            AndroidNotificationCategory.alarm, // Como alarma para que suene más
+        ongoing: false, // NO persistente para que se pueda quitar
+        autoCancel: true, // SÍ se cancela al tocar
+        onlyAlertOnce: false, // Alerta SIEMPRE (esto es clave para que suene)
+        visibility: NotificationVisibility.public, // MUY VISIBLE
+        silent: false, // ¡NADA DE SILENCIO!
+        fullScreenIntent:
+            false, // Sin pantalla completa para no ser muy invasivo
+        enableLights: true, // Luces LED activadas
+        ticker: title, // Texto que aparece en la barra de estado
+        when: DateTime.now().millisecondsSinceEpoch, // Marca de tiempo actual
+        actions: [
+          AndroidNotificationAction(
+            'STOP_ALARM',
+            '🛑 DETENER',
+            showsUserInterface: false,
+            cancelNotification: true,
+          ),
+        ], // Botón para detener
       );
 
-      // Configuración de la notificación para iOS (silenciosa)
+      // Configuración de la notificación para iOS (¡SÚPER SONORA!)
       const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
-        presentSound: false, // Sin sonido
+        presentSound: true, // ¡CON SONIDO FUERTE!
+        sound: 'default', // Sonido predeterminado
+        interruptionLevel: InterruptionLevel.critical, // Nivel crítico
+        categoryIdentifier: 'ALARM_CATEGORY', // Categoría de alarma
       );
 
       // Configuración general
@@ -430,16 +487,18 @@ class NotificationService {
       );
 
       debugPrint(
-          '📝 NOTIFICACIÓN SILENCIOSA programada para: $notificationTime');
-      debugPrint('� Tarea (SILENCIOSO): $taskTitle');
+          '� ¡NOTIFICACIÓN SÚPER SONORA programada para: $notificationTime!');
+      debugPrint('🚨 Tarea (¡SÚPER SONORO!): $taskTitle');
       if (minutesBefore != null) {
         debugPrint(
-            '🔕 Tiempo: ${minutesBefore == 0 ? "EN EL MOMENTO (SILENCIOSO)" : "$minutesBefore min antes (SILENCIOSO)"}');
+            '� Tiempo: ${minutesBefore == 0 ? "EN EL MOMENTO (¡SÚPER SONORO!)" : "$minutesBefore min antes (¡SÚPER SONORO!)"}');
       } else {
-        debugPrint('🔕 Tiempo: $minutesAfter min después (SILENCIOSO)');
+        debugPrint('� Tiempo: $minutesAfter min después (¡SÚPER SONORO!)');
       }
+      return true;
     } catch (e) {
       debugPrint('❌ Error al programar notificación: $e');
+      return false;
     }
   }
 

@@ -10,13 +10,17 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'notebook_provider.dart';
 import 'notebook_models.dart';
+import 'pending.dart';
+import 'package:intl/intl.dart';
 
 /// Pantalla del cuaderno de marcado
 class NotebookScreen extends StatefulWidget {
   final String notebookId;
   final String title;
   final String? description;
-  final bool isTaskNotebook; // true para cuaderno de tarea, false para cuaderno del día
+  final bool
+      isTaskNotebook; // true para cuaderno de tarea, false para cuaderno del día
+  final DateTime? date; // Fecha para cuaderno del día
 
   const NotebookScreen({
     Key? key,
@@ -24,6 +28,7 @@ class NotebookScreen extends StatefulWidget {
     required this.title,
     this.description,
     required this.isTaskNotebook,
+    this.date,
   }) : super(key: key);
 
   @override
@@ -34,20 +39,23 @@ class _NotebookScreenState extends State<NotebookScreen> {
   final TextEditingController _newSubTaskController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _costController = TextEditingController();
-  final TextEditingController _costDescriptionController = TextEditingController();
+  final TextEditingController _costDescriptionController =
+      TextEditingController();
   bool _showTitleField = false;
   bool _showSubTaskField = false;
   bool _showCostField = false;
   late NotebookEntry notebook;
-  
+  DateTime? _notebookDate; // Fecha para el cuaderno general
+
   // Variables para la calculadora
   Map<String, String> _calculatorOperations = {}; // ID -> '+' o '-'
-  
+
   // Variables para edición de segmentos
   String? _editingSegmentId;
   final TextEditingController _editCostController = TextEditingController();
-  final TextEditingController _editDescriptionController = TextEditingController();
-  
+  final TextEditingController _editDescriptionController =
+      TextEditingController();
+
   // Key para captura de screenshot
   final GlobalKey _notebookKey = GlobalKey();
 
@@ -56,7 +64,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
     super.initState();
     // Inicializar con un notebook vacío por defecto
     final initialTitle = widget.title;
-    
+
+    // Inicializar fecha si es cuaderno del día
+    _notebookDate = widget.date;
+
     notebook = NotebookEntry(
       id: widget.notebookId,
       taskId: widget.isTaskNotebook ? widget.notebookId : '',
@@ -71,6 +82,22 @@ class _NotebookScreenState extends State<NotebookScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadNotebook();
+
+    // Escuchar cambios en PendingProvider para sincronización automática
+    if (!widget.isTaskNotebook) {
+      context.read<PendingProvider>().addListener(_onPendingTasksChanged);
+    }
+  }
+
+  void _onPendingTasksChanged() {
+    // Solo recargar si es cuaderno del día y está montado
+    if (!widget.isTaskNotebook && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _loadDayTasks();
+        }
+      });
+    }
   }
 
   void _loadNotebook() {
@@ -78,16 +105,94 @@ class _NotebookScreenState extends State<NotebookScreen> {
     final foundNotebook = notebookProvider.notebooks
         .where((n) => n.id == widget.notebookId)
         .firstOrNull;
-    
+
     if (foundNotebook != null) {
       setState(() {
         notebook = foundNotebook;
       });
     }
+
+    // Si es cuaderno del día, SIEMPRE cargar las tareas automáticamente después del build
+    if (!widget.isTaskNotebook) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadDayTasks();
+      });
+    }
+  }
+
+  void _loadDayTasks() {
+    if (_notebookDate == null) return;
+
+    final pendingProvider = context.read<PendingProvider>();
+    final dayTasks = pendingProvider.tasks.where((task) {
+      return task.dateTime.year == _notebookDate!.year &&
+          task.dateTime.month == _notebookDate!.month &&
+          task.dateTime.day == _notebookDate!.day;
+    }).toList();
+
+    // Ordenar por hora cronológicamente (más temprano primero)
+    dayTasks.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    final notebookProvider = context.read<NotebookProvider>();
+
+
+    // Obtener las tareas manuales existentes (no automáticas)
+    List<SubTask> manualTasks = notebook.subTasks
+        .where((subTask) => !subTask.id.startsWith('auto_task_'))
+        .toList();
+
+    // Crear las nuevas tareas automáticas manteniendo el orden cronológico
+    List<SubTask> autoTasks = [];
+
+    for (final task in dayTasks) {
+      final timeStr = DateFormat('h:mm a').format(task.dateTime);
+      final taskEntry = '⏰ $timeStr - ${task.title}';
+      final taskId = 'auto_task_${task.id}';
+
+      // Buscar si ya existe esta tarea automática
+      final existingTask =
+          notebook.subTasks.where((s) => s.id == taskId).firstOrNull;
+
+      if (existingTask != null) {
+        // Si existe, verificar si necesita sincronización
+        if (existingTask.completed != task.completed) {
+          autoTasks.add(existingTask.copyWith(completed: task.completed));
+        } else {
+          autoTasks.add(existingTask);
+        }
+      } else {
+        // Crear nueva tarea automática
+        autoTasks.add(SubTask(
+          id: taskId,
+          title: taskEntry,
+          completed: task.completed,
+        ));
+      }
+    }
+
+    // ORDEN FINAL FORZADO: autoTasks (ordenadas cronológicamente) + manualTasks
+    final List<SubTask> finalOrderedSubTasks = [...autoTasks, ...manualTasks];
+    
+    // SIEMPRE actualizar para forzar el orden correcto
+    final updatedNotebook = notebook.copyWith(
+      subTasks: finalOrderedSubTasks,
+      updatedAt: DateTime.now(),
+    );
+    
+    notebookProvider.updateNotebook(updatedNotebook);
+    
+    setState(() {
+      notebook = updatedNotebook;
+    });
   }
 
   @override
   void dispose() {
+    // Remover listener de PendingProvider si es cuaderno del día
+    if (!widget.isTaskNotebook) {
+      context.read<PendingProvider>().removeListener(_onPendingTasksChanged);
+    }
+
     _newSubTaskController.dispose();
     _titleController.dispose();
     _costController.dispose();
@@ -96,8 +201,6 @@ class _NotebookScreenState extends State<NotebookScreen> {
     _editDescriptionController.dispose();
     super.dispose();
   }
-
-
 
   void _addSubTask() {
     if (_newSubTaskController.text.trim().isNotEmpty) {
@@ -132,9 +235,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   void _saveCost() {
-    if (_costController.text.trim().isNotEmpty && _costDescriptionController.text.trim().isNotEmpty) {
+    if (_costController.text.trim().isNotEmpty &&
+        _costDescriptionController.text.trim().isNotEmpty) {
       final notebookProvider = context.read<NotebookProvider>();
-      final costEntry = '🟦 ${_costController.text.trim()} / ${_costDescriptionController.text.trim()}';
+      final costEntry =
+          '🟦 ${_costController.text.trim()} / ${_costDescriptionController.text.trim()}';
       notebookProvider.addSubTaskToNotebook(
         notebook.id,
         costEntry,
@@ -151,6 +256,14 @@ class _NotebookScreenState extends State<NotebookScreen> {
   void _toggleSubTask(SubTask subTask) {
     final notebookProvider = context.read<NotebookProvider>();
     notebookProvider.toggleSubTaskCompletion(notebook.id, subTask.id);
+
+    // Si es una tarea automática del día, sincronizar con PendingProvider
+    if (subTask.id.startsWith('auto_task_')) {
+      final taskId = subTask.id.replaceFirst('auto_task_', '');
+      final pendingProvider = context.read<PendingProvider>();
+      pendingProvider.toggleTaskCompletion(taskId);
+    }
+
     _loadNotebook();
   }
 
@@ -180,14 +293,14 @@ class _NotebookScreenState extends State<NotebookScreen> {
       ),
     );
   }
-  
+
   // Funciones para editar segmentos
   void _startEditingSegment(SubTask subTask) {
     if (subTask.title.startsWith('🟦')) {
       final parts = subTask.title.substring(2).split(' / ');
       final cost = parts[0].trim();
       final description = parts.length > 1 ? parts[1].trim() : '';
-      
+
       setState(() {
         _editingSegmentId = subTask.id;
         _editCostController.text = cost;
@@ -195,30 +308,32 @@ class _NotebookScreenState extends State<NotebookScreen> {
       });
     }
   }
-  
+
   void _saveEditedSegment() {
-    if (_editingSegmentId != null && 
-        _editCostController.text.trim().isNotEmpty && 
+    if (_editingSegmentId != null &&
+        _editCostController.text.trim().isNotEmpty &&
         _editDescriptionController.text.trim().isNotEmpty) {
       final notebookProvider = context.read<NotebookProvider>();
-      final newTitle = '🟦 ${_editCostController.text.trim()} / ${_editDescriptionController.text.trim()}';
-      
+      final newTitle =
+          '🟦 ${_editCostController.text.trim()} / ${_editDescriptionController.text.trim()}';
+
       // Encontrar la subtarea actual y crear una actualizada
-      final currentSubTask = notebook.subTasks.firstWhere((s) => s.id == _editingSegmentId!);
+      final currentSubTask =
+          notebook.subTasks.firstWhere((s) => s.id == _editingSegmentId!);
       final updatedSubTask = currentSubTask.copyWith(title: newTitle);
-      
+
       notebookProvider.updateSubTask(notebook.id, updatedSubTask);
-      
+
       setState(() {
         _editingSegmentId = null;
         _editCostController.clear();
         _editDescriptionController.clear();
       });
-      
+
       _loadNotebook();
     }
   }
-  
+
   void _cancelEditingSegment() {
     setState(() {
       _editingSegmentId = null;
@@ -226,7 +341,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
       _editDescriptionController.clear();
     });
   }
-  
+
   // Funciones para la calculadora
   void _setCalculatorOperation(SubTask subTask, String operation) {
     setState(() {
@@ -239,14 +354,17 @@ class _NotebookScreenState extends State<NotebookScreen> {
       }
     });
   }
-  
+
   double _getCalculatorTotal() {
     double total = 0;
     for (final subTask in notebook.subTasks) {
-      if (subTask.title.startsWith('🟦') && _calculatorOperations.containsKey(subTask.id)) {
+      if (subTask.title.startsWith('🟦') &&
+          _calculatorOperations.containsKey(subTask.id)) {
         final operation = _calculatorOperations[subTask.id]!;
         final costText = subTask.title.substring(2).split(' / ')[0].trim();
-        final cost = double.tryParse(costText.replaceAll('.', '').replaceAll(',', '')) ?? 0;
+        final cost =
+            double.tryParse(costText.replaceAll('.', '').replaceAll(',', '')) ??
+                0;
         if (operation == '+') {
           total += cost;
         } else {
@@ -256,27 +374,32 @@ class _NotebookScreenState extends State<NotebookScreen> {
     }
     return total;
   }
-  
+
   List<SubTask> _getCalculatorItems() {
     return notebook.subTasks
-        .where((task) => task.title.startsWith('🟦') && _calculatorOperations.containsKey(task.id))
+        .where((task) =>
+            task.title.startsWith('🟦') &&
+            _calculatorOperations.containsKey(task.id))
         .toList();
   }
-  
+
   // Funciones para compartir
   Future<void> _shareAsImage() async {
     try {
       // Capturar screenshot del cuaderno
-      RenderRepaintBoundary boundary = _notebookKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      RenderRepaintBoundary boundary = _notebookKey.currentContext!
+          .findRenderObject() as RenderRepaintBoundary;
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
       Uint8List pngBytes = byteData!.buffer.asUint8List();
-      
+
       // Guardar imagen temporalmente
       final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/cuaderno_${widget.title.replaceAll(' ', '_')}.png');
+      final file = File(
+          '${tempDir.path}/cuaderno_${widget.title.replaceAll(' ', '_')}.png');
       await file.writeAsBytes(pngBytes);
-      
+
       // Compartir imagen
       await Share.shareXFiles(
         [XFile(file.path)],
@@ -288,19 +411,20 @@ class _NotebookScreenState extends State<NotebookScreen> {
       );
     }
   }
-  
+
   Future<void> _shareAsPDF() async {
     try {
       // Crear contenido de texto para PDF
-      
+
       // Crear contenido de texto para PDF
       String textContent = _generateTextContent();
-      
+
       // Guardar como archivo de texto temporalmente (simula PDF)
       final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/cuaderno_${widget.title.replaceAll(' ', '_')}.txt');
+      final file = File(
+          '${tempDir.path}/cuaderno_${widget.title.replaceAll(' ', '_')}.txt');
       await file.writeAsString(textContent);
-      
+
       // Compartir archivo
       await Share.shareXFiles(
         [XFile(file.path)],
@@ -312,7 +436,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
       );
     }
   }
-  
+
   String _generateTextContent() {
     StringBuffer content = StringBuffer();
     content.writeln('CUADERNO: ${widget.title}');
@@ -320,17 +444,18 @@ class _NotebookScreenState extends State<NotebookScreen> {
       content.writeln('Descripción: ${widget.description}');
     }
     content.writeln('Fecha: ${DateTime.now().toString().split(' ')[0]}');
-    content.writeln('Progreso: ${notebook.completedCount}/${notebook.subTasks.length}');
+    content.writeln(
+        'Progreso: ${notebook.completedCount}/${notebook.subTasks.length}');
     content.writeln('');
     content.writeln('ELEMENTOS:');
     content.writeln('=' * 50);
-    
+
     for (int i = 0; i < notebook.subTasks.length; i++) {
       final task = notebook.subTasks[i];
       String status = task.completed ? '[✓]' : '[ ]';
       content.writeln('$status ${task.title}');
     }
-    
+
     // Agregar resumen de gastos si hay operaciones
     if (_calculatorOperations.isNotEmpty) {
       content.writeln('');
@@ -342,16 +467,18 @@ class _NotebookScreenState extends State<NotebookScreen> {
         final parts = item.title.substring(2).split(' / ');
         final cost = parts[0].trim();
         final description = parts.length > 1 ? parts[1].trim() : '';
-        content.writeln('${operation == '+' ? '+' : '-'} $description: \$${cost}');
+        content
+            .writeln('${operation == '+' ? '+' : '-'} $description: \$${cost}');
       }
       final total = _getCalculatorTotal();
       content.writeln('');
-      content.writeln('TOTAL: \$${total.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}');
+      content.writeln(
+          'TOTAL: \$${total.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}');
     }
-    
+
     return content.toString();
   }
-  
+
   void _showShareOptions() {
     showModalBottomSheet(
       context: context,
@@ -378,7 +505,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.picture_as_pdf, color: Color(0xFFEF4444)),
+              leading:
+                  const Icon(Icons.picture_as_pdf, color: Color(0xFFEF4444)),
               title: const Text('Compartir como Documento'),
               subtitle: const Text('Archivo de texto con todo el contenido'),
               onTap: () {
@@ -394,7 +522,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   void _showCalculatorModal() {
     final items = _getCalculatorItems();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -505,143 +633,155 @@ class _NotebookScreenState extends State<NotebookScreen> {
           ),
           child: SafeArea(
             child: Column(
-            children: [
-              // Header con botón cerrar
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: Color(0xFF374151),
-                        size: 28,
+              children: [
+                // Header con botón cerrar
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Color(0xFF374151),
+                          size: 28,
+                        ),
                       ),
-                    ),
-                    // Botón de compartir
-                    IconButton(
-                      onPressed: _showShareOptions,
-                      icon: const Icon(
-                        Icons.share,
-                        color: Color(0xFF374151),
-                        size: 24,
+                      // Botón de compartir
+                      IconButton(
+                        onPressed: _showShareOptions,
+                        icon: const Icon(
+                          Icons.share,
+                          color: Color(0xFF374151),
+                          size: 24,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      widget.isTaskNotebook ? '📋 Subtareas' : '📅 Tareas del Día',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF374151),
-                      ),
-                    ),
-                    const Spacer(),
-                    // Contador de progreso
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${notebook.completedCount}/${notebook.subTasks.length}',
+                      const Spacer(),
+                      Text(
+                        widget.isTaskNotebook
+                            ? '📋 Subtareas'
+                            : '📅 Tareas del Día',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF374151),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Contenido del cuaderno
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: MediaQuery.of(context).size.width > 600 ? 40 : 20,
-                    vertical: 20,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Título y descripción de la tarea
+                      const Spacer(),
+                      // Contador de progreso
                       Container(
-                        margin: const EdgeInsets.only(bottom: 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Título en negrilla
-                            Text(
-                              widget.title,
-                              style: TextStyle(
-                                fontSize: MediaQuery.of(context).size.width > 600 ? 20 : 18,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF374151),
-                                height: 1.2,
-                              ),
-                            ),
-                            // Descripción debajo (si existe)
-                            if (widget.description != null && widget.description!.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                widget.description!,
-                                style: TextStyle(
-                                  fontSize: MediaQuery.of(context).size.width > 600 ? 16 : 14,
-                                  fontWeight: FontWeight.normal,
-                                  color: const Color(0xFF6B7280),
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ],
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-
-                      // Lista de subtareas
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: notebook.subTasks.length,
-                          itemBuilder: (context, index) {
-                            final subTask = notebook.subTasks[index];
-                            return _buildSubTaskItem(subTask, index);
-                          },
-                        ),
-                      ),
-
-                      // Botones de acción organizados horizontalmente
-                      Container(
-                        margin: const EdgeInsets.only(top: 16),
-                        child: Column(
-                          children: [
-                            // Campos dinámicos
-                            if (_showTitleField) _buildTitleField(),
-                            if (_showSubTaskField) _buildSubTaskField(),
-                            if (_showCostField) _buildCostField(),
-                            const SizedBox(height: 16),
-                            // Botones organizados responsivamente
-                            MediaQuery.of(context).size.width > 400
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: _buildActionButtons(),
-                                  )
-                                : Wrap(
-                                    alignment: WrapAlignment.spaceEvenly,
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: _buildActionButtons(),
-                                  ),
-                          ],
+                        child: Text(
+                          '${notebook.completedCount}/${notebook.subTasks.length}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+
+                // Contenido del cuaderno
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal:
+                          MediaQuery.of(context).size.width > 600 ? 40 : 20,
+                      vertical: 20,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Título y descripción de la tarea
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Título en negrilla
+                              Text(
+                                widget.title,
+                                style: TextStyle(
+                                  fontSize:
+                                      MediaQuery.of(context).size.width > 600
+                                          ? 20
+                                          : 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF374151),
+                                  height: 1.2,
+                                ),
+                              ),
+                              // Descripción debajo (si existe)
+                              if (widget.description != null &&
+                                  widget.description!.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  widget.description!,
+                                  style: TextStyle(
+                                    fontSize:
+                                        MediaQuery.of(context).size.width > 600
+                                            ? 16
+                                            : 14,
+                                    fontWeight: FontWeight.normal,
+                                    color: const Color(0xFF6B7280),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+
+                        // Lista de subtareas
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: notebook.subTasks.length,
+                            itemBuilder: (context, index) {
+                              final subTask = notebook.subTasks[index];
+                              return _buildSubTaskItem(subTask, index);
+                            },
+                          ),
+                        ),
+
+                        // Botones de acción organizados horizontalmente
+                        Container(
+                          margin: const EdgeInsets.only(top: 16),
+                          child: Column(
+                            children: [
+                              // Campos dinámicos
+                              if (_showTitleField) _buildTitleField(),
+                              if (_showSubTaskField) _buildSubTaskField(),
+                              if (_showCostField) _buildCostField(),
+                              const SizedBox(height: 16),
+                              // Botones organizados responsivamente
+                              MediaQuery.of(context).size.width > 400
+                                  ? Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: _buildActionButtons(),
+                                    )
+                                  : Wrap(
+                                      alignment: WrapAlignment.spaceEvenly,
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: _buildActionButtons(),
+                                    ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -651,7 +791,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   List<Widget> _buildActionButtons() {
     final buttonSize = MediaQuery.of(context).size.width > 600 ? 20.0 : 18.0;
-    
+
     return [
       _buildActionButton(
         onTap: () => setState(() => _showTitleField = !_showTitleField),
@@ -699,9 +839,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
     ];
   }
 
-  Widget _buildActionButton({required VoidCallback onTap, required Widget child}) {
+  Widget _buildActionButton(
+      {required VoidCallback onTap, required Widget child}) {
     final isSmallScreen = MediaQuery.of(context).size.width < 400;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -824,7 +965,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   Widget _buildCostField() {
-    final hasText = _costController.text.trim().isNotEmpty && _costDescriptionController.text.trim().isNotEmpty;
+    final hasText = _costController.text.trim().isNotEmpty &&
+        _costDescriptionController.text.trim().isNotEmpty;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -849,7 +991,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          const Text('/', style: TextStyle(fontSize: 14, color: Color(0xFF374151))),
+          const Text('/',
+              style: TextStyle(fontSize: 14, color: Color(0xFF374151))),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -891,15 +1034,15 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   Widget _buildSubTaskItem(SubTask subTask, int index) {
     // Verificar si la subtarea tiene emoji especial (📝, 🟦, ✅)
-    final hasSpecialEmoji = subTask.title.startsWith('📝') || 
-                           subTask.title.startsWith('🟦') || 
-                           subTask.title.startsWith('✅');
-    
+    final hasSpecialEmoji = subTask.title.startsWith('📝') ||
+        subTask.title.startsWith('🟦') ||
+        subTask.title.startsWith('✅');
+
     // Si está en modo edición, mostrar el campo de edición en lugar del texto normal
     if (_editingSegmentId == subTask.id && subTask.title.startsWith('🟦')) {
       return _buildEditingField(subTask);
     }
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -915,11 +1058,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 height: 20,
                 margin: const EdgeInsets.only(right: 12, top: 2),
                 decoration: BoxDecoration(
-                  color: subTask.completed 
-                      ? const Color(0xFF10B981) 
+                  color: subTask.completed
+                      ? const Color(0xFF10B981)
                       : Colors.transparent,
                   border: Border.all(
-                    color: subTask.completed 
+                    color: subTask.completed
                         ? const Color(0xFF10B981)
                         : const Color(0xFF374151).withOpacity(0.3),
                     width: 2,
@@ -937,36 +1080,36 @@ class _NotebookScreenState extends State<NotebookScreen> {
             ),
           ] else ...[
             // Márgenes diferentes según el tipo de emoji
-            SizedBox(width: subTask.title.startsWith('📝') 
-                ? 10  // Título más a la izquierda
-                : subTask.title.startsWith('✅') 
-                    ? 50  // Subtarea más a la derecha
-                    : 60  // Costo más a la derecha
-            ),
+            SizedBox(
+                width: subTask.title.startsWith('📝')
+                    ? 10 // Título más a la izquierda
+                    : subTask.title.startsWith('✅')
+                        ? 50 // Subtarea más a la derecha
+                        : 60 // Costo más a la derecha
+                ),
           ],
-          
+
           // Texto de la subtarea
           Expanded(
             child: GestureDetector(
-              onTap: hasSpecialEmoji && subTask.title.startsWith('✅') 
-                  ? () => _toggleSubTask(subTask) 
+              onTap: hasSpecialEmoji && subTask.title.startsWith('✅')
+                  ? () => _toggleSubTask(subTask)
                   : null,
               child: Text(
                 subTask.title,
                 style: TextStyle(
                   fontSize: MediaQuery.of(context).size.width > 600 ? 16 : 14,
-                  color: subTask.completed 
+                  color: subTask.completed
                       ? const Color(0xFF374151).withOpacity(0.6)
                       : const Color(0xFF374151),
-                  decoration: subTask.completed 
-                      ? TextDecoration.lineThrough 
-                      : null,
+                  decoration:
+                      subTask.completed ? TextDecoration.lineThrough : null,
                   height: 1.4,
                 ),
               ),
             ),
           ),
-          
+
           // Controles de acción (checkbox, calculadora y basura)
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -1076,40 +1219,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   ),
                 ),
               ],
-              
-              // Cuadrito para marcar completado
-              GestureDetector(
-                onTap: () => _toggleSubTask(subTask),
-                child: Container(
-                  width: MediaQuery.of(context).size.width > 600 ? 18 : 16,
-                  height: MediaQuery.of(context).size.width > 600 ? 18 : 16,
-                  margin: EdgeInsets.only(
-                    left: subTask.title.startsWith('🟦') ? 2 : (MediaQuery.of(context).size.width > 600 ? 8 : 6),
-                    right: MediaQuery.of(context).size.width > 600 ? 4 : 3,
-                    top: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: subTask.completed 
-                        ? const Color(0xFF10B981) 
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: subTask.completed 
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFF374151).withOpacity(0.4),
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: subTask.completed
-                      ? const Icon(
-                          Icons.check,
-                          size: 12,
-                          color: Colors.white,
-                        )
-                      : null,
-                ),
-              ),
-              
+
               // Canequita de basura minimalista
               GestureDetector(
                 onTap: () => _deleteSubTask(subTask),
@@ -1175,7 +1285,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text('/', style: TextStyle(fontSize: 14, color: Color(0xFF374151))),
+              const Text('/',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF374151))),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
@@ -1217,7 +1328,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF10B981),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   minimumSize: Size.zero,
                 ),
                 child: const Text(
@@ -1245,12 +1357,12 @@ void showNotebook(
   DateTime? date,
 }) {
   final notebookProvider = context.read<NotebookProvider>();
-  
+
   late NotebookEntry notebook;
   late String notebookId;
   late String title;
   late bool isTaskNotebook;
-  
+
   if (taskId != null && taskTitle != null) {
     // Cuaderno de tarea específica
     notebook = notebookProvider.getOrCreateTaskNotebook(taskId, taskTitle);
@@ -1279,17 +1391,19 @@ void showNotebook(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Container(
-            width: MediaQuery.of(context).size.width > 600 
+            width: MediaQuery.of(context).size.width > 600
                 ? 600 // Máximo en tablets/desktop
                 : MediaQuery.of(context).size.width * 0.9, // 90% en móviles
             height: MediaQuery.of(context).size.height > 800
                 ? MediaQuery.of(context).size.height * 0.8
-                : MediaQuery.of(context).size.height * 0.9, // Más alto en pantallas pequeñas
+                : MediaQuery.of(context).size.height *
+                    0.9, // Más alto en pantallas pequeñas
             child: NotebookScreen(
               notebookId: notebookId,
               title: title,
               description: taskDescription,
               isTaskNotebook: isTaskNotebook,
+              date: date,
             ),
           ),
         ),

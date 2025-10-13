@@ -30,7 +30,8 @@ class SubTask {
       id: json['id'] ?? '',
       title: json['title'] ?? '',
       completed: json['completed'] ?? false,
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt:
+          DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
     );
   }
 
@@ -53,7 +54,8 @@ class SubTask {
 /// Modelo para los cuadernos de marcado
 class NotebookEntry {
   String id;
-  String taskId; // ID de la tarea principal (puede ser null para cuadernos del día)
+  String
+      taskId; // ID de la tarea principal (puede ser null para cuadernos del día)
   String title;
   List<SubTask> subTasks;
   DateTime createdAt;
@@ -66,9 +68,9 @@ class NotebookEntry {
     List<SubTask>? subTasks,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) : subTasks = subTasks ?? [],
-       createdAt = createdAt ?? DateTime.now(),
-       updatedAt = updatedAt ?? DateTime.now();
+  })  : subTasks = subTasks ?? [],
+        createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 
   /// Convierte a JSON
   Map<String, dynamic> toJson() {
@@ -89,10 +91,13 @@ class NotebookEntry {
       taskId: json['taskId'] ?? '',
       title: json['title'] ?? '',
       subTasks: (json['subTasks'] as List<dynamic>?)
-          ?.map((s) => SubTask.fromJson(s as Map<String, dynamic>))
-          .toList() ?? [],
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
+              ?.map((s) => SubTask.fromJson(s as Map<String, dynamic>))
+              .toList() ??
+          [],
+      createdAt:
+          DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      updatedAt:
+          DateTime.parse(json['updatedAt'] ?? DateTime.now().toIso8601String()),
     );
   }
 

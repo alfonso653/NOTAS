@@ -915,7 +915,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       // 🎯 BOTONES CON VISIBILIDAD GARANTIZADA
                       _buildVisibleEditButton(task),
                       const SizedBox(width: 2),
-                      _buildVisibleNotebookButton(task), // 📓 CUADERNO DE MARCADO
+                      _buildVisibleNotebookButton(
+                          task), // 📓 CUADERNO DE MARCADO
                       const SizedBox(width: 2),
                       _buildVisibleAlarmButton(task), // ALARMA (sonido fuerte)
                       const SizedBox(width: 2),

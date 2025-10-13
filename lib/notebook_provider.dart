@@ -19,11 +19,12 @@ class NotebookProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final notebooksJson = prefs.getString(_storageKey);
-      
+
       if (notebooksJson != null) {
         final List<dynamic> notebooksList = json.decode(notebooksJson);
         _notebooks = notebooksList
-            .map((notebook) => NotebookEntry.fromJson(notebook as Map<String, dynamic>))
+            .map((notebook) =>
+                NotebookEntry.fromJson(notebook as Map<String, dynamic>))
             .toList();
         notifyListeners();
       }
@@ -36,7 +37,8 @@ class NotebookProvider extends ChangeNotifier {
   Future<void> saveNotebooks() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final notebooksJson = json.encode(_notebooks.map((n) => n.toJson()).toList());
+      final notebooksJson =
+          json.encode(_notebooks.map((n) => n.toJson()).toList());
       await prefs.setString(_storageKey, notebooksJson);
     } catch (e) {
       debugPrint('❌ Error al guardar cuadernos: $e');
@@ -54,9 +56,11 @@ class NotebookProvider extends ChangeNotifier {
 
   /// Obtener cuaderno del día (taskId vacío y fecha específica)
   NotebookEntry? getDayNotebook(DateTime date) {
-    final dayId = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final dayId =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     try {
-      return _notebooks.firstWhere((n) => n.taskId == dayId && n.id.startsWith('day_'));
+      return _notebooks
+          .firstWhere((n) => n.taskId == dayId && n.id.startsWith('day_'));
     } catch (e) {
       return null;
     }
@@ -65,7 +69,7 @@ class NotebookProvider extends ChangeNotifier {
   /// Crear o obtener cuaderno para una tarea específica
   NotebookEntry getOrCreateTaskNotebook(String taskId, String taskTitle) {
     var notebook = getNotebookByTaskId(taskId);
-    
+
     if (notebook == null) {
       notebook = NotebookEntry(
         id: 'task_$taskId',
@@ -76,16 +80,17 @@ class NotebookProvider extends ChangeNotifier {
       saveNotebooks();
       notifyListeners();
     }
-    
+
     return notebook;
   }
 
   /// Crear o obtener cuaderno para un día específico
   NotebookEntry getOrCreateDayNotebook(DateTime date) {
     var notebook = getDayNotebook(date);
-    
+
     if (notebook == null) {
-      final dayId = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final dayId =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       notebook = NotebookEntry(
         id: 'day_$dayId',
         taskId: dayId,
@@ -95,7 +100,7 @@ class NotebookProvider extends ChangeNotifier {
       saveNotebooks();
       notifyListeners();
     }
-    
+
     return notebook;
   }
 
@@ -123,7 +128,7 @@ class NotebookProvider extends ChangeNotifier {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: subTaskTitle,
     );
-    
+
     notebook.addSubTask(subTask);
     updateNotebook(notebook);
   }
@@ -147,7 +152,7 @@ class NotebookProvider extends ChangeNotifier {
     final notebook = _notebooks.firstWhere((n) => n.id == notebookId);
     final subTask = notebook.subTasks.firstWhere((s) => s.id == subTaskId);
     final updatedSubTask = subTask.copyWith(completed: !subTask.completed);
-    
+
     notebook.updateSubTask(updatedSubTask);
     updateNotebook(notebook);
   }

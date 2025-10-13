@@ -171,7 +171,7 @@ class PendingProvider extends ChangeNotifier {
   }
 
   void addTask(PendingTask task) {
-    tasks.insert(0, task);
+    tasks.add(task);
 
     // Si tiene repetición, generar tareas adicionales
     if (task.repeatType != null && task.repeatType != 'none') {
