@@ -80,6 +80,7 @@ flutter:
     - assets/borrador.png
     - assets/crayon.png
     - assets/data/calendar/
+    - assets/data/quotes/
 
   fonts:
     - family: Nunito

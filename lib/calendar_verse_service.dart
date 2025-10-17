@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 class CalendarVerseService {
   static final Map<String, Map<String, dynamic>> _cache = {};
 
-  // Nombres de los archivos JSON por mes
+  // Nombres de los archivos JSON por mes (solo versículos)
   static const Map<int, String> _monthFiles = {
     1: 'enero',
     2: 'febrero',
@@ -20,7 +20,7 @@ class CalendarVerseService {
     12: 'diciembre',
   };
 
-  /// Obtiene el versículo para una fecha específica
+  /// Obtiene el versículo bíblico para una fecha específica
   static Future<Map<String, dynamic>?> getVerseForDate(DateTime date) async {
     try {
       final month = date.month;
@@ -59,7 +59,7 @@ class CalendarVerseService {
     }
   }
 
-  /// Pre-carga los datos de todos los meses (opcional, para mejor rendimiento)
+  /// Pre-carga los datos de versículos de todos los meses (opcional, para mejor rendimiento)
   static Future<void> preloadAllMonths() async {
     for (final entry in _monthFiles.entries) {
       await _loadMonthData(entry.key, entry.value);

@@ -134,8 +134,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     return Consumer<PendingProvider>(
       builder: (context, provider, _) {
+        // Obtener información del teclado
+        final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+        
         return Scaffold(
           backgroundColor: const Color(0xFFFEF7F0),
+          // Evitar que el Scaffold se redimensione automáticamente
+          resizeToAvoidBottomInset: false,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -196,10 +201,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ],
           ),
-          body: Column(
-            children: [
-              // Header con días de la semana
-              Container(
+          body: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            padding: EdgeInsets.only(bottom: keyboardHeight),
+            child: Column(
+              children: [
+                // Header con días de la semana
+                Container(
                 padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 child: Row(
@@ -259,6 +268,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
             ],
+            ),
           ),
         );
       },

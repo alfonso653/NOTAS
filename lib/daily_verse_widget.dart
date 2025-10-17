@@ -371,23 +371,31 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               ],
             ),
 
-            // Texto del versículo
+            // Texto del versículo - CLICKEABLE
             Expanded(
               flex: 3,
               child: Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: isCompactMode ? 4.0 : 8.0),
-                  child: Text(
-                    '"${_verseData!['verse']}"',
-                    style: TextStyle(
-                      fontSize: isCompactMode ? 11 : 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                      height: isCompactMode ? 1.2 : 1.3,
+                  child: GestureDetector(
+                    onTap: () => _showFullScreenText(
+                      context,
+                      '"${_verseData!['verse']}"',
+                      _verseData!['reference'] ?? '',
+                      true, // isVerse = true
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: isCompactMode ? 3 : null,
-                    overflow: isCompactMode ? TextOverflow.ellipsis : null,
+                    child: Text(
+                      '"${_verseData!['verse']}"',
+                      style: TextStyle(
+                        fontSize: isCompactMode ? 11 : 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        height: isCompactMode ? 1.2 : 1.3,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: isCompactMode ? 3 : null,
+                      overflow: isCompactMode ? TextOverflow.ellipsis : null,
+                    ),
                   ),
                 ),
               ),
@@ -488,24 +496,32 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               ],
             ),
 
-            // Texto de la cita
+            // Texto de la cita - CLICKEABLE
             Expanded(
               flex: 3,
               child: Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: isCompactMode ? 4.0 : 8.0),
-                  child: Text(
-                    '"${_quoteData!['quote']}"',
-                    style: TextStyle(
-                      fontSize: isCompactMode ? 11 : 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                      height: isCompactMode ? 1.2 : 1.3,
-                      fontStyle: FontStyle.italic,
+                  child: GestureDetector(
+                    onTap: () => _showFullScreenText(
+                      context,
+                      '"${_quoteData!['quote']}"',
+                      '— ${_quoteData!['author'] ?? 'Anónimo'}',
+                      false, // isVerse = false
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: isCompactMode ? 3 : null,
-                    overflow: isCompactMode ? TextOverflow.ellipsis : null,
+                    child: Text(
+                      '"${_quoteData!['quote']}"',
+                      style: TextStyle(
+                        fontSize: isCompactMode ? 11 : 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        height: isCompactMode ? 1.2 : 1.3,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: isCompactMode ? 3 : null,
+                      overflow: isCompactMode ? TextOverflow.ellipsis : null,
+                    ),
                   ),
                 ),
               ),
@@ -560,6 +576,206 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
           ),
         ),
       ],
+    );
+  }
+
+  // 🌟 Mostrar texto en pantalla completa con fondo difuminado
+  void _showFullScreenText(BuildContext context, String text, String subtitle, bool isVerse) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true, // ✅ PERMITE CERRAR TOCANDO FUERA
+      barrierLabel: '',
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _FullScreenTextDialog(
+          text: text,
+          subtitle: subtitle,
+          isVerse: isVerse,
+          animation: animation,
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 400),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          )),
+          child: FadeTransition(
+            opacity: animation,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+// 🎨 Diálogo de pantalla completa elegante
+class _FullScreenTextDialog extends StatelessWidget {
+  final String text;
+  final String subtitle;
+  final bool isVerse;
+  final Animation<double> animation;
+
+  const _FullScreenTextDialog({
+    required this.text,
+    required this.subtitle,
+    required this.isVerse,
+    required this.animation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          // 🌫️ Fondo difuminado elegante - CLICKEABLE PARA CERRAR
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(), // 🎯 CERRAR AL TOCAR FONDO
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    (isVerse 
+                      ? const Color(0xFF1E3A8A) // Azul profundo para versículos
+                      : const Color(0xFF7C3AED) // Morado para citas
+                    ).withOpacity(0.85),
+                    (isVerse 
+                      ? const Color(0xFF3730A3) // Azul más claro
+                      : const Color(0xFF9333EA) // Morado más claro
+                    ).withOpacity(0.75),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // 📖 Contenido principal
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  // Botón de cerrar elegante
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 40),
+                      Icon(
+                        isVerse ? Icons.menu_book : Icons.auto_awesome,
+                        color: Colors.white.withOpacity(0.8),
+                        size: 24,
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Espacio flexible
+                  const Spacer(flex: 1),
+
+                  // 📝 Texto principal con animación - NO CERRAR AL TOCAR
+                  GestureDetector(
+                    onTap: () {}, // 🛑 ABSORBER toques en la tarjeta (no cerrar)
+                    child: Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.95),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Texto principal
+                          Text(
+                            text,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                              height: 1.4,
+                              fontFamily: 'serif',
+                              fontStyle: isVerse ? FontStyle.normal : FontStyle.italic,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Subtítulo (referencia o autor)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16, 
+                              vertical: 8
+                            ),
+                            decoration: BoxDecoration(
+                              color: (isVerse 
+                                ? const Color(0xFF374151) 
+                                : const Color(0xFF8B5CF6)
+                              ).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              subtitle,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isVerse 
+                                  ? const Color(0xFF374151)
+                                  : const Color(0xFF8B5CF6),
+                                fontStyle: FontStyle.italic,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const Spacer(flex: 2),
+
+                  // 💡 Indicación para cerrar
+                  Opacity(
+                    opacity: 0.6,
+                    child: Text(
+                      'Toca fuera del texto para cerrar',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.8),
+                        fontWeight: FontWeight.w400,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
