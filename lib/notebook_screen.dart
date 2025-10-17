@@ -24,32 +24,32 @@ class NumberFormatter extends TextInputFormatter {
     if (newValue.text.isEmpty) {
       return newValue;
     }
-    
+
     // Obtener solo dígitos del texto
     String digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    
+
     // Si no hay dígitos, retornar vacío
     if (digitsOnly.isEmpty) {
       return const TextEditingValue();
     }
-    
+
     // Convertir a número para formatear
     final number = int.tryParse(digitsOnly);
     if (number == null) {
       return oldValue;
     }
-    
+
     // Formatear con separadores de miles usando formato español
     final formatted = _formatNumber(number);
-    
+
     // Calcular nueva posición del cursor
     int newSelectionIndex = formatted.length;
-    
+
     // Intentar mantener la posición relativa del cursor
     final oldDigitsOnly = oldValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     final newDigitsLength = digitsOnly.length;
     final oldDigitsLength = oldDigitsOnly.length;
-    
+
     if (newDigitsLength > oldDigitsLength) {
       // Se agregó un dígito
       newSelectionIndex = formatted.length;
@@ -60,23 +60,23 @@ class NumberFormatter extends TextInputFormatter {
       // Longitud igual, mantener al final
       newSelectionIndex = formatted.length;
     }
-    
+
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: newSelectionIndex),
     );
   }
-  
+
   /// Formatea un número con separadores de miles usando puntos
   String _formatNumber(int number) {
     // Convertir número a string
     String numberStr = number.toString();
-    
+
     // Si tiene menos de 4 dígitos, no necesita formateo
     if (numberStr.length <= 3) {
       return numberStr;
     }
-    
+
     // Agregar puntos cada 3 dígitos desde la derecha
     String result = '';
     for (int i = 0; i < numberStr.length; i++) {
@@ -85,7 +85,7 @@ class NumberFormatter extends TextInputFormatter {
       }
       result += numberStr[i];
     }
-    
+
     return result;
   }
 }
@@ -132,7 +132,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   final TextEditingController _editCostController = TextEditingController();
   final TextEditingController _editDescriptionController =
       TextEditingController();
-  
+
   // Variables para edición de título y subtareas normales
   String? _editingTitleId;
   String? _editingSubTaskId;
@@ -218,7 +218,6 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
     final notebookProvider = context.read<NotebookProvider>();
 
-
     // Obtener las tareas manuales existentes (no automáticas)
     List<SubTask> manualTasks = notebook.subTasks
         .where((subTask) => !subTask.id.startsWith('auto_task_'))
@@ -255,15 +254,15 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
     // ORDEN FINAL FORZADO: autoTasks (ordenadas cronológicamente) + manualTasks
     final List<SubTask> finalOrderedSubTasks = [...autoTasks, ...manualTasks];
-    
+
     // SIEMPRE actualizar para forzar el orden correcto
     final updatedNotebook = notebook.copyWith(
       subTasks: finalOrderedSubTasks,
       updatedAt: DateTime.now(),
     );
-    
+
     notebookProvider.updateNotebook(updatedNotebook);
-    
+
     setState(() {
       notebook = updatedNotebook;
     });
@@ -433,7 +432,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
       // Editar título específico de subtarea
       setState(() {
         _editingTitleId = subTask.id;
-        _editTitleController.text = subTask.title.substring(2).trim(); // Quitar emoji 📝
+        _editTitleController.text =
+            subTask.title.substring(2).trim(); // Quitar emoji 📝
         _showTitleField = true;
       });
     } else {
@@ -449,7 +449,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   void _saveEditedTitle() {
     if (_editTitleController.text.trim().isNotEmpty) {
       final notebookProvider = context.read<NotebookProvider>();
-      
+
       if (_editingTitleId == 'notebook_title') {
         // Editar título general del notebook
         final updatedNotebook = notebook.copyWith(
@@ -459,13 +459,14 @@ class _NotebookScreenState extends State<NotebookScreen> {
         notebookProvider.updateNotebook(updatedNotebook);
       } else {
         // Editar título específico de subtarea
-        final currentSubTask = notebook.subTasks.firstWhere((s) => s.id == _editingTitleId!);
+        final currentSubTask =
+            notebook.subTasks.firstWhere((s) => s.id == _editingTitleId!);
         final updatedSubTask = currentSubTask.copyWith(
           title: '📝 ${_editTitleController.text.trim()}',
         );
         notebookProvider.updateSubTask(notebook.id, updatedSubTask);
       }
-      
+
       setState(() {
         _editingTitleId = null;
         _editTitleController.clear();
@@ -493,14 +494,16 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   void _saveEditedSubTask() {
-    if (_editingSubTaskId != null && _editSubTaskController.text.trim().isNotEmpty) {
+    if (_editingSubTaskId != null &&
+        _editSubTaskController.text.trim().isNotEmpty) {
       final notebookProvider = context.read<NotebookProvider>();
-      final currentSubTask = notebook.subTasks.firstWhere((s) => s.id == _editingSubTaskId!);
+      final currentSubTask =
+          notebook.subTasks.firstWhere((s) => s.id == _editingSubTaskId!);
       final updatedSubTask = currentSubTask.copyWith(
         title: _editSubTaskController.text.trim(),
       );
       notebookProvider.updateSubTask(notebook.id, updatedSubTask);
-      
+
       setState(() {
         _editingSubTaskId = null;
         _editSubTaskController.clear();
@@ -520,15 +523,16 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   // Función para mostrar opciones de edición de subtareas
   void _showSubTaskEditOptions() {
-    final nonCostSubTasks = notebook.subTasks.where((subTask) => 
-      !subTask.title.startsWith('🟦')).toList();
-    
+    final nonCostSubTasks = notebook.subTasks
+        .where((subTask) => !subTask.title.startsWith('🟦'))
+        .toList();
+
     if (nonCostSubTasks.isEmpty) {
       // Si no hay subtareas, simplemente mostrar el campo para agregar
       setState(() => _showSubTaskField = !_showSubTaskField);
       return;
     }
-    
+
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -541,14 +545,16 @@ class _NotebookScreenState extends State<NotebookScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            ...nonCostSubTasks.map((subTask) => ListTile(
-              title: Text(subTask.title),
-              leading: const Icon(Icons.edit),
-              onTap: () {
-                Navigator.pop(context);
-                _startEditingSubTask(subTask);
-              },
-            )).toList(),
+            ...nonCostSubTasks
+                .map((subTask) => ListTile(
+                      title: Text(subTask.title),
+                      leading: const Icon(Icons.edit),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _startEditingSubTask(subTask);
+                      },
+                    ))
+                .toList(),
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: () {
@@ -1016,7 +1022,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
     return [
       _buildActionButton(
         onTap: () => setState(() => _showTitleField = !_showTitleField),
-        onLongPress: notebook.title.isNotEmpty ? () => _startEditingTitle() : null,
+        onLongPress:
+            notebook.title.isNotEmpty ? () => _startEditingTitle() : null,
         child: Text(
           '📝',
           style: TextStyle(fontSize: buttonSize),
@@ -1063,7 +1070,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   Widget _buildActionButton(
-      {required VoidCallback onTap, VoidCallback? onLongPress, required Widget child}) {
+      {required VoidCallback onTap,
+      VoidCallback? onLongPress,
+      required Widget child}) {
     final isSmallScreen = MediaQuery.of(context).size.width < 400;
 
     return GestureDetector(
@@ -1381,9 +1390,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   ),
                 ),
               ],
-              
+
               // Botón de edición para subtareas normales (no de costo)
-              if (!subTask.title.startsWith('🟦') && hasSpecialEmoji && subTask.title.startsWith('✅')) ...[
+              if (!subTask.title.startsWith('🟦') &&
+                  hasSpecialEmoji &&
+                  subTask.title.startsWith('✅')) ...[
                 GestureDetector(
                   onTap: () => _startEditingSubTask(subTask),
                   child: Container(
@@ -1424,7 +1435,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   ),
                 ),
               ],
-              
+
               // Botones de operación matemática (solo para costos 🟦)
               if (subTask.title.startsWith('🟦')) ...[
                 // Botón de suma (+)

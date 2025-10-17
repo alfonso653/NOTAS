@@ -136,7 +136,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       builder: (context, provider, _) {
         // Obtener información del teclado
         final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-        
+
         return Scaffold(
           backgroundColor: const Color(0xFFFEF7F0),
           // Evitar que el Scaffold se redimensione automáticamente
@@ -209,65 +209,65 @@ class _CalendarScreenState extends State<CalendarScreen> {
               children: [
                 // Header con días de la semana
                 Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-                      .map((day) => Expanded(
-                            child: Center(
-                              child: Text(
-                                day,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF374151),
-                                  fontSize: 14,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+                        .map((day) => Expanded(
+                              child: Center(
+                                child: Text(
+                                  day,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF374151),
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ))
-                      .toList(),
-                ),
-              ),
-              // Controles de navegación de mes
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left,
-                          color: Color(0xFF374151)),
-                      onPressed: _previousMonth,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right,
-                          color: Color(0xFF374151)),
-                      onPressed: _nextMonth,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Calendario - Ahora más compacto para hacer espacio al versículo
-              Expanded(
-                flex: 3, // 3/5 del espacio disponible para el calendario
-                child: _buildCalendarGrid(_focusedMonth, provider.tasks),
-              ),
-
-              // Área para versículo diario (el área roja que marcaste)
-              Expanded(
-                flex: 2, // 2/5 del espacio disponible para el versículo
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.all(16),
-                  child: DailyVerseWidget(
-                    selectedDate: _selectedDate,
+                            ))
+                        .toList(),
                   ),
                 ),
-              ),
-            ],
+                // Controles de navegación de mes
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left,
+                            color: Color(0xFF374151)),
+                        onPressed: _previousMonth,
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right,
+                            color: Color(0xFF374151)),
+                        onPressed: _nextMonth,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Calendario - Ahora más compacto para hacer espacio al versículo
+                Expanded(
+                  flex: 3, // 3/5 del espacio disponible para el calendario
+                  child: _buildCalendarGrid(_focusedMonth, provider.tasks),
+                ),
+
+                // Área para versículo diario (el área roja que marcaste)
+                Expanded(
+                  flex: 2, // 2/5 del espacio disponible para el versículo
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.all(16),
+                    child: DailyVerseWidget(
+                      selectedDate: _selectedDate,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );

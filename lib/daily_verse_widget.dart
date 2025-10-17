@@ -31,7 +31,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   @override
   void initState() {
     super.initState();
-    
+
     // Configurar animación de difuminado suave
     _blinkController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -45,7 +45,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
       parent: _blinkController,
       curve: Curves.easeInOut,
     ));
-    
+
     _loadContent();
   }
 
@@ -61,45 +61,46 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
     print('🔄 Convirtiendo URL de versículo específico a capítulo completo');
     print('📖 Referencia original: $reference');
     print('🔗 URL original: $originalUrl');
-    
+
     // Extraer el libro y capítulo de la referencia
     // Ejemplos: "1 Tesalonicenses 5:18" -> "1 Tesalonicenses 5"
     //          "Salmo 100:4" -> "Salmo 100"
     //          "Filipenses 4:6" -> "Filipenses 4"
-    
+
     String chapterReference = reference;
     if (reference.contains(':')) {
       // Remover el versículo específico, mantener solo libro y capítulo
       chapterReference = reference.split(':')[0];
     }
-    
+
     print('📑 Capítulo a buscar: $chapterReference');
-    
+
     // Convertir diferentes tipos de URLs a capítulo completo
     if (originalUrl.contains('biblegateway.com')) {
       // Para BibleGateway: cambiar el passage para mostrar el capítulo completo
       String encodedChapter = Uri.encodeComponent(chapterReference);
-      String newUrl = 'https://www.biblegateway.com/passage/?search=$encodedChapter&version=RVR1960';
+      String newUrl =
+          'https://www.biblegateway.com/passage/?search=$encodedChapter&version=RVR1960';
       print('✅ URL convertida (BibleGateway): $newUrl');
       return newUrl;
-    } 
-    else if (originalUrl.contains('bible.com')) {
+    } else if (originalUrl.contains('bible.com')) {
       // Para Bible.com: construir URL de capítulo
       // Necesitaríamos mapear libros a abreviaciones, por ahora mantenemos original
       print('ℹ️ Bible.com detectado, manteniendo URL original por ahora');
       return originalUrl;
-    }
-    else if (originalUrl.contains('dailyverses.net')) {
+    } else if (originalUrl.contains('dailyverses.net')) {
       // Para DailyVerses: cambiar a BibleGateway para mejor experiencia de capítulo
       String encodedChapter = Uri.encodeComponent(chapterReference);
-      String newUrl = 'https://www.biblegateway.com/passage/?search=$encodedChapter&version=RVR1960';
+      String newUrl =
+          'https://www.biblegateway.com/passage/?search=$encodedChapter&version=RVR1960';
       print('✅ URL convertida (DailyVerses->BibleGateway): $newUrl');
       return newUrl;
     }
-    
+
     // Si no reconocemos el dominio, crear URL genérica en BibleGateway
     String encodedChapter = Uri.encodeComponent(chapterReference);
-    String newUrl = 'https://www.biblegateway.com/passage/?search=$encodedChapter&version=RVR1960';
+    String newUrl =
+        'https://www.biblegateway.com/passage/?search=$encodedChapter&version=RVR1960';
     print('✅ URL genérica creada: $newUrl');
     return newUrl;
   }
@@ -107,20 +108,20 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   Future<void> _openSource(List<dynamic>? sources) async {
     print('🔗 Botón de fuente tocado!');
     print('📄 Sources recibidas: $sources');
-    
+
     if (sources != null && sources.isNotEmpty) {
       final String url = sources.first.toString();
       print('🌐 URL a abrir: $url');
-      
+
       try {
         final Uri uri = Uri.parse(url);
         print('✅ URI parseada correctamente: $uri');
-        
+
         // Estrategia 1: Abrir en aplicación externa (navegador independiente)
         print('🚀 Intentando abrir en aplicación externa...');
         try {
           bool launched = await launchUrl(
-            uri, 
+            uri,
             mode: LaunchMode.externalApplication,
           );
           print('✅ Abierto en aplicación externa: $launched');
@@ -128,12 +129,12 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         } catch (e1) {
           print('❌ Falló aplicación externa: $e1');
         }
-        
+
         // Estrategia 2: Modo por defecto del sistema
         print('🔄 Intentando modo platformDefault...');
         try {
           bool launched = await launchUrl(
-            uri, 
+            uri,
             mode: LaunchMode.platformDefault,
           );
           print('✅ Resultado con platformDefault: $launched');
@@ -141,19 +142,18 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         } catch (e2) {
           print('❌ También falló platformDefault: $e2');
         }
-        
+
         // Estrategia 3: Como último recurso, dentro de la app
         print('🔄 Como último recurso, intentando dentro de la app...');
         try {
           bool launched = await launchUrl(
-            uri, 
+            uri,
             mode: LaunchMode.inAppWebView,
           );
           print('✅ Abierto dentro de la app: $launched');
         } catch (e3) {
           print('❌ Todas las estrategias fallaron: $e3');
         }
-        
       } catch (e) {
         print('❌ Error al parsear/abrir la URL: $e');
       }
@@ -202,12 +202,14 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
     _contentTimer?.cancel();
     _blinkTimer?.cancel();
 
-    print('🔄 Iniciando ciclo de animación - Mostrando: ${_showingVerse ? 'VERSÍCULO' : 'CITA'}');
+    print(
+        '🔄 Iniciando ciclo de animación - Mostrando: ${_showingVerse ? 'VERSÍCULO' : 'CITA'}');
 
     // Mostrar contenido por 10 segundos, luego parpadear y cambiar
     _contentTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) {
-        print('⏰ Han pasado 10 segundos - Iniciando difuminado para cambiar de ${_showingVerse ? 'VERSÍCULO' : 'CITA'} a ${!_showingVerse ? 'VERSÍCULO' : 'CITA'}');
+        print(
+            '⏰ Han pasado 10 segundos - Iniciando difuminado para cambiar de ${_showingVerse ? 'VERSÍCULO' : 'CITA'} a ${!_showingVerse ? 'VERSÍCULO' : 'CITA'}');
         _performBlinkTransition();
       }
     });
@@ -229,7 +231,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         setState(() {
           _showingVerse = !_showingVerse;
         });
-        print('🔄 Contenido cambiado a: ${_showingVerse ? 'VERSÍCULO' : 'CITA'}');
+        print(
+            '🔄 Contenido cambiado a: ${_showingVerse ? 'VERSÍCULO' : 'CITA'}');
         // Fade in con el nuevo contenido
         _blinkController.reverse().then((_) {
           if (mounted) {
@@ -247,7 +250,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   Widget build(BuildContext context) {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final isCompactMode = keyboardHeight > 100;
-    
+
     if (_isLoading) {
       return Container(
         width: double.infinity,
@@ -333,7 +336,9 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                   ),
                 );
               },
-              child: _showingVerse ? _buildVerseContent(isCompactMode) : _buildQuoteContent(isCompactMode),
+              child: _showingVerse
+                  ? _buildVerseContent(isCompactMode)
+                  : _buildQuoteContent(isCompactMode),
             ),
           ),
         );
@@ -376,7 +381,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               flex: 3,
               child: Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: isCompactMode ? 4.0 : 8.0),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: isCompactMode ? 4.0 : 8.0),
                   child: GestureDetector(
                     onTap: () => _showFullScreenText(
                       context,
@@ -404,9 +410,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
             // Referencia bíblica
             Container(
               padding: EdgeInsets.symmetric(
-                horizontal: isCompactMode ? 8 : 10, 
-                vertical: isCompactMode ? 2 : 3
-              ),
+                  horizontal: isCompactMode ? 8 : 10,
+                  vertical: isCompactMode ? 2 : 3),
               decoration: BoxDecoration(
                 color: const Color(0xFF374151).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(isCompactMode ? 12 : 15),
@@ -433,13 +438,14 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               // Para versículos, convertir a URL del capítulo completo
               final cita = _verseData?['cita'];
               final reference = _verseData?['reference'];
-              
+
               if (cita != null && reference != null) {
                 // Convertir la URL del versículo específico al capítulo completo
                 String chapterUrl = _convertToChapterUrl(cita, reference);
                 _openSource([chapterUrl]);
               } else {
-                print('⚠️ No hay cita o referencia disponible para este versículo');
+                print(
+                    '⚠️ No hay cita o referencia disponible para este versículo');
               }
             },
             child: Container(
@@ -501,7 +507,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               flex: 3,
               child: Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: isCompactMode ? 4.0 : 8.0),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: isCompactMode ? 4.0 : 8.0),
                   child: GestureDetector(
                     onTap: () => _showFullScreenText(
                       context,
@@ -530,9 +537,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
             // Autor de la cita
             Container(
               padding: EdgeInsets.symmetric(
-                horizontal: isCompactMode ? 8 : 10, 
-                vertical: isCompactMode ? 2 : 3
-              ),
+                  horizontal: isCompactMode ? 8 : 10,
+                  vertical: isCompactMode ? 2 : 3),
               decoration: BoxDecoration(
                 color: const Color(0xFF8B5CF6).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(isCompactMode ? 12 : 15),
@@ -580,7 +586,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   }
 
   // 🌟 Mostrar texto en pantalla completa con fondo difuminado
-  void _showFullScreenText(BuildContext context, String text, String subtitle, bool isVerse) {
+  void _showFullScreenText(
+      BuildContext context, String text, String subtitle, bool isVerse) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true, // ✅ PERMITE CERRAR TOCANDO FUERA
@@ -635,21 +642,25 @@ class _FullScreenTextDialog extends StatelessWidget {
         children: [
           // 🌫️ Fondo difuminado elegante - CLICKEABLE PARA CERRAR
           GestureDetector(
-            onTap: () => Navigator.of(context).pop(), // 🎯 CERRAR AL TOCAR FONDO
+            onTap: () =>
+                Navigator.of(context).pop(), // 🎯 CERRAR AL TOCAR FONDO
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    (isVerse 
-                      ? const Color(0xFF1E3A8A) // Azul profundo para versículos
-                      : const Color(0xFF7C3AED) // Morado para citas
-                    ).withOpacity(0.85),
-                    (isVerse 
-                      ? const Color(0xFF3730A3) // Azul más claro
-                      : const Color(0xFF9333EA) // Morado más claro
-                    ).withOpacity(0.75),
+                    (isVerse
+                            ? const Color(
+                                0xFF1E3A8A) // Azul profundo para versículos
+                            : const Color(0xFF7C3AED) // Morado para citas
+                        )
+                        .withOpacity(0.85),
+                    (isVerse
+                            ? const Color(0xFF3730A3) // Azul más claro
+                            : const Color(0xFF9333EA) // Morado más claro
+                        )
+                        .withOpacity(0.75),
                   ],
                 ),
               ),
@@ -688,7 +699,8 @@ class _FullScreenTextDialog extends StatelessWidget {
 
                   // 📝 Texto principal con animación - NO CERRAR AL TOCAR
                   GestureDetector(
-                    onTap: () {}, // 🛑 ABSORBER toques en la tarjeta (no cerrar)
+                    onTap:
+                        () {}, // 🛑 ABSORBER toques en la tarjeta (no cerrar)
                     child: Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
@@ -715,7 +727,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                               color: Colors.black87,
                               height: 1.4,
                               fontFamily: 'serif',
-                              fontStyle: isVerse ? FontStyle.normal : FontStyle.italic,
+                              fontStyle:
+                                  isVerse ? FontStyle.normal : FontStyle.italic,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -725,14 +738,12 @@ class _FullScreenTextDialog extends StatelessWidget {
                           // Subtítulo (referencia o autor)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16, 
-                              vertical: 8
-                            ),
+                                horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: (isVerse 
-                                ? const Color(0xFF374151) 
-                                : const Color(0xFF8B5CF6)
-                              ).withOpacity(0.1),
+                              color: (isVerse
+                                      ? const Color(0xFF374151)
+                                      : const Color(0xFF8B5CF6))
+                                  .withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -740,9 +751,9 @@ class _FullScreenTextDialog extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: isVerse 
-                                  ? const Color(0xFF374151)
-                                  : const Color(0xFF8B5CF6),
+                                color: isVerse
+                                    ? const Color(0xFF374151)
+                                    : const Color(0xFF8B5CF6),
                                 fontStyle: FontStyle.italic,
                               ),
                               textAlign: TextAlign.center,

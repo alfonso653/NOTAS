@@ -835,9 +835,9 @@ class _DayViewScreenState extends State<DayViewScreen> {
                 // ✅ ELIMINAMOS LAS SOMBRAS NEGRAS PROBLEMÁTICAS
                 // Solo usamos un borde sutil para definición
                 border: Border.all(
-                  color: task.completed 
-                    ? Colors.grey[400]!.withOpacity(0.3)
-                    : task.color.withOpacity(0.8),
+                  color: task.completed
+                      ? Colors.grey[400]!.withOpacity(0.3)
+                      : task.color.withOpacity(0.8),
                   width: 0.5,
                 ),
               ),
@@ -849,7 +849,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
                     children: [
                       // Indicador de tiempo
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(6),
@@ -857,7 +858,9 @@ class _DayViewScreenState extends State<DayViewScreen> {
                         child: Text(
                           _getTimeRangeForTask(task, hour),
                           style: TextStyle(
-                            color: task.completed ? Colors.grey[600] : Colors.white,
+                            color: task.completed
+                                ? Colors.grey[600]
+                                : Colors.white,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1721,15 +1724,6 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '� SILENCIOSO: Sin sonido, sin vibración, solo aparece discretamente',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                   const SizedBox(height: 16),
 
                   // Toggle para activar/desactivar notificación
@@ -2346,7 +2340,7 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
     // Obtener la altura máxima disponible
     final screenHeight = MediaQuery.of(context).size.height;
     final maxHeight = screenHeight * 0.85; // Máximo 85% de la pantalla
-    
+
     return ConstrainedBox(
       constraints: BoxConstraints(
         maxHeight: maxHeight,
@@ -2365,253 +2359,254 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
                   color: Color(0xFF2E3A59),
                 ),
               ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Título
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Título *',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Descripción
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Descripción',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
-
-            // Color Selector
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Color',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              // Título
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Título *',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 50,
-                  child: GridView.builder(
-                    scrollDirection: Axis.horizontal,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 1.0,
-                      crossAxisSpacing: 3,
-                      mainAxisSpacing: 3,
-                    ),
-                    itemCount: TaskColors.pastelColors.length,
-                    itemBuilder: (context, index) {
-                      final colorHex = TaskColors.pastelColors[index];
-                      final colorName = TaskColors.colorNames[index];
-                      final color = TaskColors.hexToColor(colorHex);
-                      final isSelected = _selectedColorHex == colorHex;
-
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedColorHex = colorHex;
-                          });
-                        },
-                        child: Tooltip(
-                          message: colorName,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.black87
-                                    : Colors.grey[300]!,
-                                width: isSelected ? 2.5 : 0.8,
-                              ),
-                            ),
-                            child: isSelected
-                                ? const Icon(Icons.check,
-                                    color: Colors.white, size: 14)
-                                : null,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Fecha
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
+              const SizedBox(height: 12),
+
+              // Descripción
+              TextField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Descripción',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 16),
+
+              // Color Selector
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.calendar_today,
-                      color: Color(0xFF374151), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    DateFormat('EEEE, d MMMM yyyy').format(widget.selectedDate),
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  const Text(
+                    'Color',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 50,
+                    child: GridView.builder(
+                      scrollDirection: Axis.horizontal,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.0,
+                        crossAxisSpacing: 3,
+                        mainAxisSpacing: 3,
+                      ),
+                      itemCount: TaskColors.pastelColors.length,
+                      itemBuilder: (context, index) {
+                        final colorHex = TaskColors.pastelColors[index];
+                        final colorName = TaskColors.colorNames[index];
+                        final color = TaskColors.hexToColor(colorHex);
+                        final isSelected = _selectedColorHex == colorHex;
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedColorHex = colorHex;
+                            });
+                          },
+                          child: Tooltip(
+                            message: colorName,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.black87
+                                      : Colors.grey[300]!,
+                                  width: isSelected ? 2.5 : 0.8,
+                                ),
+                              ),
+                              child: isSelected
+                                  ? const Icon(Icons.check,
+                                      color: Colors.white, size: 14)
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-            // Hora de inicio
-            _buildTimePicker('Hora de inicio', _selectedHour, _selectedMinute,
-                (hour, minute) {
-              setState(() {
-                _selectedHour = hour;
-                _selectedMinute = minute;
-              });
-            }),
-
-            // Checkbox para hora final
-            Row(
-              children: [
-                Checkbox(
-                  value: _hasEndTime,
-                  onChanged: _isAllDay
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _hasEndTime = value ?? false;
-                            _lastEndTimePreference =
-                                _hasEndTime; // Guardar preferencia
-                            if (_hasEndTime && _endHour == null) {
-                              _endHour = _selectedHour + 1;
-                              _endMinute = _selectedMinute;
-                            }
-                          });
-                        },
+              // Fecha
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Text(
-                  'Agregar hora final',
-                  style: TextStyle(
-                    color: _isAllDay ? Colors.grey : Colors.black,
-                  ),
-                ),
-              ],
-            ),
-
-            // Hora final (si está habilitada)
-            if (_hasEndTime)
-              _buildTimePicker('Hora final', _endHour!, _endMinute!,
-                  (hour, minute) {
-                setState(() {
-                  _endHour = hour;
-                  _endMinute = minute;
-                });
-              }),
-
-            // Checkbox para Todo el día
-            Row(
-              children: [
-                Checkbox(
-                  value: _isAllDay,
-                  onChanged: (value) {
-                    setState(() {
-                      _isAllDay = value ?? false;
-                      if (_isAllDay) {
-                        _selectedHour = 0;
-                        _selectedMinute = 0;
-                        _hasEndTime = false;
-                      }
-                    });
-                  },
-                ),
-                const Text('Todo el día'),
-              ],
-            ),
-
-            // Dropdown de repetición (si Todo el día está habilitado)
-            if (_isAllDay)
-              Padding(
-                padding: const EdgeInsets.only(left: 16, top: 8),
                 child: Row(
                   children: [
-                    const Icon(Icons.repeat,
-                        size: 16, color: Color(0xFF374151)),
+                    const Icon(Icons.calendar_today,
+                        color: Color(0xFF374151), size: 20),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButton<String>(
-                        value: _repeatType,
-                        isExpanded: true,
-                        underline: Container(),
-                        style: const TextStyle(
-                            fontSize: 14, color: Colors.black87),
-                        items: const [
-                          DropdownMenuItem(
-                              value: 'none', child: Text('Sin repetir')),
-                          DropdownMenuItem(
-                              value: 'daily', child: Text('Todos los días')),
-                          DropdownMenuItem(
-                              value: 'saturday', child: Text('Los sábados')),
-                          DropdownMenuItem(
-                              value: 'sunday', child: Text('Los domingos')),
-                          DropdownMenuItem(
-                              value: 'weekly',
-                              child: Text('Este día todas las semanas')),
-                          DropdownMenuItem(
-                              value: 'weekdays',
-                              child: Text('De lunes a viernes')),
-                          DropdownMenuItem(
-                              value: 'yearly',
-                              child: Text('Anualmente este día')),
-                          DropdownMenuItem(
-                              value: 'custom', child: Text('Personalizado')),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _repeatType = value ?? 'none';
-                            if (_repeatType == 'custom') {
-                              _showCustomDaysDialog();
-                            }
-                          });
-                        },
-                      ),
+                    Text(
+                      DateFormat('EEEE, d MMMM yyyy')
+                          .format(widget.selectedDate),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
 
-            const SizedBox(height: 20),
+              // Hora de inicio
+              _buildTimePicker('Hora de inicio', _selectedHour, _selectedMinute,
+                  (hour, minute) {
+                setState(() {
+                  _selectedHour = hour;
+                  _selectedMinute = minute;
+                });
+              }),
 
-            // Botones
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancelar'),
+              // Checkbox para hora final
+              Row(
+                children: [
+                  Checkbox(
+                    value: _hasEndTime,
+                    onChanged: _isAllDay
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _hasEndTime = value ?? false;
+                              _lastEndTimePreference =
+                                  _hasEndTime; // Guardar preferencia
+                              if (_hasEndTime && _endHour == null) {
+                                _endHour = _selectedHour + 1;
+                                _endMinute = _selectedMinute;
+                              }
+                            });
+                          },
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF374151),
-                      foregroundColor: Colors.white,
+                  Text(
+                    'Agregar hora final',
+                    style: TextStyle(
+                      color: _isAllDay ? Colors.grey : Colors.black,
                     ),
-                    onPressed: _addTask,
-                    child: const Text('Agregar'),
+                  ),
+                ],
+              ),
+
+              // Hora final (si está habilitada)
+              if (_hasEndTime)
+                _buildTimePicker('Hora final', _endHour!, _endMinute!,
+                    (hour, minute) {
+                  setState(() {
+                    _endHour = hour;
+                    _endMinute = minute;
+                  });
+                }),
+
+              // Checkbox para Todo el día
+              Row(
+                children: [
+                  Checkbox(
+                    value: _isAllDay,
+                    onChanged: (value) {
+                      setState(() {
+                        _isAllDay = value ?? false;
+                        if (_isAllDay) {
+                          _selectedHour = 0;
+                          _selectedMinute = 0;
+                          _hasEndTime = false;
+                        }
+                      });
+                    },
+                  ),
+                  const Text('Todo el día'),
+                ],
+              ),
+
+              // Dropdown de repetición (si Todo el día está habilitado)
+              if (_isAllDay)
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, top: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.repeat,
+                          size: 16, color: Color(0xFF374151)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButton<String>(
+                          value: _repeatType,
+                          isExpanded: true,
+                          underline: Container(),
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.black87),
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'none', child: Text('Sin repetir')),
+                            DropdownMenuItem(
+                                value: 'daily', child: Text('Todos los días')),
+                            DropdownMenuItem(
+                                value: 'saturday', child: Text('Los sábados')),
+                            DropdownMenuItem(
+                                value: 'sunday', child: Text('Los domingos')),
+                            DropdownMenuItem(
+                                value: 'weekly',
+                                child: Text('Este día todas las semanas')),
+                            DropdownMenuItem(
+                                value: 'weekdays',
+                                child: Text('De lunes a viernes')),
+                            DropdownMenuItem(
+                                value: 'yearly',
+                                child: Text('Anualmente este día')),
+                            DropdownMenuItem(
+                                value: 'custom', child: Text('Personalizado')),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _repeatType = value ?? 'none';
+                              if (_repeatType == 'custom') {
+                                _showCustomDaysDialog();
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ],
+
+              const SizedBox(height: 20),
+
+              // Botones
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF374151),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _addTask,
+                      child: const Text('Agregar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -2847,7 +2842,7 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
     // Obtener la altura máxima disponible
     final screenHeight = MediaQuery.of(context).size.height;
     final maxHeight = screenHeight * 0.85; // Máximo 85% de la pantalla
-    
+
     return ConstrainedBox(
       constraints: BoxConstraints(
         maxHeight: maxHeight,
@@ -2860,179 +2855,180 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
             children: [
               Text(
                 'Editar Tarea',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2E3A59),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Título
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Título *',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Descripción
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Descripción',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
-
-            // Color Selector
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Color',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E3A59),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 50,
-                  child: GridView.builder(
-                    scrollDirection: Axis.horizontal,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 1.0,
-                      crossAxisSpacing: 3,
-                      mainAxisSpacing: 3,
-                    ),
-                    itemCount: TaskColors.pastelColors.length,
-                    itemBuilder: (context, index) {
-                      final colorHex = TaskColors.pastelColors[index];
-                      final colorName = TaskColors.colorNames[index];
-                      final color = TaskColors.hexToColor(colorHex);
-                      final isSelected = _selectedColorHex == colorHex;
-
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedColorHex = colorHex;
-                          });
-                        },
-                        child: Tooltip(
-                          message: colorName,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.black87
-                                    : Colors.grey[300]!,
-                                width: isSelected ? 2.5 : 0.8,
-                              ),
-                            ),
-                            child: isSelected
-                                ? const Icon(Icons.check,
-                                    color: Colors.white, size: 14)
-                                : null,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Fecha
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
+              const SizedBox(height: 16),
+
+              // Título
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Título *',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Descripción
+              TextField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Descripción',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 16),
+
+              // Color Selector
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.calendar_today,
-                      color: Color(0xFF374151), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    DateFormat('EEEE, d MMMM yyyy').format(widget.selectedDate),
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  const Text(
+                    'Color',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 50,
+                    child: GridView.builder(
+                      scrollDirection: Axis.horizontal,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.0,
+                        crossAxisSpacing: 3,
+                        mainAxisSpacing: 3,
+                      ),
+                      itemCount: TaskColors.pastelColors.length,
+                      itemBuilder: (context, index) {
+                        final colorHex = TaskColors.pastelColors[index];
+                        final colorName = TaskColors.colorNames[index];
+                        final color = TaskColors.hexToColor(colorHex);
+                        final isSelected = _selectedColorHex == colorHex;
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedColorHex = colorHex;
+                            });
+                          },
+                          child: Tooltip(
+                            message: colorName,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Colors.black87
+                                      : Colors.grey[300]!,
+                                  width: isSelected ? 2.5 : 0.8,
+                                ),
+                              ),
+                              child: isSelected
+                                  ? const Icon(Icons.check,
+                                      color: Colors.white, size: 14)
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-            // Hora de inicio
-            _buildTimePicker('Hora de inicio', _selectedHour, _selectedMinute,
-                (hour, minute) {
-              setState(() {
-                _selectedHour = hour;
-                _selectedMinute = minute;
-              });
-            }),
-
-            // Checkbox para hora final
-            Row(
-              children: [
-                Checkbox(
-                  value: _hasEndTime,
-                  onChanged: (value) {
-                    setState(() {
-                      _hasEndTime = value ?? false;
-                      if (_hasEndTime && _endHour == null) {
-                        _endHour = _selectedHour + 1;
-                        _endMinute = _selectedMinute;
-                      }
-                    });
-                  },
+              // Fecha
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const Text('Agregar hora final'),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today,
+                        color: Color(0xFF374151), size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      DateFormat('EEEE, d MMMM yyyy')
+                          .format(widget.selectedDate),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
 
-            // Hora final (si está habilitada)
-            if (_hasEndTime)
-              _buildTimePicker('Hora final', _endHour!, _endMinute!,
+              // Hora de inicio
+              _buildTimePicker('Hora de inicio', _selectedHour, _selectedMinute,
                   (hour, minute) {
                 setState(() {
-                  _endHour = hour;
-                  _endMinute = minute;
+                  _selectedHour = hour;
+                  _selectedMinute = minute;
                 });
               }),
 
-            const SizedBox(height: 20),
+              // Checkbox para hora final
+              Row(
+                children: [
+                  Checkbox(
+                    value: _hasEndTime,
+                    onChanged: (value) {
+                      setState(() {
+                        _hasEndTime = value ?? false;
+                        if (_hasEndTime && _endHour == null) {
+                          _endHour = _selectedHour + 1;
+                          _endMinute = _selectedMinute;
+                        }
+                      });
+                    },
+                  ),
+                  const Text('Agregar hora final'),
+                ],
+              ),
 
-            // Botones
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancelar'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF374151),
-                      foregroundColor: Colors.white,
+              // Hora final (si está habilitada)
+              if (_hasEndTime)
+                _buildTimePicker('Hora final', _endHour!, _endMinute!,
+                    (hour, minute) {
+                  setState(() {
+                    _endHour = hour;
+                    _endMinute = minute;
+                  });
+                }),
+
+              const SizedBox(height: 20),
+
+              // Botones
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancelar'),
                     ),
-                    onPressed: _updateTask,
-                    child: const Text('Actualizar'),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF374151),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _updateTask,
+                      child: const Text('Actualizar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

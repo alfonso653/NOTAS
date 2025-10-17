@@ -11,12 +11,13 @@ class QuotesService {
 
     try {
       print('📚 Cargando citas inspiracionales...');
-      final jsonString = await rootBundle.loadString('assets/data/quotes/365_citas_mezcladas.json');
+      final jsonString = await rootBundle
+          .loadString('assets/data/quotes/365_citas_mezcladas.json');
       final List<dynamic> quotesData = json.decode(jsonString);
-      
+
       _quotes = quotesData.cast<Map<String, dynamic>>();
       _isLoaded = true;
-      
+
       print('✅ Cargadas ${_quotes?.length ?? 0} citas inspiracionales');
     } catch (e) {
       print('❌ Error cargando citas: $e');
@@ -28,7 +29,7 @@ class QuotesService {
   /// Obtiene una cita para una fecha específica
   static Future<Map<String, dynamic>?> getQuoteForDate(DateTime date) async {
     await loadQuotes();
-    
+
     if (_quotes == null || _quotes!.isEmpty) {
       return null;
     }
@@ -36,14 +37,15 @@ class QuotesService {
     try {
       // Calcular el día del año (1-365/366)
       final dayOfYear = _calculateDayOfYear(date);
-      
+
       // Asegurar que el índice esté en rango válido
       final index = (dayOfYear - 1) % _quotes!.length;
-      
+
       final quote = _quotes![index];
-      
-      print('📅 Cita para ${date.day}/${date.month}: "${quote['quote']?.substring(0, 50) ?? 'Sin cita'}..."');
-      
+
+      print(
+          '📅 Cita para ${date.day}/${date.month}: "${quote['quote']?.substring(0, 50) ?? 'Sin cita'}..."');
+
       return {
         'quote': quote['quote'] ?? '',
         'author': quote['author'] ?? '',
@@ -66,7 +68,7 @@ class QuotesService {
   /// Obtiene una cita aleatoria
   static Future<Map<String, dynamic>?> getRandomQuote() async {
     await loadQuotes();
-    
+
     if (_quotes == null || _quotes!.isEmpty) {
       return null;
     }
