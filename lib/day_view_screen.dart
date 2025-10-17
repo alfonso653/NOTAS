@@ -839,13 +839,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
               decoration: BoxDecoration(
                 color: task.completed ? Colors.grey[300] : task.color,
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+                // ✅ ELIMINAMOS LAS SOMBRAS NEGRAS PROBLEMÁTICAS
+                // Solo usamos un borde sutil para definición
+                border: Border.all(
+                  color: task.completed 
+                    ? Colors.grey[400]!.withOpacity(0.3)
+                    : task.color.withOpacity(0.8),
+                  width: 0.5,
+                ),
               ),
               child: Row(
                 children: [
@@ -994,24 +995,50 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
   void _showAddTaskDialog(BuildContext context, PendingProvider provider,
       {int? hour, int? minute}) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AddTaskHourlyForm(
-        pendingProvider: provider,
-        selectedDate: widget.selectedDate,
-        selectedHour: hour,
-        selectedMinute: minute,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          left: 16,
+          right: 16,
+          top: 16,
+        ),
+        child: AddTaskHourlyForm(
+          pendingProvider: provider,
+          selectedDate: widget.selectedDate,
+          selectedHour: hour,
+          selectedMinute: minute,
+        ),
       ),
     );
   }
 
   void _showEditTaskDialog(BuildContext context, PendingTask task) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => EditTaskHourlyForm(
-        task: task,
-        pendingProvider: context.read<PendingProvider>(),
-        selectedDate: widget.selectedDate,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          left: 16,
+          right: 16,
+          top: 16,
+        ),
+        child: EditTaskHourlyForm(
+          task: task,
+          pendingProvider: context.read<PendingProvider>(),
+          selectedDate: widget.selectedDate,
+        ),
       ),
     );
   }
@@ -2219,22 +2246,28 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Nueva Tarea',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2E3A59),
+    // Obtener la altura máxima disponible
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxHeight = screenHeight * 0.85; // Máximo 85% de la pantalla
+    
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: maxHeight,
+      ),
+      child: Material(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Nueva Tarea',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E3A59),
+                ),
               ),
-            ),
             const SizedBox(height: 16),
 
             // Título
@@ -2482,6 +2515,7 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
               ],
             ),
           ],
+          ),
         ),
       ),
     );
@@ -2713,16 +2747,22 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Editar Tarea',
+    // Obtener la altura máxima disponible
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxHeight = screenHeight * 0.85; // Máximo 85% de la pantalla
+    
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: maxHeight,
+      ),
+      child: Material(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Editar Tarea',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -2896,6 +2936,7 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
               ],
             ),
           ],
+          ),
         ),
       ),
     );
