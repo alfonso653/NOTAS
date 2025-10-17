@@ -13,6 +13,83 @@ import 'notebook_models.dart';
 import 'pending.dart';
 import 'package:intl/intl.dart';
 
+/// Formateador personalizado para números con separadores de miles
+class NumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Si está vacío, retornar vacío
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+    
+    // Obtener solo dígitos del texto
+    String digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    // Si no hay dígitos, retornar vacío
+    if (digitsOnly.isEmpty) {
+      return const TextEditingValue();
+    }
+    
+    // Convertir a número para formatear
+    final number = int.tryParse(digitsOnly);
+    if (number == null) {
+      return oldValue;
+    }
+    
+    // Formatear con separadores de miles usando formato español
+    final formatted = _formatNumber(number);
+    
+    // Calcular nueva posición del cursor
+    int newSelectionIndex = formatted.length;
+    
+    // Intentar mantener la posición relativa del cursor
+    final oldDigitsOnly = oldValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final newDigitsLength = digitsOnly.length;
+    final oldDigitsLength = oldDigitsOnly.length;
+    
+    if (newDigitsLength > oldDigitsLength) {
+      // Se agregó un dígito
+      newSelectionIndex = formatted.length;
+    } else if (newDigitsLength < oldDigitsLength) {
+      // Se borró un dígito
+      newSelectionIndex = formatted.length;
+    } else {
+      // Longitud igual, mantener al final
+      newSelectionIndex = formatted.length;
+    }
+    
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: newSelectionIndex),
+    );
+  }
+  
+  /// Formatea un número con separadores de miles usando puntos
+  String _formatNumber(int number) {
+    // Convertir número a string
+    String numberStr = number.toString();
+    
+    // Si tiene menos de 4 dígitos, no necesita formateo
+    if (numberStr.length <= 3) {
+      return numberStr;
+    }
+    
+    // Agregar puntos cada 3 dígitos desde la derecha
+    String result = '';
+    for (int i = 0; i < numberStr.length; i++) {
+      if (i > 0 && (numberStr.length - i) % 3 == 0) {
+        result += '.';
+      }
+      result += numberStr[i];
+    }
+    
+    return result;
+  }
+}
+
 /// Pantalla del cuaderno de marcado
 class NotebookScreen extends StatefulWidget {
   final String notebookId;
@@ -55,6 +132,12 @@ class _NotebookScreenState extends State<NotebookScreen> {
   final TextEditingController _editCostController = TextEditingController();
   final TextEditingController _editDescriptionController =
       TextEditingController();
+  
+  // Variables para edición de título y subtareas normales
+  String? _editingTitleId;
+  String? _editingSubTaskId;
+  final TextEditingController _editTitleController = TextEditingController();
+  final TextEditingController _editSubTaskController = TextEditingController();
 
   // Key para captura de screenshot
   final GlobalKey _notebookKey = GlobalKey();
@@ -199,6 +282,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
     _costDescriptionController.dispose();
     _editCostController.dispose();
     _editDescriptionController.dispose();
+    _editTitleController.dispose();
+    _editSubTaskController.dispose();
     super.dispose();
   }
 
@@ -340,6 +425,142 @@ class _NotebookScreenState extends State<NotebookScreen> {
       _editCostController.clear();
       _editDescriptionController.clear();
     });
+  }
+
+  // Funciones para editar título
+  void _startEditingTitle([SubTask? subTask]) {
+    if (subTask != null && subTask.title.startsWith('📝')) {
+      // Editar título específico de subtarea
+      setState(() {
+        _editingTitleId = subTask.id;
+        _editTitleController.text = subTask.title.substring(2).trim(); // Quitar emoji 📝
+        _showTitleField = true;
+      });
+    } else {
+      // Editar título general del notebook
+      setState(() {
+        _editingTitleId = 'notebook_title';
+        _editTitleController.text = notebook.title;
+        _showTitleField = true;
+      });
+    }
+  }
+
+  void _saveEditedTitle() {
+    if (_editTitleController.text.trim().isNotEmpty) {
+      final notebookProvider = context.read<NotebookProvider>();
+      
+      if (_editingTitleId == 'notebook_title') {
+        // Editar título general del notebook
+        final updatedNotebook = notebook.copyWith(
+          title: _editTitleController.text.trim(),
+          updatedAt: DateTime.now(),
+        );
+        notebookProvider.updateNotebook(updatedNotebook);
+      } else {
+        // Editar título específico de subtarea
+        final currentSubTask = notebook.subTasks.firstWhere((s) => s.id == _editingTitleId!);
+        final updatedSubTask = currentSubTask.copyWith(
+          title: '📝 ${_editTitleController.text.trim()}',
+        );
+        notebookProvider.updateSubTask(notebook.id, updatedSubTask);
+      }
+      
+      setState(() {
+        _editingTitleId = null;
+        _editTitleController.clear();
+        _showTitleField = false;
+      });
+      _loadNotebook();
+    }
+  }
+
+  void _cancelEditingTitle() {
+    setState(() {
+      _editingTitleId = null;
+      _editTitleController.clear();
+      _showTitleField = false;
+    });
+  }
+
+  // Funciones para editar subtarea normal
+  void _startEditingSubTask(SubTask subTask) {
+    setState(() {
+      _editingSubTaskId = subTask.id;
+      _editSubTaskController.text = subTask.title;
+      _showSubTaskField = true;
+    });
+  }
+
+  void _saveEditedSubTask() {
+    if (_editingSubTaskId != null && _editSubTaskController.text.trim().isNotEmpty) {
+      final notebookProvider = context.read<NotebookProvider>();
+      final currentSubTask = notebook.subTasks.firstWhere((s) => s.id == _editingSubTaskId!);
+      final updatedSubTask = currentSubTask.copyWith(
+        title: _editSubTaskController.text.trim(),
+      );
+      notebookProvider.updateSubTask(notebook.id, updatedSubTask);
+      
+      setState(() {
+        _editingSubTaskId = null;
+        _editSubTaskController.clear();
+        _showSubTaskField = false;
+      });
+      _loadNotebook();
+    }
+  }
+
+  void _cancelEditingSubTask() {
+    setState(() {
+      _editingSubTaskId = null;
+      _editSubTaskController.clear();
+      _showSubTaskField = false;
+    });
+  }
+
+  // Función para mostrar opciones de edición de subtareas
+  void _showSubTaskEditOptions() {
+    final nonCostSubTasks = notebook.subTasks.where((subTask) => 
+      !subTask.title.startsWith('🟦')).toList();
+    
+    if (nonCostSubTasks.isEmpty) {
+      // Si no hay subtareas, simplemente mostrar el campo para agregar
+      setState(() => _showSubTaskField = !_showSubTaskField);
+      return;
+    }
+    
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Selecciona una tarea para editar',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ...nonCostSubTasks.map((subTask) => ListTile(
+              title: Text(subTask.title),
+              leading: const Icon(Icons.edit),
+              onTap: () {
+                Navigator.pop(context);
+                _startEditingSubTask(subTask);
+              },
+            )).toList(),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() => _showSubTaskField = !_showSubTaskField);
+              },
+              child: const Text('Agregar nueva tarea'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // Funciones para la calculadora
@@ -795,6 +1016,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     return [
       _buildActionButton(
         onTap: () => setState(() => _showTitleField = !_showTitleField),
+        onLongPress: notebook.title.isNotEmpty ? () => _startEditingTitle() : null,
         child: Text(
           '📝',
           style: TextStyle(fontSize: buttonSize),
@@ -802,6 +1024,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
       ),
       _buildActionButton(
         onTap: () => setState(() => _showSubTaskField = !_showSubTaskField),
+        onLongPress: () => _showSubTaskEditOptions(),
         child: Text(
           '✅',
           style: TextStyle(fontSize: buttonSize),
@@ -840,11 +1063,12 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   Widget _buildActionButton(
-      {required VoidCallback onTap, required Widget child}) {
+      {required VoidCallback onTap, VoidCallback? onLongPress, required Widget child}) {
     final isSmallScreen = MediaQuery.of(context).size.width < 400;
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: isSmallScreen ? 10 : 12,
@@ -979,6 +1203,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
               controller: _costController,
               onChanged: (_) => setState(() {}),
               keyboardType: TextInputType.number,
+              inputFormatters: [NumberFormatter()],
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF374151),
@@ -1004,7 +1229,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
               ),
               decoration: const InputDecoration(
                 border: UnderlineInputBorder(),
-                hintText: 'arriendo',
+                hintText: 'concepto',
                 hintStyle: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ),
@@ -1114,36 +1339,130 @@ class _NotebookScreenState extends State<NotebookScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Botón de edición para títulos (📝)
+              if (subTask.title.startsWith('📝')) ...[
+                GestureDetector(
+                  onTap: () => _startEditingTitle(subTask),
+                  child: Container(
+                    width: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                    height: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                    margin: EdgeInsets.only(
+                      left: MediaQuery.of(context).size.width > 600 ? 8 : 6,
+                      right: 4,
+                      top: 2,
+                      bottom: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _editingTitleId != null
+                          ? const Color(0xFF3B82F6).withOpacity(0.15)
+                          : Colors.grey.withOpacity(0.05),
+                      border: Border.all(
+                        color: _editingTitleId != null
+                            ? const Color(0xFF3B82F6)
+                            : const Color(0xFF374151).withOpacity(0.2),
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 16,
+                        color: Color(0xFF3B82F6),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              
+              // Botón de edición para subtareas normales (no de costo)
+              if (!subTask.title.startsWith('🟦') && hasSpecialEmoji && subTask.title.startsWith('✅')) ...[
+                GestureDetector(
+                  onTap: () => _startEditingSubTask(subTask),
+                  child: Container(
+                    width: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                    height: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                    margin: EdgeInsets.only(
+                      left: MediaQuery.of(context).size.width > 600 ? 8 : 6,
+                      right: 4,
+                      top: 2,
+                      bottom: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _editingSubTaskId == subTask.id
+                          ? const Color(0xFF3B82F6).withOpacity(0.15)
+                          : Colors.grey.withOpacity(0.05),
+                      border: Border.all(
+                        color: _editingSubTaskId == subTask.id
+                            ? const Color(0xFF3B82F6)
+                            : const Color(0xFF374151).withOpacity(0.2),
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 16,
+                        color: Color(0xFF3B82F6),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              
               // Botones de operación matemática (solo para costos 🟦)
               if (subTask.title.startsWith('🟦')) ...[
                 // Botón de suma (+)
                 GestureDetector(
                   onTap: () => _setCalculatorOperation(subTask, '+'),
                   child: Container(
-                    width: MediaQuery.of(context).size.width > 600 ? 18 : 16,
-                    height: MediaQuery.of(context).size.width > 600 ? 18 : 16,
+                    width: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                    height: MediaQuery.of(context).size.width > 600 ? 36 : 32,
                     margin: EdgeInsets.only(
                       left: MediaQuery.of(context).size.width > 600 ? 8 : 6,
-                      right: 2,
+                      right: 4,
                       top: 2,
+                      bottom: 2,
                     ),
                     decoration: BoxDecoration(
                       color: _calculatorOperations[subTask.id] == '+'
-                          ? const Color(0xFF10B981).withOpacity(0.1)
-                          : Colors.transparent,
+                          ? const Color(0xFF10B981).withOpacity(0.15)
+                          : Colors.grey.withOpacity(0.05),
                       border: Border.all(
                         color: _calculatorOperations[subTask.id] == '+'
                             ? const Color(0xFF10B981)
-                            : const Color(0xFF374151).withOpacity(0.3),
-                        width: 1,
+                            : const Color(0xFF374151).withOpacity(0.2),
+                        width: 1.5,
                       ),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: const Center(
                       child: Text(
                         '+',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF10B981),
                         ),
@@ -1155,30 +1474,38 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 GestureDetector(
                   onTap: () => _setCalculatorOperation(subTask, '-'),
                   child: Container(
-                    width: MediaQuery.of(context).size.width > 600 ? 18 : 16,
-                    height: MediaQuery.of(context).size.width > 600 ? 18 : 16,
+                    width: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                    height: MediaQuery.of(context).size.width > 600 ? 36 : 32,
                     margin: EdgeInsets.only(
                       left: 2,
-                      right: MediaQuery.of(context).size.width > 600 ? 4 : 3,
+                      right: MediaQuery.of(context).size.width > 600 ? 6 : 4,
                       top: 2,
+                      bottom: 2,
                     ),
                     decoration: BoxDecoration(
                       color: _calculatorOperations[subTask.id] == '-'
-                          ? const Color(0xFFEF4444).withOpacity(0.1)
-                          : Colors.transparent,
+                          ? const Color(0xFFEF4444).withOpacity(0.15)
+                          : Colors.grey.withOpacity(0.05),
                       border: Border.all(
                         color: _calculatorOperations[subTask.id] == '-'
                             ? const Color(0xFFEF4444)
-                            : const Color(0xFF374151).withOpacity(0.3),
-                        width: 1,
+                            : const Color(0xFF374151).withOpacity(0.2),
+                        width: 1.5,
                       ),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: const Center(
                       child: Text(
-                        '-',
+                        '−',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFFEF4444),
                         ),
@@ -1190,29 +1517,37 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 GestureDetector(
                   onTap: () => _startEditingSegment(subTask),
                   child: Container(
-                    width: MediaQuery.of(context).size.width > 600 ? 18 : 16,
-                    height: MediaQuery.of(context).size.width > 600 ? 18 : 16,
+                    width: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                    height: MediaQuery.of(context).size.width > 600 ? 36 : 32,
                     margin: EdgeInsets.only(
                       left: 2,
-                      right: MediaQuery.of(context).size.width > 600 ? 4 : 3,
+                      right: MediaQuery.of(context).size.width > 600 ? 6 : 4,
                       top: 2,
+                      bottom: 2,
                     ),
                     decoration: BoxDecoration(
                       color: _editingSegmentId == subTask.id
-                          ? const Color(0xFF3B82F6).withOpacity(0.1)
-                          : Colors.transparent,
+                          ? const Color(0xFF3B82F6).withOpacity(0.15)
+                          : Colors.grey.withOpacity(0.05),
                       border: Border.all(
                         color: _editingSegmentId == subTask.id
                             ? const Color(0xFF3B82F6)
-                            : const Color(0xFF374151).withOpacity(0.3),
-                        width: 1,
+                            : const Color(0xFF374151).withOpacity(0.2),
+                        width: 1.5,
                       ),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: const Center(
                       child: Icon(
-                        Icons.edit,
-                        size: 10,
+                        Icons.edit_outlined,
+                        size: 16,
                         color: Color(0xFF3B82F6),
                       ),
                     ),
@@ -1220,16 +1555,38 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 ),
               ],
 
-              // Canequita de basura minimalista
+              // Canequita de basura mejorada
               GestureDetector(
                 onTap: () => _deleteSubTask(subTask),
                 child: Container(
-                  padding: const EdgeInsets.all(4),
-                  margin: const EdgeInsets.only(left: 4, top: 2),
-                  child: Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: const Color(0xFF374151).withOpacity(0.5),
+                  width: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                  height: MediaQuery.of(context).size.width > 600 ? 36 : 32,
+                  margin: EdgeInsets.only(
+                    left: 4,
+                    top: 2,
+                    bottom: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.05),
+                    border: Border.all(
+                      color: const Color(0xFF374151).withOpacity(0.2),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.delete_outline,
+                      size: 16,
+                      color: const Color(0xFFEF4444).withOpacity(0.8),
+                    ),
                   ),
                 ),
               ),
@@ -1273,6 +1630,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 child: TextField(
                   controller: _editCostController,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [NumberFormatter()],
                   style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF374151),
