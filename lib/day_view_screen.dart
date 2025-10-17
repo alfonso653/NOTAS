@@ -798,7 +798,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
               color: isCurrentHour
                   ? const Color(0xFF374151).withOpacity(0.7)
                   : Colors.grey[400],
-              size: 16,
+              size: 20,
             ),
             const SizedBox(width: 8),
             Text(
@@ -807,7 +807,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                 color: isCurrentHour
                     ? const Color(0xFF374151).withOpacity(0.7)
                     : Colors.grey[500],
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -825,17 +825,10 @@ class _DayViewScreenState extends State<DayViewScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: tasks.map((task) {
-          final portion = task.getPortionInHour(hour);
-
-          // Calcular altura basada en la duración en esta hora
-          final baseHeight = 50.0; // Altura base
-          final durationHeight = baseHeight * portion;
-
           return Container(
             margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-            height: durationHeight.clamp(35.0, 80.0), // Altura mínima y máxima
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: task.completed ? Colors.grey[300] : task.color,
                 borderRadius: BorderRadius.circular(8),
@@ -848,84 +841,80 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   width: 0.5,
                 ),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Indicador de tiempo
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _getTimeRangeForTask(task, hour),
-                      style: TextStyle(
-                        color: task.completed ? Colors.grey[600] : Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Contenido de la tarea
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          task.title,
-                          style: TextStyle(
-                            fontFamily:
-                                'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
-                            color: task.completed
-                                ? Colors.grey[600]
-                                : Colors.white,
-                            fontWeight:
-                                FontWeight.w500, // Menos bold para mejor fit
-                            fontSize: 10, // Reducido para evitar overflow
-                            decoration: task.completed
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (task.description.isNotEmpty && durationHeight > 50)
-                          Text(
-                            task.description,
-                            style: TextStyle(
-                              color: task.completed
-                                  ? Colors.grey[500]
-                                  : Colors.white.withOpacity(0.8),
-                              fontSize: 9,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Botones de acción
+                  // Fila superior: Hora y título
                   Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // 🎯 BOTONES CON VISIBILIDAD GARANTIZADA
+                      // Indicador de tiempo
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _getTimeRangeForTask(task, hour),
+                          style: TextStyle(
+                            color: task.completed ? Colors.grey[600] : Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Contenido de la tarea
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              task.title,
+                              style: TextStyle(
+                                fontFamily: 'Georgia',
+                                color: task.completed
+                                    ? Colors.grey[600]
+                                    : Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                                decoration: task.completed
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (task.description.isNotEmpty)
+                              Text(
+                                task.description,
+                                style: TextStyle(
+                                  color: task.completed
+                                      ? Colors.grey[500]
+                                      : Colors.white.withOpacity(0.8),
+                                  fontSize: 10,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Fila inferior: Botones de acción más grandes
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
                       _buildVisibleEditButton(task),
-                      const SizedBox(width: 2),
-                      _buildVisibleNotebookButton(
-                          task), // 📓 CUADERNO DE MARCADO
-                      const SizedBox(width: 2),
-                      _buildVisibleAlarmButton(task), // ALARMA (sonido fuerte)
-                      const SizedBox(width: 2),
-                      _buildVisibleNotificationButton(
-                          task), // NOTIFICACIÓN (silenciosa)
-                      const SizedBox(width: 2),
+                      _buildVisibleNotebookButton(task),
+                      _buildVisibleAlarmButton(task),
+                      _buildVisibleNotificationButton(task),
                       _buildVisibleDeleteButton(task),
-                      const SizedBox(width: 4),
                       _buildVisibleCompleteButton(task),
                     ],
                   ),
@@ -1110,11 +1099,29 @@ class _DayViewScreenState extends State<DayViewScreen> {
     return GestureDetector(
       onTap: () => _showEditTaskDialog(context, task),
       child: Container(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          Icons.edit,
-          color: iconColor,
-          size: 14,
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.15),
+          border: Border.all(
+            color: iconColor.withOpacity(0.4),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            Icons.edit_outlined,
+            color: iconColor,
+            size: 22,
+          ),
         ),
       ),
     );
@@ -1133,12 +1140,30 @@ class _DayViewScreenState extends State<DayViewScreen> {
         taskDescription: task.description,
       ),
       child: Container(
-        padding: const EdgeInsets.all(4),
-        child: Text(
-          '📔',
-          style: TextStyle(
-            fontSize: 16,
-            color: iconColor,
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.15),
+          border: Border.all(
+            color: iconColor.withOpacity(0.4),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            '📔',
+            style: TextStyle(
+              fontSize: 22,
+              color: iconColor,
+            ),
           ),
         ),
       ),
@@ -1152,11 +1177,29 @@ class _DayViewScreenState extends State<DayViewScreen> {
     return GestureDetector(
       onTap: () => _showDeleteConfirmation(context, task),
       child: Container(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          Icons.delete_outline,
-          color: iconColor,
-          size: 14,
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.15),
+          border: Border.all(
+            color: iconColor.withOpacity(0.4),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            Icons.delete_outline,
+            color: iconColor,
+            size: 22,
+          ),
         ),
       ),
     );
@@ -1175,11 +1218,29 @@ class _DayViewScreenState extends State<DayViewScreen> {
     return GestureDetector(
       onTap: () => _showAlarmDialog(context, task),
       child: Container(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          task.hasAlarm ? Icons.alarm_on : Icons.alarm_off,
-          color: iconColor,
-          size: 14,
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.15),
+          border: Border.all(
+            color: iconColor.withOpacity(0.4),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            task.hasAlarm ? Icons.alarm_on : Icons.alarm_off,
+            color: iconColor,
+            size: 22,
+          ),
         ),
       ),
     );
@@ -1198,13 +1259,31 @@ class _DayViewScreenState extends State<DayViewScreen> {
     return GestureDetector(
       onTap: () => _showNotificationDialog(context, task),
       child: Container(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          task.hasNotification
-              ? Icons.notifications_active
-              : Icons.notifications_off,
-          color: iconColor,
-          size: 14,
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.15),
+          border: Border.all(
+            color: iconColor.withOpacity(0.4),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            task.hasNotification
+                ? Icons.notifications_active
+                : Icons.notifications_off,
+            color: iconColor,
+            size: 22,
+          ),
         ),
       ),
     );
@@ -1222,11 +1301,29 @@ class _DayViewScreenState extends State<DayViewScreen> {
         provider.toggleTaskCompletion(task.id);
       },
       child: Container(
-        padding: const EdgeInsets.all(2),
-        child: Icon(
-          task.completed ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: checkColor,
-          size: 16,
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: checkColor.withOpacity(0.15),
+          border: Border.all(
+            color: checkColor.withOpacity(0.4),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            task.completed ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: checkColor,
+            size: 24,
+          ),
         ),
       ),
     );
