@@ -32,9 +32,10 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   void initState() {
     super.initState();
 
-    // Configurar animación de difuminado suave
+    // Configurar animación de difuminado optimizada
     _blinkController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration:
+          const Duration(milliseconds: 400), // Reducido para mejor rendimiento
       vsync: this,
     );
 
@@ -58,9 +59,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   }
 
   String _convertToChapterUrl(String originalUrl, String reference) {
-    print('🔄 Convirtiendo URL de versículo específico a capítulo completo');
-    print('📖 Referencia original: $reference');
-    print('🔗 URL original: $originalUrl');
+    // Convertir URL de versículo específico a capítulo completo
 
     // Extraer el libro y capítulo de la referencia
     // Ejemplos: "1 Tesalonicenses 5:18" -> "1 Tesalonicenses 5"
@@ -166,7 +165,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   void didUpdateWidget(DailyVerseWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedDate != widget.selectedDate) {
-      print('📅 Fecha cambió - Cargando nuevo contenido');
+      // Fecha cambió - Cargando nuevo contenido
       _loadContent();
     }
   }

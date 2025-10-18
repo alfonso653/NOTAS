@@ -180,7 +180,12 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   GestureDetector(
                     onTap: () => _toggleHourExpansion(hour),
                     child: Container(
-                      width: 60,
+                      width: MediaQuery.of(context).size.width *
+                          0.15, // 15% del ancho de pantalla
+                      constraints: const BoxConstraints(
+                        minWidth: 50, // Mínimo 50px
+                        maxWidth: 70, // Máximo 70px
+                      ),
                       color: Colors
                           .transparent, // Fondo completamente transparente
                       child: Column(
@@ -188,28 +193,35 @@ class _DayViewScreenState extends State<DayViewScreen> {
                           Align(
                             alignment: Alignment.topRight,
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 4, right: 8),
+                              padding: const EdgeInsets.only(
+                                top: 4,
+                                right: 4, // Padding fijo más conservador
+                              ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    _formatHour(hour),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isCurrentHour
-                                          ? const Color(0xFF374151)
-                                          : Colors.grey[600],
-                                      fontWeight: isCurrentHour
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
+                                  Flexible(
+                                    child: Text(
+                                      _formatHour(hour),
+                                      style: TextStyle(
+                                        fontSize:
+                                            11, // Tamaño fijo más conservador
+                                        color: isCurrentHour
+                                            ? const Color(0xFF374151)
+                                            : Colors.grey[600],
+                                        fontWeight: isCurrentHour
+                                            ? FontWeight.w700
+                                            : FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: 2),
                                   Icon(
                                     isExpanded
                                         ? Icons.keyboard_arrow_up
                                         : Icons.keyboard_arrow_down,
-                                    size: 14,
+                                    size: 12, // Reducido de 14 a 12
                                     color: isCurrentHour
                                         ? const Color(0xFF374151)
                                         : Colors.grey[600],
@@ -326,21 +338,31 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   children: [
                     // Minuto (lado izquierdo)
                     Container(
-                      width: 60,
+                      width: MediaQuery.of(context).size.width *
+                          0.15, // 15% del ancho de pantalla
+                      constraints: const BoxConstraints(
+                        minWidth: 50, // Mínimo 50px
+                        maxWidth: 70, // Máximo 70px
+                      ),
                       child: Align(
                         alignment: Alignment.centerRight,
                         child: Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Text(
-                            '${_formatHour(hour).split(' ')[0]}:${minute.toString().padLeft(2, '0')}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: isCurrentMinute
-                                  ? const Color(0xFF374151)
-                                  : Colors.grey[500],
-                              fontWeight: isCurrentMinute
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
+                          padding: const EdgeInsets.only(
+                            right: 4, // Padding fijo más conservador
+                          ),
+                          child: Flexible(
+                            child: Text(
+                              '${_formatHour(hour).split(' ')[0]}:${minute.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                fontSize: 10, // Tamaño fijo más conservador
+                                color: isCurrentMinute
+                                    ? const Color(0xFF374151)
+                                    : Colors.grey[600],
+                                fontWeight: isCurrentMinute
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -476,103 +498,6 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       task), // Nueva función para manejar el estado
                 ))
             .toList(),
-      ),
-    );
-  }
-
-  // 🎯 ALTERNATIVA 1: TEXTO TACHADO CON OPACIDAD (ELEGANTE)
-  Widget _buildTaskInMinute_Alternative1(PendingTask task) {
-    return Flexible(
-      child: Text(
-        task.title,
-        style: TextStyle(
-          fontFamily: 'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
-          fontSize: 7, // Reducido para evitar overflow
-          color: task.completed ? task.color.withOpacity(0.4) : task.color,
-          fontWeight: FontWeight.w500, // Menos bold para mejor fit
-          decoration:
-              task.completed ? TextDecoration.lineThrough : TextDecoration.none,
-          decorationColor: task.color.withOpacity(0.6),
-          decorationThickness: 1.0,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        softWrap: false,
-      ),
-    );
-  }
-
-  // 🎯 ALTERNATIVA 2: ÍCONO DE CHECK PEQUEÑO
-  Widget _buildTaskInMinute_Alternative2(PendingTask task) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (task.completed)
-          Icon(
-            Icons.check_circle,
-            size: 6,
-            color: Colors.green[400],
-          ),
-        if (task.completed) const SizedBox(width: 2),
-        Expanded(
-          child: Text(
-            task.title,
-            style: TextStyle(
-              fontFamily:
-                  'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
-              fontSize: 7, // Reducido para evitar overflow
-              color: task.completed ? task.color.withOpacity(0.6) : task.color,
-              fontWeight: FontWeight.w500, // Menos bold
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            softWrap: false,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 🎯 ALTERNATIVA 3: CAMBIO DE COLOR A GRIS SUAVE
-  Widget _buildTaskInMinute_Alternative3(PendingTask task) {
-    return Flexible(
-      child: Text(
-        task.title,
-        style: TextStyle(
-          fontFamily: 'Georgia', // 🎨 PRUEBA 24H: Fuente Georgia para tareas
-          fontSize: 7, // Reducido para evitar overflow
-          color: task.completed ? Colors.grey[400] : task.color,
-          fontWeight: task.completed ? FontWeight.w400 : FontWeight.w500,
-          fontStyle: task.completed ? FontStyle.italic : FontStyle.normal,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        softWrap: false,
-      ),
-    );
-  }
-
-  // 🎯 ALTERNATIVA 4: BORDE IZQUIERDO CON OPACIDAD
-  Widget _buildTaskInMinute_Alternative4(PendingTask task) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: task.completed ? Colors.grey[300]! : task.color,
-            width: task.completed ? 1.0 : 2.0,
-          ),
-        ),
-      ),
-      padding: const EdgeInsets.only(left: 3),
-      child: Text(
-        task.title,
-        style: TextStyle(
-          fontSize: 8,
-          color: task.completed ? task.color.withOpacity(0.5) : task.color,
-          fontWeight: FontWeight.w600,
-        ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
       ),
     );
   }
@@ -880,8 +805,9 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                 color: task.completed
                                     ? Colors.grey[600]
                                     : Colors.white,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                height: 1.3, // Mejor line-height
                                 decoration: task.completed
                                     ? TextDecoration.lineThrough
                                     : null,
@@ -895,8 +821,10 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                 style: TextStyle(
                                   color: task.completed
                                       ? Colors.grey[500]
-                                      : Colors.white.withOpacity(0.8),
-                                  fontSize: 10,
+                                      : Colors.white.withOpacity(0.9),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.2, // Line-height para descripciones
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -907,7 +835,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
 
                   // Fila inferior: Botones de acción más grandes
                   Row(
@@ -2520,8 +2448,6 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
                       setState(() {
                         _isAllDay = value ?? false;
                         if (_isAllDay) {
-                          _selectedHour = 0;
-                          _selectedMinute = 0;
                           _hasEndTime = false;
                         }
                       });

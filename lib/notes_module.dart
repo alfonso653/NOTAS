@@ -467,7 +467,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   // Snackbar manual
   bool _showSavedSnackbar = false;
 
-  // OPTIMIZACIÓN: Debounce para _saveNote
+  // OPTIMIZACIÓN: Debounce mejorado para _saveNote
   Timer? _saveDebounceTimer;
 
   // OPTIMIZACIÓN: Cache para evitar cálculos repetitivos

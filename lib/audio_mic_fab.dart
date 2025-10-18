@@ -77,8 +77,8 @@ class _AudioButtonState extends State<AudioButton> {
     // Suscripción al stream de progreso
     _progressSub = _player.onProgress?.listen((event) {
       // Algunas versiones exponen event.position / event.duration (Duration)
-      final pos = event.position ?? Duration.zero;
-      final total = event.duration ?? Duration.zero;
+      final pos = event.position;
+      final total = event.duration;
 
       if (!mounted) return;
       if (_isDragging) return; // no auto-mover mientras arrastras

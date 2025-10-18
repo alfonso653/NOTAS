@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 /// Modelo para subtareas dentro de los cuadernos de marcado
 class SubTask {
   String id;

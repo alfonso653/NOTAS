@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'pending.dart';
 import 'day_view_screen.dart';
 import 'daily_verse_widget.dart';
@@ -71,6 +69,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late DateTime _focusedMonth;
   late DateTime _today;
 
+  // Función para detectar si un color es claro
+  bool _isLightColor(Color color) {
+    final brightness =
+        (color.red * 0.299 + color.green * 0.587 + color.blue * 0.114) / 255;
+    return brightness > 0.7;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -79,25 +84,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _focusedMonth = DateTime(_today.year, _today.month, 1);
     _scrollController = ScrollController();
 
-    // Actualizar la fecha actual cada minuto
-    _startDateUpdateTimer();
-  }
-
-  void _startDateUpdateTimer() {
-    Timer.periodic(const Duration(minutes: 1), (timer) {
-      if (mounted) {
-        final newToday = DateTime.now();
-        if (_today.day != newToday.day ||
-            _today.month != newToday.month ||
-            _today.year != newToday.year) {
-          setState(() {
-            _today = newToday;
-          });
-        }
-      } else {
-        timer.cancel();
-      }
-    });
+    // Fecha actualizada solo cuando es necesario para mejor rendimiento
   }
 
   @override
@@ -120,13 +107,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  /// Obtiene las tareas para una fecha específica
+  /// Obtiene las tareas para una fecha específica (optimizado)
   List<PendingTask> _getTasksForDate(
       DateTime date, List<PendingTask> allTasks) {
+    // Optimización: comparación más eficiente
+    final targetYear = date.year;
+    final targetMonth = date.month;
+    final targetDay = date.day;
+
     return allTasks.where((task) {
-      return task.dateTime.year == date.year &&
-          task.dateTime.month == date.month &&
-          task.dateTime.day == date.day;
+      final taskDate = task.dateTime;
+      return taskDate.year == targetYear &&
+          taskDate.month == targetMonth &&
+          taskDate.day == targetDay;
     }).toList();
   }
 
@@ -201,9 +194,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ],
           ),
-          body: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
+          body: Padding(
             padding: EdgeInsets.only(bottom: keyboardHeight),
             child: Column(
               children: [
@@ -213,20 +204,57 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-                        .map((day) => Expanded(
-                              child: Center(
-                                child: Text(
-                                  day,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF374151),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ))
-                        .toList(),
+                    children: const [
+                      Expanded(
+                          child: Center(
+                              child: Text('Dom',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF374151),
+                                      fontSize: 14)))),
+                      Expanded(
+                          child: Center(
+                              child: Text('Lun',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF374151),
+                                      fontSize: 14)))),
+                      Expanded(
+                          child: Center(
+                              child: Text('Mar',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF374151),
+                                      fontSize: 14)))),
+                      Expanded(
+                          child: Center(
+                              child: Text('Mié',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF374151),
+                                      fontSize: 14)))),
+                      Expanded(
+                          child: Center(
+                              child: Text('Jue',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF374151),
+                                      fontSize: 14)))),
+                      Expanded(
+                          child: Center(
+                              child: Text('Vie',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF374151),
+                                      fontSize: 14)))),
+                      Expanded(
+                          child: Center(
+                              child: Text('Sáb',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF374151),
+                                      fontSize: 14)))),
+                    ],
                   ),
                 ),
                 // Controles de navegación de mes
@@ -282,19 +310,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final firstDayWeekday = firstDayOfMonth.weekday % 7; // Domingo = 0
     final daysInMonth = lastDayOfMonth.day;
 
-    // Debug: Verificar que el mes se está calculando correctamente
-    print(
-        '📅 Mostrando: ${DateFormat('MMMM yyyy').format(monthDate)} - Días: $daysInMonth');
+    // Mes calculado correctamente
 
     return GridView.builder(
+      physics:
+          const ClampingScrollPhysics(), // Optimizado: physics más eficientes
       padding: const EdgeInsets.symmetric(horizontal: 8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 0.8, // Más alto para mostrar tareas
+        childAspectRatio: 0.9, // Aumentado de 0.8 a 0.9 para más altura
         crossAxisSpacing: 1,
         mainAxisSpacing: 1,
       ),
-      itemCount: 42, // 6 semanas * 7 días
+      itemCount: 42, // Optimizado: 6 semanas * 7 días (constante)
       itemBuilder: (context, index) {
         if (index < firstDayWeekday) {
           // Días del mes anterior
@@ -341,8 +369,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.all(1),
-        padding: const EdgeInsets.all(2),
+        margin: const EdgeInsets.all(2),
+        padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: isSelected && isToday
               ? const Color(0xFF374151).withOpacity(0.2)
@@ -402,39 +430,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ? const SizedBox()
                   : SingleChildScrollView(
                       child: Column(
-                        children: tasks.take(3).map((task) {
+                        children: tasks.take(2).map((task) {
+                              // Optimizado: solo 2 tareas visibles
                               return Container(
                                 width: double.infinity,
-                                margin: const EdgeInsets.only(top: 1),
+                                margin: const EdgeInsets.only(top: 3),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 2, vertical: 1),
+                                    horizontal: 6, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: task.completed
                                       ? Colors.grey.withOpacity(0.3)
-                                      : task.color.withOpacity(0.8),
-                                  borderRadius: BorderRadius.circular(2),
+                                      : _isLightColor(task.color)
+                                          ? task.color.withOpacity(0.9)
+                                          : task.color.withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: _isLightColor(task.color)
+                                      ? Border.all(
+                                          color: Colors.grey.shade400,
+                                          width: 0.5)
+                                      : null,
                                 ),
                                 child: Text(
                                   task.title,
                                   style: TextStyle(
-                                    fontSize: 8,
+                                    fontSize: 12,
                                     color: task.completed
                                         ? Colors.grey[600]
-                                        : Colors.white,
-                                    fontWeight: FontWeight.w500,
+                                        : _isLightColor(task.color)
+                                            ? Colors.grey[800]
+                                            : Colors.white,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               );
                             }).toList() +
-                            (tasks.length > 3
+                            (tasks.length > 2
                                 ? [
                                     Container(
                                       width: double.infinity,
                                       margin: const EdgeInsets.only(top: 1),
                                       child: Text(
-                                        '+${tasks.length - 3} más',
+                                        '+${tasks.length - 2} más',
                                         style: const TextStyle(
                                           fontSize: 7,
                                           color: Colors.grey,
@@ -562,6 +600,8 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
     ];
 
     return GridView.builder(
+      physics:
+          const ClampingScrollPhysics(), // Optimizado: physics más eficientes
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         childAspectRatio: 2.5,
@@ -599,11 +639,13 @@ class _MonthYearSelectorState extends State<MonthYearSelector> {
 
   Widget _buildYearGrid() {
     final currentYear = DateTime.now().year;
-    final startYear = currentYear - 20; // Más años hacia atrás
-    final endYear =
-        currentYear + 20; // Más años hacia adelante (total ~40 años)
+    final startYear = currentYear - 10; // Optimizado: menos años hacia atrás
+    final endYear = currentYear +
+        10; // Optimizado: menos años hacia adelante (total ~20 años)
 
     return GridView.builder(
+      physics:
+          const ClampingScrollPhysics(), // Optimizado: physics más eficientes
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
         childAspectRatio: 2.0,
@@ -873,10 +915,7 @@ class _AddTaskCalendarFormState extends State<AddTaskCalendarForm> {
                 ),
                 onPressed: () {
                   if (_titleController.text.isNotEmpty) {
-                    final dateTime = _isAllDay
-                        ? DateTime(_selectedDate.year, _selectedDate.month,
-                            _selectedDate.day, 0, 0)
-                        : _selectedDate;
+                    final dateTime = _selectedDate;
                     final task = PendingTask(
                       id: DateTime.now().millisecondsSinceEpoch.toString(),
                       title: _titleController.text,

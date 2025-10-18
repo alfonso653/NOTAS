@@ -429,49 +429,49 @@ class PendingProvider extends ChangeNotifier {
 /// Paleta de colores pasteles para las tareas
 class TaskColors {
   static const List<String> pastelColors = [
-    '#A8C8FF', // Azul pastel suave
-    '#FFB3BA', // Rosa pastel coral
-    '#B5E48C', // Verde pastel mint
-    '#FFD93D', // Amarillo pastel mantequilla
-    '#DDA0DD', // Púrpura pastel lavenda
-    '#87CEEB', // Azul cielo pastel
-    '#F0A0A0', // Durazno pastel suave
-    '#98E4D6', // Verde agua pastel
-    '#C4A484', // Café pastel canela
-    '#B19CD9', // Lavanda pastel medio
-    '#FFB347', // Naranja pastel cálido
-    '#D8BFD8', // Ciruela pastel
-    '#AFEEEE', // Turquesa pastel pálido
-    '#F0E68C', // Khaki pastel dorado
-    '#FFC0CB', // Rosa pastel clásico
-    '#B0E0E6', // Azul pólvora pastel
-    '#E6D35C', // Amarillo pastel mostaza
-    '#A8A8A8', // Gris pastel medio
-    '#D4B996', // Beige pastel cálido
-    '#7FCDCD', // Cian pastel medio
+    '#7FB3D3', // Azul pastel suave (más oscuro)
+    '#E8999A', // Rosa pastel coral (más saturado)
+    '#8FBC8F', // Verde pastel mint (más profundo)
+    '#DAA520', // Amarillo pastel dorado (más rico)
+    '#9370DB', // Púrpura pastel lavenda (más vibrante)
+    '#4682B4', // Azul cielo pastel (más intenso)
+    '#CD853F', // Durazno pastel suave (más cálido)
+    '#5F9EA0', // Verde agua pastel (más profundo)
+    '#A0522D', // Café pastel canela (más rico)
+    '#8B7AC7', // Lavanda pastel medio (más saturado)
+    '#FF8C00', // Naranja pastel cálido (más vibrante)
+    '#9966CC', // Ciruela pastel (más profundo)
+    '#2F4F4F', // Turquesa pastel oscuro (muy legible)
+    '#B8860B', // Khaki pastel dorado (más intenso)
+    '#DC143C', // Rosa pastel elegante (más profundo)
+    '#2E8B57', // Verde mar pastel (excelente contraste)
+    '#D2691E', // Chocolate claro profesional
+    '#708090', // Gris pastel profesional (mejor contraste)
+    '#8B7355', // Beige pastel profesional (más oscuro)
+    '#6A5ACD', // Azul pizarra elegante (único)
   ];
 
   static const List<String> colorNames = [
-    'Azul Suave',
-    'Rosa Coral',
-    'Verde Mint',
-    'Mantequilla',
-    'Lavanda',
-    'Cielo',
-    'Durazno',
-    'Agua Marina',
-    'Canela',
-    'Lila',
-    'Naranja',
-    'Ciruela',
-    'Turquesa',
-    'Dorado',
-    'Rosa Clásico',
-    'Pólvora',
-    'Mostaza',
-    'Gris Medio',
-    'Beige Cálido',
-    'Cian Medio'
+    'Azul Elegante',
+    'Rosa Profesional',
+    'Verde Bosque',
+    'Dorado Rico',
+    'Púrpura Real',
+    'Azul Profundo',
+    'Terracota',
+    'Verde Jade',
+    'Canela Rica',
+    'Lila Intenso',
+    'Naranja Vibrante',
+    'Ciruela Profunda',
+    'Verde Pizarra',
+    'Oro Antiguo',
+    'Carmesí Elegante',
+    'Verde Esmeralda',
+    'Chocolate Claro',
+    'Gris Profesional',
+    'Beige Elegante',
+    'Violeta Pizarra'
   ];
 
   /// Convierte color hex a Color de Flutter

@@ -176,10 +176,9 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
     final List<String> paragraphEntries = _extractParagraphEntries();
 
     // Flotantes normalizados
-    final List<Map<String, dynamic>> floatingTexts =
-        (widget.note.floatingTexts ?? <Map<String, dynamic>>[])
-            .whereType<Map<String, dynamic>>()
-            .toList(growable: false);
+    final List<Map<String, dynamic>> floatingTexts = widget.note.floatingTexts
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
 
     // Si no hay nada, fallback
     if (intelligentTopics.isEmpty &&
@@ -298,11 +297,9 @@ class _MindMapFromNoteScreenState extends State<MindMapFromNoteScreen> {
     }
 
     final ftList = widget.note.floatingTexts;
-    if (ftList != null) {
-      for (final floatingText in ftList) {
-        final text = (floatingText['text'] ?? '').toString().trim();
-        if (text.isNotEmpty) buffer.writeln(text);
-      }
+    for (final floatingText in ftList) {
+      final text = (floatingText['text'] ?? '').toString().trim();
+      if (text.isNotEmpty) buffer.writeln(text);
     }
 
     return buffer.toString().trim();
