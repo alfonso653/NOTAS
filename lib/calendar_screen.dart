@@ -115,12 +115,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final targetMonth = date.month;
     final targetDay = date.day;
 
-    return allTasks.where((task) {
+    final dayTasks = allTasks.where((task) {
       final taskDate = task.dateTime;
       return taskDate.year == targetYear &&
           taskDate.month == targetMonth &&
           taskDate.day == targetDay;
     }).toList();
+
+    // Ordenar las tareas por hora y minuto
+    dayTasks.sort((a, b) {
+      final aTime = a.dateTime.hour * 60 + a.dateTime.minute;
+      final bTime = b.dateTime.hour * 60 + b.dateTime.minute;
+      return aTime.compareTo(bTime);
+    });
+
+    return dayTasks;
   }
 
   @override

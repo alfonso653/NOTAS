@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_service.dart';
 
 /// Modelo de tarea pendiente
 class PendingTask {
@@ -14,7 +15,8 @@ class PendingTask {
   bool completed;
   String colorHex; // Color de la tarea en formato hexadecimal
   bool isAllDay; // Tarea de todo el día
-  String? repeatType; // Tipo de repetición
+  String?
+      repeatType; // Tipo de repetición: daily, weekly, saturday, sunday, weekdays, yearly, custom
   List<int>? customDays; // Días personalizados (1=Lunes, 7=Domingo)
 
   // Propiedades de alarma (sonido fuerte)
@@ -60,7 +62,7 @@ class PendingTask {
       'colorHex': colorHex,
       'isAllDay': isAllDay,
       'repeatType': repeatType,
-      'customDays': customDays,
+      'customDays': customDays ?? [],
       // Propiedades de alarma (sonido fuerte)
       'hasAlarm': hasAlarm,
       'alarmMinutesBefore': alarmMinutesBefore,
@@ -106,38 +108,35 @@ class PendingTask {
     return endDateTime!.difference(dateTime).inMinutes;
   }
 
-  /// Verifica si la tarea ocurre en una hora específica
+  /// Verifica si la tarea ocurre en una hora específica (considerando minutos)
   bool occursInHour(int hour) {
-    if (endDateTime == null) {
-      return dateTime.hour == hour;
-    }
-
-    // Una tarea ocurre en una hora si:
-    // 1. Empieza en esa hora, O
-    // 2. Termina en esa hora (incluso si es el mismo minuto), O
-    // 3. Atraviesa esa hora completamente
-    return (dateTime.hour <= hour && endDateTime!.hour >= hour);
-  }
-
-  /// Obtiene la porción de la tarea que ocurre en una hora específica (0.0 a 1.0)
-  double getPortionInHour(int hour) {
-    if (endDateTime == null) {
-      return dateTime.hour == hour ? 1.0 : 0.0;
-    }
-
     final hourStart =
         DateTime(dateTime.year, dateTime.month, dateTime.day, hour);
     final hourEnd = hourStart.add(const Duration(hours: 1));
 
-    final taskStart = dateTime.isAfter(hourStart) ? dateTime : hourStart;
-    final taskEnd = endDateTime!.isBefore(hourEnd) ? endDateTime! : hourEnd;
+    final taskStart = dateTime;
+    final taskEnd = endDateTime ?? dateTime.add(const Duration(hours: 1));
 
-    if (taskEnd.isBefore(taskStart) || taskStart.isAfter(hourEnd)) {
-      return 0.0;
-    }
+    final overlaps = taskStart.isBefore(hourEnd) && taskEnd.isAfter(hourStart);
+    return overlaps;
+  }
 
-    final overlapMinutes = taskEnd.difference(taskStart).inMinutes;
-    return overlapMinutes / 60.0;
+  /// Obtiene la porción de la tarea que ocurre en una hora específica (0.0 a 1.0)
+  double getPortionInHour(int hour) {
+    final hourStart =
+        DateTime(dateTime.year, dateTime.month, dateTime.day, hour);
+    final hourEnd = hourStart.add(const Duration(hours: 1));
+
+    final taskStart = dateTime;
+    final taskEnd = endDateTime ?? dateTime.add(const Duration(hours: 1));
+
+    final start = taskStart.isAfter(hourStart) ? taskStart : hourStart;
+    final end = taskEnd.isBefore(hourEnd) ? taskEnd : hourEnd;
+
+    if (!start.isBefore(end)) return 0.0;
+
+    final overlapMinutes = end.difference(start).inMinutes;
+    return (overlapMinutes / 60.0).clamp(0.0, 1.0);
   }
 
   /// Obtiene el color de la tarea como objeto Color de Flutter
@@ -173,7 +172,6 @@ class PendingProvider extends ChangeNotifier {
   void addTask(PendingTask task) {
     tasks.add(task);
 
-    // Si tiene repetición, generar tareas adicionales
     if (task.repeatType != null && task.repeatType != 'none') {
       _generateRepeatedTasks(task);
     }
@@ -208,28 +206,44 @@ class PendingProvider extends ChangeNotifier {
 
   /// Encuentra todas las tareas relacionadas (repetidas) de una tarea específica
   List<PendingTask> getRelatedTasks(PendingTask task) {
-    // Buscar tareas con el mismo título y descripción base (sin el emoji de repetición)
-    final baseDescription = task.description.startsWith('🔄 ')
-        ? task.description.substring(2)
-        : task.description;
+    final List<PendingTask> relatedTasks = [];
 
-    return tasks
-        .where((t) =>
-            t.id != task.id && // No incluir la tarea actual
-            t.title == task.title &&
-            (t.description == baseDescription ||
-                t.description == '🔄 $baseDescription' ||
-                (t.description.startsWith('🔄 ') &&
-                    t.description.substring(2) == baseDescription)))
-        .toList();
+    String normalizeDesc(String d) =>
+        d.startsWith('🔄 ') ? d.substring(2).trim() : d.trim();
+
+    final baseTitle = task.title.trim();
+    final baseDescription = normalizeDesc(task.description);
+
+    for (final t in tasks) {
+      if (t.id == task.id) continue;
+
+      final tTitle = t.title.trim();
+      final tDesc = normalizeDesc(t.description);
+
+      if (tTitle == baseTitle && tDesc == baseDescription) {
+        relatedTasks.add(t);
+      }
+    }
+
+    // Fallback: si no encontró por título+descripción, usar coincidencia por hora/minuto del task original
+    if (relatedTasks.isEmpty) {
+      for (final t in tasks) {
+        if (t.id == task.id) continue;
+
+        if (t.dateTime.hour == task.dateTime.hour &&
+            t.dateTime.minute == task.dateTime.minute) {
+          relatedTasks.add(t);
+        }
+      }
+    }
+
+    return relatedTasks;
   }
 
-  /// Elimina solo una tarea específica
   void deleteSingleTask(String id) {
     deleteTask(id);
   }
 
-  /// Elimina todas las tareas relacionadas (repetidas) incluyendo la actual
   void deleteAllRelatedTasks(PendingTask mainTask) {
     final relatedTasks = getRelatedTasks(mainTask);
     final allTaskIds = [mainTask.id] + relatedTasks.map((t) => t.id).toList();
@@ -248,18 +262,196 @@ class PendingProvider extends ChangeNotifier {
     }
   }
 
-  /// Genera tareas repetidas según el patrón especificado
+  void updateTaskInPlace(
+    String taskId, {
+    String? title,
+    String? description,
+    String? categoria,
+    DateTime? dateTime,
+    DateTime? endDateTime,
+    bool? completed,
+    String? colorHex,
+    bool? isAllDay,
+    String? repeatType,
+    List<int>? customDays,
+    bool? hasAlarm,
+    int? alarmMinutesBefore,
+    int? alarmMinutesAfter,
+    bool? hasNotification,
+    int? notificationMinutesBefore,
+    int? notificationMinutesAfter,
+  }) {
+    final idx = tasks.indexWhere((t) => t.id == taskId);
+    if (idx != -1) {
+      final task = tasks[idx];
+
+      if (title != null) task.title = title;
+      if (description != null) task.description = description;
+      if (categoria != null) task.categoria = categoria;
+      if (dateTime != null) task.dateTime = dateTime;
+      if (endDateTime != null ||
+          (endDateTime == null && task.endDateTime != null)) {
+        task.endDateTime = endDateTime;
+      }
+      if (completed != null) task.completed = completed;
+      if (colorHex != null) task.colorHex = colorHex;
+      if (isAllDay != null) task.isAllDay = isAllDay;
+      if (repeatType != null) task.repeatType = repeatType;
+      if (customDays != null) task.customDays = customDays;
+      if (hasAlarm != null) task.hasAlarm = hasAlarm;
+      if (alarmMinutesBefore != null)
+        task.alarmMinutesBefore = alarmMinutesBefore;
+      if (alarmMinutesAfter != null) task.alarmMinutesAfter = alarmMinutesAfter;
+      if (hasNotification != null) task.hasNotification = hasNotification;
+      if (notificationMinutesBefore != null) {
+        task.notificationMinutesBefore = notificationMinutesBefore;
+      }
+      if (notificationMinutesAfter != null) {
+        task.notificationMinutesAfter = notificationMinutesAfter;
+      }
+
+      _saveTasks();
+      notifyListeners();
+    }
+  }
+
+  /// Aplica los cambios de `updatedTask` a la tarea original y a TODAS sus relacionadas,
+  /// buscando las relacionadas en base a la tarea ORIGINAL (antes de editar).
+  void updateAllRelatedTasksFromOriginal({
+    required PendingTask originalTask,
+    required PendingTask updatedTask,
+  }) {
+    // 1) Actualiza la original
+    updateTaskInPlace(
+      originalTask.id,
+      title: updatedTask.title,
+      description: updatedTask.description,
+      categoria: updatedTask.categoria,
+      dateTime: updatedTask.dateTime,
+      endDateTime: updatedTask.endDateTime,
+      colorHex: updatedTask.colorHex,
+      isAllDay: updatedTask.isAllDay,
+      repeatType: updatedTask.repeatType,
+      customDays: updatedTask.customDays,
+      hasAlarm: updatedTask.hasAlarm,
+      alarmMinutesBefore: updatedTask.alarmMinutesBefore,
+      alarmMinutesAfter: updatedTask.alarmMinutesAfter,
+      hasNotification: updatedTask.hasNotification,
+      notificationMinutesBefore: updatedTask.notificationMinutesBefore,
+      notificationMinutesAfter: updatedTask.notificationMinutesAfter,
+    );
+
+    // 2) Calcula relacionadas usando la ORIGINAL (antes de editar)
+    final relatedTasks = getRelatedTasks(originalTask);
+
+    // 3) Aplica cambios a cada relacionada, preservando el prefijo "🔄 " si lo tenía
+    for (final related in relatedTasks) {
+      final newDescription = related.description.startsWith('🔄 ')
+          ? '🔄 ${updatedTask.description}'
+          : updatedTask.description;
+
+      updateTaskInPlace(
+        related.id,
+        title: updatedTask.title,
+        description: newDescription,
+        categoria: updatedTask.categoria,
+        dateTime: DateTime(
+          related.dateTime.year,
+          related.dateTime.month,
+          related.dateTime.day,
+          updatedTask.dateTime.hour,
+          updatedTask.dateTime.minute,
+        ),
+        endDateTime: updatedTask.endDateTime != null
+            ? DateTime(
+                related.dateTime.year,
+                related.dateTime.month,
+                related.dateTime.day,
+                updatedTask.endDateTime!.hour,
+                updatedTask.endDateTime!.minute,
+              )
+            : null,
+        colorHex: updatedTask.colorHex,
+        isAllDay: updatedTask.isAllDay,
+        hasAlarm: updatedTask.hasAlarm,
+        alarmMinutesBefore: updatedTask.alarmMinutesBefore,
+        alarmMinutesAfter: updatedTask.alarmMinutesAfter,
+        hasNotification: updatedTask.hasNotification,
+        notificationMinutesBefore: updatedTask.notificationMinutesBefore,
+        notificationMinutesAfter: updatedTask.notificationMinutesAfter,
+      );
+    }
+  }
+
+  void updateAllRelatedTasks(PendingTask updatedTask) {
+    final relatedTasks = getRelatedTasks(updatedTask);
+
+    updateTaskInPlace(
+      updatedTask.id,
+      title: updatedTask.title,
+      description: updatedTask.description,
+      categoria: updatedTask.categoria,
+      dateTime: updatedTask.dateTime,
+      endDateTime: updatedTask.endDateTime,
+      colorHex: updatedTask.colorHex,
+      isAllDay: updatedTask.isAllDay,
+      repeatType: updatedTask.repeatType,
+      customDays: updatedTask.customDays,
+      hasAlarm: updatedTask.hasAlarm,
+      alarmMinutesBefore: updatedTask.alarmMinutesBefore,
+      alarmMinutesAfter: updatedTask.alarmMinutesAfter,
+      hasNotification: updatedTask.hasNotification,
+      notificationMinutesBefore: updatedTask.notificationMinutesBefore,
+      notificationMinutesAfter: updatedTask.notificationMinutesAfter,
+    );
+
+    for (final relatedTask in relatedTasks) {
+      final newDescription = relatedTask.description.startsWith('🔄 ')
+          ? '🔄 ${updatedTask.description}'
+          : updatedTask.description;
+
+      updateTaskInPlace(
+        relatedTask.id,
+        title: updatedTask.title,
+        description: newDescription,
+        categoria: updatedTask.categoria,
+        dateTime: DateTime(
+          relatedTask.dateTime.year,
+          relatedTask.dateTime.month,
+          relatedTask.dateTime.day,
+          updatedTask.dateTime.hour,
+          updatedTask.dateTime.minute,
+        ),
+        endDateTime: updatedTask.endDateTime != null
+            ? DateTime(
+                relatedTask.dateTime.year,
+                relatedTask.dateTime.month,
+                relatedTask.dateTime.day,
+                updatedTask.endDateTime!.hour,
+                updatedTask.endDateTime!.minute,
+              )
+            : null,
+        colorHex: updatedTask.colorHex,
+        isAllDay: updatedTask.isAllDay,
+        hasAlarm: updatedTask.hasAlarm,
+        alarmMinutesBefore: updatedTask.alarmMinutesBefore,
+        alarmMinutesAfter: updatedTask.alarmMinutesAfter,
+        hasNotification: updatedTask.hasNotification,
+        notificationMinutesBefore: updatedTask.notificationMinutesBefore,
+        notificationMinutesAfter: updatedTask.notificationMinutesAfter,
+      );
+    }
+  }
+
   void _generateRepeatedTasks(PendingTask originalTask) {
     final List<DateTime> futureDates = _calculateRepeatDates(originalTask);
 
     for (final date in futureDates) {
-      // Evitar duplicados: verificar si ya existe una tarea similar en esa fecha
       if (!_taskExistsOnDate(originalTask.title, date)) {
         final repeatedTask = PendingTask(
           id: '${DateTime.now().millisecondsSinceEpoch}_${date.millisecondsSinceEpoch}',
           title: originalTask.title,
-          description:
-              '🔄 ${originalTask.description}', // Indicador de repetición
+          description: '🔄 ${originalTask.description}',
           categoria: originalTask.categoria,
           dateTime: DateTime(
             date.year,
@@ -280,16 +472,22 @@ class PendingProvider extends ChangeNotifier {
           completed: false,
           colorHex: originalTask.colorHex,
           isAllDay: originalTask.isAllDay,
-          repeatType: null, // Las tareas generadas no se repiten a su vez
+          repeatType: null,
           customDays: null,
+          hasAlarm: originalTask.hasAlarm,
+          alarmMinutesBefore: originalTask.alarmMinutesBefore,
+          alarmMinutesAfter: originalTask.alarmMinutesAfter,
+          hasNotification: originalTask.hasNotification,
+          notificationMinutesBefore: originalTask.notificationMinutesBefore,
+          notificationMinutesAfter: originalTask.notificationMinutesAfter,
         );
 
-        tasks.insert(0, repeatedTask);
+        tasks.add(repeatedTask);
+        _scheduleRepeatedTaskNotifications(repeatedTask);
       }
     }
   }
 
-  /// Verifica si ya existe una tarea con el mismo título en la fecha especificada
   bool _taskExistsOnDate(String title, DateTime date) {
     return tasks.any((task) =>
         task.title == title &&
@@ -298,12 +496,11 @@ class PendingProvider extends ChangeNotifier {
         task.dateTime.day == date.day);
   }
 
-  /// Calcula las fechas futuras según el tipo de repetición
   List<DateTime> _calculateRepeatDates(PendingTask task) {
     final List<DateTime> dates = [];
     final startDate = task.dateTime;
     final today = DateTime.now();
-    final maxDate = today.add(const Duration(days: 365)); // Generar hasta 1 año
+    final maxDate = today.add(const Duration(days: 365)); // hasta 1 año
 
     switch (task.repeatType) {
       case 'daily':
@@ -337,7 +534,6 @@ class PendingProvider extends ChangeNotifier {
     return dates;
   }
 
-  /// Genera fechas para repetición diaria
   List<DateTime> _generateDailyDates(DateTime startDate, DateTime maxDate) {
     final List<DateTime> dates = [];
     DateTime currentDate = startDate.add(const Duration(days: 1));
@@ -346,55 +542,42 @@ class PendingProvider extends ChangeNotifier {
       dates.add(currentDate);
       currentDate = currentDate.add(const Duration(days: 1));
     }
-
     return dates;
   }
 
-  /// Genera fechas para repetición semanal en un día específico
   List<DateTime> _generateWeeklyDates(
       DateTime startDate, DateTime maxDate, int targetWeekday) {
     final List<DateTime> dates = [];
-
-    // Para 'weekly': siguiente ocurrencia del mismo día de la semana
-    // Para 'saturday'/'sunday': siguiente ocurrencia de ese día específico
     DateTime nextDate = _findNextWeekday(startDate, targetWeekday);
 
     while (nextDate.isBefore(maxDate)) {
       dates.add(nextDate);
       nextDate = nextDate.add(const Duration(days: 7));
     }
-
     return dates;
   }
 
-  /// Encuentra la próxima ocurrencia de un día de la semana específico
   DateTime _findNextWeekday(DateTime startDate, int targetWeekday) {
     DateTime nextDate = startDate.add(const Duration(days: 1));
-
     while (nextDate.weekday != targetWeekday) {
       nextDate = nextDate.add(const Duration(days: 1));
     }
-
     return nextDate;
   }
 
-  /// Genera fechas para días laborables (lunes a viernes)
   List<DateTime> _generateWeekdaysDates(DateTime startDate, DateTime maxDate) {
     final List<DateTime> dates = [];
     DateTime currentDate = startDate.add(const Duration(days: 1));
 
     while (currentDate.isBefore(maxDate)) {
-      // Solo días laborables (1=Lunes, 5=Viernes)
       if (currentDate.weekday >= 1 && currentDate.weekday <= 5) {
         dates.add(currentDate);
       }
       currentDate = currentDate.add(const Duration(days: 1));
     }
-
     return dates;
   }
 
-  /// Genera fechas para repetición anual
   List<DateTime> _generateYearlyDates(DateTime startDate, DateTime maxDate) {
     final List<DateTime> dates = [];
     DateTime currentDate =
@@ -405,11 +588,9 @@ class PendingProvider extends ChangeNotifier {
       currentDate =
           DateTime(currentDate.year + 1, currentDate.month, currentDate.day);
     }
-
     return dates;
   }
 
-  /// Genera fechas para días personalizados
   List<DateTime> _generateCustomDates(
       DateTime startDate, DateTime maxDate, List<int> customDays) {
     final List<DateTime> dates = [];
@@ -421,34 +602,62 @@ class PendingProvider extends ChangeNotifier {
       }
       currentDate = currentDate.add(const Duration(days: 1));
     }
-
     return dates;
+  }
+
+  Future<void> _scheduleRepeatedTaskNotifications(PendingTask task) async {
+    try {
+      if (task.hasAlarm &&
+          (task.alarmMinutesBefore != null || task.alarmMinutesAfter != null)) {
+        await NotificationService.scheduleTaskAlarm(
+          taskId: task.id,
+          taskTitle: task.title,
+          taskDateTime: task.dateTime,
+          minutesBefore: task.alarmMinutesBefore,
+          minutesAfter: task.alarmMinutesAfter,
+        );
+      }
+
+      if (task.hasNotification &&
+          (task.notificationMinutesBefore != null ||
+              task.notificationMinutesAfter != null)) {
+        await NotificationService.scheduleTaskNotification(
+          taskId: task.id,
+          taskTitle: task.title,
+          taskDateTime: task.dateTime,
+          minutesBefore: task.notificationMinutesBefore,
+          minutesAfter: task.notificationMinutesAfter,
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error al programar notificaciones para tarea repetida: $e');
+    }
   }
 }
 
 /// Paleta de colores pasteles para las tareas
 class TaskColors {
   static const List<String> pastelColors = [
-    '#7FB3D3', // Azul pastel suave (más oscuro)
-    '#E8999A', // Rosa pastel coral (más saturado)
-    '#8FBC8F', // Verde pastel mint (más profundo)
-    '#DAA520', // Amarillo pastel dorado (más rico)
-    '#9370DB', // Púrpura pastel lavenda (más vibrante)
-    '#4682B4', // Azul cielo pastel (más intenso)
-    '#CD853F', // Durazno pastel suave (más cálido)
-    '#5F9EA0', // Verde agua pastel (más profundo)
-    '#A0522D', // Café pastel canela (más rico)
-    '#8B7AC7', // Lavanda pastel medio (más saturado)
-    '#FF8C00', // Naranja pastel cálido (más vibrante)
-    '#9966CC', // Ciruela pastel (más profundo)
-    '#2F4F4F', // Turquesa pastel oscuro (muy legible)
-    '#B8860B', // Khaki pastel dorado (más intenso)
-    '#DC143C', // Rosa pastel elegante (más profundo)
-    '#2E8B57', // Verde mar pastel (excelente contraste)
-    '#D2691E', // Chocolate claro profesional
-    '#708090', // Gris pastel profesional (mejor contraste)
-    '#8B7355', // Beige pastel profesional (más oscuro)
-    '#6A5ACD', // Azul pizarra elegante (único)
+    '#7FB3D3',
+    '#E8999A',
+    '#8FBC8F',
+    '#DAA520',
+    '#9370DB',
+    '#4682B4',
+    '#CD853F',
+    '#5F9EA0',
+    '#A0522D',
+    '#8B7AC7',
+    '#FF8C00',
+    '#9966CC',
+    '#2F4F4F',
+    '#B8860B',
+    '#DC143C',
+    '#2E8B57',
+    '#D2691E',
+    '#708090',
+    '#8B7355',
+    '#6A5ACD',
   ];
 
   static const List<String> colorNames = [
@@ -474,7 +683,6 @@ class TaskColors {
     'Violeta Pizarra'
   ];
 
-  /// Convierte color hex a Color de Flutter
   static Color hexToColor(String hexString) {
     final buffer = StringBuffer();
     if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
@@ -482,7 +690,6 @@ class TaskColors {
     return Color(int.parse(buffer.toString(), radix: 16));
   }
 
-  /// Convierte Color de Flutter a hex
   static String colorToHex(Color color) {
     return '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
   }
