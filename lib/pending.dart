@@ -209,7 +209,7 @@ class PendingProvider extends ChangeNotifier {
     final List<PendingTask> relatedTasks = [];
 
     String normalizeDesc(String d) =>
-        d.startsWith('🔄 ') ? d.substring(2).trim() : d.trim();
+        d.trim();
 
     final baseTitle = task.title.trim();
     final baseDescription = normalizeDesc(task.description);
@@ -280,6 +280,7 @@ class PendingProvider extends ChangeNotifier {
     bool? hasNotification,
     int? notificationMinutesBefore,
     int? notificationMinutesAfter,
+    bool suppressNotification = false, // Nuevo parámetro para optimización
   }) {
     final idx = tasks.indexWhere((t) => t.id == taskId);
     if (idx != -1) {
@@ -311,16 +312,19 @@ class PendingProvider extends ChangeNotifier {
       }
 
       _saveTasks();
-      notifyListeners();
+      // Solo notificar si no está suprimido
+      if (!suppressNotification) {
+        notifyListeners();
+      }
     }
   }
 
   /// Aplica los cambios de `updatedTask` a la tarea original y a TODAS sus relacionadas,
   /// buscando las relacionadas en base a la tarea ORIGINAL (antes de editar).
-  void updateAllRelatedTasksFromOriginal({
+  Future<void> updateAllRelatedTasksFromOriginal({
     required PendingTask originalTask,
     required PendingTask updatedTask,
-  }) {
+  }) async {
     // 1) Actualiza la original
     updateTaskInPlace(
       originalTask.id,
@@ -344,48 +348,66 @@ class PendingProvider extends ChangeNotifier {
     // 2) Calcula relacionadas usando la ORIGINAL (antes de editar)
     final relatedTasks = getRelatedTasks(originalTask);
 
-    // 3) Aplica cambios a cada relacionada, preservando el prefijo "🔄 " si lo tenía
-    for (final related in relatedTasks) {
-      final newDescription = related.description.startsWith('🔄 ')
-          ? '🔄 ${updatedTask.description}'
-          : updatedTask.description;
+    // 3) Procesar en lotes más grandes para mayor velocidad
+    const int batchSize = 10; // Aumentado de 3 a 10
+    final List<Future<void>> updateFutures = [];
+    
+    for (int i = 0; i < relatedTasks.length; i++) {
+      final related = relatedTasks[i];
+      final newDescription = updatedTask.description;
 
-      updateTaskInPlace(
-        related.id,
-        title: updatedTask.title,
-        description: newDescription,
-        categoria: updatedTask.categoria,
-        dateTime: DateTime(
-          related.dateTime.year,
-          related.dateTime.month,
-          related.dateTime.day,
-          updatedTask.dateTime.hour,
-          updatedTask.dateTime.minute,
-        ),
-        endDateTime: updatedTask.endDateTime != null
-            ? DateTime(
-                related.dateTime.year,
-                related.dateTime.month,
-                related.dateTime.day,
-                updatedTask.endDateTime!.hour,
-                updatedTask.endDateTime!.minute,
-              )
-            : null,
-        colorHex: updatedTask.colorHex,
-        isAllDay: updatedTask.isAllDay,
-        hasAlarm: updatedTask.hasAlarm,
-        alarmMinutesBefore: updatedTask.alarmMinutesBefore,
-        alarmMinutesAfter: updatedTask.alarmMinutesAfter,
-        hasNotification: updatedTask.hasNotification,
-        notificationMinutesBefore: updatedTask.notificationMinutesBefore,
-        notificationMinutesAfter: updatedTask.notificationMinutesAfter,
+      // Crear una función asíncrona para cada actualización
+      updateFutures.add(
+        Future.microtask(() {
+          updateTaskInPlace(
+            related.id,
+            title: updatedTask.title,
+            description: newDescription,
+            categoria: updatedTask.categoria,
+            dateTime: DateTime(
+              related.dateTime.year,
+              related.dateTime.month,
+              related.dateTime.day,
+              updatedTask.dateTime.hour,
+              updatedTask.dateTime.minute,
+            ),
+            endDateTime: updatedTask.endDateTime != null
+                ? DateTime(
+                    related.dateTime.year,
+                    related.dateTime.month,
+                    related.dateTime.day,
+                    updatedTask.endDateTime!.hour,
+                    updatedTask.endDateTime!.minute,
+                  )
+                : null,
+            colorHex: updatedTask.colorHex,
+            isAllDay: updatedTask.isAllDay,
+            hasAlarm: updatedTask.hasAlarm,
+            alarmMinutesBefore: updatedTask.alarmMinutesBefore,
+            alarmMinutesAfter: updatedTask.alarmMinutesAfter,
+            hasNotification: updatedTask.hasNotification,
+            notificationMinutesBefore: updatedTask.notificationMinutesBefore,
+            notificationMinutesAfter: updatedTask.notificationMinutesAfter,
+          );
+        }),
       );
+      
+      // Procesar en lotes más grandes
+      if (updateFutures.length >= batchSize || i == relatedTasks.length - 1) {
+        await Future.wait(updateFutures);
+        updateFutures.clear();
+        // Pausa más corta para mayor velocidad
+        if (i < relatedTasks.length - 1) {
+          await Future.delayed(const Duration(milliseconds: 1));
+        }
+      }
     }
   }
 
-  void updateAllRelatedTasks(PendingTask updatedTask) {
+  Future<void> updateAllRelatedTasks(PendingTask updatedTask) async {
     final relatedTasks = getRelatedTasks(updatedTask);
 
+    // Actualizar la tarea original sin notificación
     updateTaskInPlace(
       updatedTask.id,
       title: updatedTask.title,
@@ -403,44 +425,53 @@ class PendingProvider extends ChangeNotifier {
       hasNotification: updatedTask.hasNotification,
       notificationMinutesBefore: updatedTask.notificationMinutesBefore,
       notificationMinutesAfter: updatedTask.notificationMinutesAfter,
+      suppressNotification: true,
     );
 
-    for (final relatedTask in relatedTasks) {
-      final newDescription = relatedTask.description.startsWith('🔄 ')
-          ? '🔄 ${updatedTask.description}'
-          : updatedTask.description;
+    // Procesar TODAS las tareas relacionadas en paralelo sin delays
+    final List<Future<void>> updateFutures = relatedTasks.map((relatedTask) {
+      final newDescription = updatedTask.description;
+      
+      return Future.microtask(() {
+        updateTaskInPlace(
+          relatedTask.id,
+          title: updatedTask.title,
+          description: newDescription,
+          categoria: updatedTask.categoria,
+          dateTime: DateTime(
+            relatedTask.dateTime.year,
+            relatedTask.dateTime.month,
+            relatedTask.dateTime.day,
+            updatedTask.dateTime.hour,
+            updatedTask.dateTime.minute,
+          ),
+          endDateTime: updatedTask.endDateTime != null
+              ? DateTime(
+                  relatedTask.dateTime.year,
+                  relatedTask.dateTime.month,
+                  relatedTask.dateTime.day,
+                  updatedTask.endDateTime!.hour,
+                  updatedTask.endDateTime!.minute,
+                )
+              : null,
+          colorHex: updatedTask.colorHex,
+          isAllDay: updatedTask.isAllDay,
+          hasAlarm: updatedTask.hasAlarm,
+          alarmMinutesBefore: updatedTask.alarmMinutesBefore,
+          alarmMinutesAfter: updatedTask.alarmMinutesAfter,
+          hasNotification: updatedTask.hasNotification,
+          notificationMinutesBefore: updatedTask.notificationMinutesBefore,
+          notificationMinutesAfter: updatedTask.notificationMinutesAfter,
+          suppressNotification: true, // Suprimir notificaciones individuales
+        );
+      });
+    }).toList();
 
-      updateTaskInPlace(
-        relatedTask.id,
-        title: updatedTask.title,
-        description: newDescription,
-        categoria: updatedTask.categoria,
-        dateTime: DateTime(
-          relatedTask.dateTime.year,
-          relatedTask.dateTime.month,
-          relatedTask.dateTime.day,
-          updatedTask.dateTime.hour,
-          updatedTask.dateTime.minute,
-        ),
-        endDateTime: updatedTask.endDateTime != null
-            ? DateTime(
-                relatedTask.dateTime.year,
-                relatedTask.dateTime.month,
-                relatedTask.dateTime.day,
-                updatedTask.endDateTime!.hour,
-                updatedTask.endDateTime!.minute,
-              )
-            : null,
-        colorHex: updatedTask.colorHex,
-        isAllDay: updatedTask.isAllDay,
-        hasAlarm: updatedTask.hasAlarm,
-        alarmMinutesBefore: updatedTask.alarmMinutesBefore,
-        alarmMinutesAfter: updatedTask.alarmMinutesAfter,
-        hasNotification: updatedTask.hasNotification,
-        notificationMinutesBefore: updatedTask.notificationMinutesBefore,
-        notificationMinutesAfter: updatedTask.notificationMinutesAfter,
-      );
-    }
+    // Ejecutar todas las actualizaciones en paralelo
+    await Future.wait(updateFutures);
+    
+    // Una sola notificación al final
+    notifyListeners();
   }
 
   void _generateRepeatedTasks(PendingTask originalTask) {
@@ -451,7 +482,7 @@ class PendingProvider extends ChangeNotifier {
         final repeatedTask = PendingTask(
           id: '${DateTime.now().millisecondsSinceEpoch}_${date.millisecondsSinceEpoch}',
           title: originalTask.title,
-          description: '🔄 ${originalTask.description}',
+          description: originalTask.description,
           categoria: originalTask.categoria,
           dateTime: DateTime(
             date.year,

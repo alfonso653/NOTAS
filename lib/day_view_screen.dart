@@ -43,11 +43,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
     super.initState();
     _scrollController = ScrollController();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_isToday()) {
-        _scrollToCurrentHour();
-      }
-    });
+    // Removido: scroll automático a la hora actual
+    // Ahora siempre se queda en la primera hora (00:00)
   }
 
   @override
@@ -63,17 +60,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
         widget.selectedDate.day == now.day;
   }
 
-  void _scrollToCurrentHour() {
-    final now = DateTime.now();
-    final currentHour = now.hour;
-    final scrollOffset = (currentHour * 60.0) - 100;
-
-    _scrollController.animateTo(
-      scrollOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-  }
+  // Método removido: _scrollToCurrentHour() 
+  // Ya no se hace scroll automático al entrar al día
 
   @override
   Widget build(BuildContext context) {
@@ -704,7 +692,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Fila superior: Hora y título
+                  // Fila superior: Hora, título e indicador de días
                   Row(
                     children: [
                       // Indicador de tiempo
@@ -733,36 +721,66 @@ class _DayViewScreenState extends State<DayViewScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              task.title,
-                              style: TextStyle(
-                                fontFamily: 'Georgia',
-                                color: task.completed
-                                    ? Colors.grey[600]
-                                    : Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                height: 1.3,
-                                decoration: task.completed
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            Row(
+                              children: [
+                                // Título de la tarea
+                                Expanded(
+                                  child: Text(
+                                    task.title,
+                                    style: TextStyle(
+                                      fontFamily: 'Georgia',
+                                      color: task.completed
+                                          ? Colors.grey[600]
+                                          : Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      height: 1.3,
+                                      decoration: task.completed
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                // Indicador de días de repetición
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    _getDayInitials(task),
+                                    style: TextStyle(
+                                      color: task.completed
+                                          ? Colors.grey[600]
+                                          : Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             if (task.description.isNotEmpty)
-                              Text(
-                                task.description,
-                                style: TextStyle(
-                                  color: task.completed
-                                      ? Colors.grey[500]
-                                      : Colors.white.withOpacity(0.9),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.2,
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  task.description,
+                                  style: TextStyle(
+                                    color: task.completed
+                                        ? Colors.grey[500]
+                                        : Colors.white.withOpacity(0.9),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                           ],
                         ),
@@ -791,6 +809,98 @@ class _DayViewScreenState extends State<DayViewScreen> {
         }).toList(),
       ),
     );
+  }
+
+  /// Genera las iniciales de los días según el patrón de repetición
+  String _getDayInitials(PendingTask task) {
+    // Si la tarea tiene repetición, mostrarla directamente
+    if (task.repeatType != null && task.repeatType!.isNotEmpty) {
+      return _getRepeatTypeInitials(task.repeatType!, task.customDays);
+    }
+
+    // Si no tiene repetición, buscar si hay tareas relacionadas para obtener el patrón
+    final provider = Provider.of<PendingProvider>(context, listen: false);
+    final relatedTasks = provider.getRelatedTasks(task);
+    
+    if (relatedTasks.isNotEmpty) {
+      // Si hay tareas relacionadas, inferir el patrón basado en los días que ocupan
+      final Set<int> weekdays = <int>{};
+      
+      // Agregar el día de la tarea actual
+      weekdays.add(task.dateTime.weekday);
+      
+      // Agregar los días de las tareas relacionadas
+      for (final related in relatedTasks) {
+        weekdays.add(related.dateTime.weekday);
+      }
+      
+      // Convertir a lista ordenada
+      final sortedWeekdays = weekdays.toList()..sort();
+      
+      // Determinar el patrón basado en los días encontrados
+      if (sortedWeekdays.length == 7) {
+        return 'L M M J V S D'; // Diario
+      } else if (sortedWeekdays.length == 5 && 
+                 sortedWeekdays.every((day) => day <= 5)) {
+        return 'L M M J V'; // Entre semana
+      } else if (sortedWeekdays.length == 2 && 
+                 sortedWeekdays.contains(6) && sortedWeekdays.contains(7)) {
+        return 'S D'; // Fines de semana
+      } else if (sortedWeekdays.length == 1) {
+        if (sortedWeekdays.first == 6) return 'S'; // Solo sábados
+        if (sortedWeekdays.first == 7) return 'D'; // Solo domingos
+        return _getDayInitial(sortedWeekdays.first); // Semanal
+      } else {
+        // Patrón personalizado
+        return sortedWeekdays
+            .map((day) => _getDayInitial(day))
+            .join(' ');
+      }
+    }
+    
+    // Si no hay relacionadas, mostrar solo el día actual
+    return _getDayInitial(task.dateTime.weekday);
+  }
+
+  /// Obtiene las iniciales según el tipo de repetición
+  String _getRepeatTypeInitials(String repeatType, List<int>? customDays) {
+    switch (repeatType) {
+      case 'daily':
+        return 'L M M J V S D';
+      case 'weekly':
+        return _getDayInitial(DateTime.now().weekday); // Se mostrará el día específico
+      case 'saturday':
+        return 'S';
+      case 'sunday':
+        return 'D';
+      case 'weekdays':
+        return 'L M M J V';
+      case 'yearly':
+        return _getDayInitial(DateTime.now().weekday); // Se mostrará el día específico
+      case 'custom':
+        if (customDays != null && customDays.isNotEmpty) {
+          return customDays
+              .map((day) => _getDayInitial(day))
+              .join(' ');
+        }
+        return _getDayInitial(DateTime.now().weekday);
+      default:
+        return _getDayInitial(DateTime.now().weekday);
+    }
+  }
+
+  /// Convierte el número de día a inicial
+  String _getDayInitial(int weekday) {
+    switch (weekday) {
+      case 1: return 'L'; // Lunes
+      case 2: return 'M'; // Martes
+      case 3: return 'M'; // Miércoles
+      case 4: return 'J'; // Jueves
+      case 5: return 'V'; // Viernes
+      case 6: return 'S'; // Sábado
+      case 7: return 'D'; // Domingo
+      default: return 'L';
+    }
   }
 
   String _getTimeRangeForTask(PendingTask task, int hour) {
@@ -1103,9 +1213,105 @@ class _DayViewScreenState extends State<DayViewScreen> {
         : (bgLuminance > 0.5 ? Colors.black54 : Colors.white70);
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         final provider = context.read<PendingProvider>();
-        provider.toggleTaskCompletion(task.id);
+        final relatedTasks = provider.getRelatedTasks(task);
+        final hasRelatedTasks = relatedTasks.isNotEmpty;
+
+        if (hasRelatedTasks) {
+          // Mostrar diálogo para tareas repetidas
+          final shouldApplyToAll = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Tarea repetida'),
+              content: Text(
+                task.completed 
+                  ? '¿Desmarcar como completada esta tarea y todas las repetidas (${relatedTasks.length + 1} tareas)?'
+                  : '¿Marcar como completada esta tarea y todas las repetidas (${relatedTasks.length + 1} tareas)?'
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Solo esta'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Todas'),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldApplyToAll == true) {
+            // Mostrar indicador de carga
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          'Sincronizando todas las fechas...',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'No cerrar la app',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+
+            try {
+              // Crear tarea actualizada
+              final updatedTask = PendingTask(
+                id: task.id,
+                title: task.title,
+                description: task.description,
+                categoria: task.categoria,
+                dateTime: task.dateTime,
+                endDateTime: task.endDateTime,
+                completed: !task.completed,
+                colorHex: task.colorHex,
+                isAllDay: task.isAllDay,
+                repeatType: task.repeatType,
+                customDays: task.customDays,
+                hasAlarm: task.hasAlarm,
+                alarmMinutesBefore: task.alarmMinutesBefore,
+                alarmMinutesAfter: task.alarmMinutesAfter,
+                hasNotification: task.hasNotification,
+                notificationMinutesBefore: task.notificationMinutesBefore,
+                notificationMinutesAfter: task.notificationMinutesAfter,
+              );
+
+              await provider.updateAllRelatedTasksFromOriginal(
+                originalTask: task,
+                updatedTask: updatedTask,
+              );
+            } finally {
+              if (context.mounted) {
+                Navigator.of(context).pop(); // Cerrar indicador de carga
+              }
+            }
+          } else if (shouldApplyToAll == false) {
+            // Solo cambiar esta tarea específica
+            provider.toggleTaskCompletion(task.id);
+          }
+          // Si es null (canceló), no hacer nada
+        } else {
+          // Tarea sin repeticiones, cambiar directamente
+          provider.toggleTaskCompletion(task.id);
+        }
       },
       child: Container(
         width: 44,
@@ -1302,13 +1508,42 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                 notificationMinutesAfter: task.notificationMinutesAfter,
                               );
                               
-                              provider.updateAllRelatedTasksFromOriginal(
-                                originalTask: task,
-                                updatedTask: updatedTask,
+                              // Mostrar indicador de carga
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: Card(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(20.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'Sincronizando todas las fechas...',
+                                            style: TextStyle(fontWeight: FontWeight.bold),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'No cerrar la app',
+                                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               );
                               
-                              // Programar alarmas para todas las tareas relacionadas
                               try {
+                                await provider.updateAllRelatedTasksFromOriginal(
+                                  originalTask: task,
+                                  updatedTask: updatedTask,
+                                );
+                                
+                                // Programar alarmas para todas las tareas relacionadas
                                 for (final relatedTask in [...relatedTasks, task]) {
                                   if (hasAlarm) {
                                     await NotificationService.scheduleTaskAlarm(
@@ -1324,6 +1559,10 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                 }
                               } catch (e) {
                                 debugPrint('Alarm error: $e');
+                              } finally {
+                                if (context.mounted) {
+                                  Navigator.of(context).pop(); // Cerrar indicador de carga
+                                }
                               }
                             } else {
                               // Aplicar solo a esta tarea
@@ -1533,13 +1772,42 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                 notificationMinutesAfter: hasNotif ? after : null,
                               );
                               
-                              provider.updateAllRelatedTasksFromOriginal(
-                                originalTask: task,
-                                updatedTask: updatedTask,
+                              // Mostrar indicador de carga
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: Card(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(20.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'Sincronizando todas las fechas...',
+                                            style: TextStyle(fontWeight: FontWeight.bold),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'No cerrar la app',
+                                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               );
                               
-                              // Programar notificaciones para todas las tareas relacionadas
                               try {
+                                await provider.updateAllRelatedTasksFromOriginal(
+                                  originalTask: task,
+                                  updatedTask: updatedTask,
+                                );
+                                
+                                // Programar notificaciones para todas las tareas relacionadas
                                 for (final relatedTask in [...relatedTasks, task]) {
                                   if (hasNotif) {
                                     await NotificationService.scheduleTaskNotification(
@@ -1555,6 +1823,10 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                 }
                               } catch (e) {
                                 debugPrint('Notification error: $e');
+                              } finally {
+                                if (context.mounted) {
+                                  Navigator.of(context).pop(); // Cerrar indicador de carga
+                                }
                               }
                             } else {
                               // Aplicar solo a esta tarea
@@ -1725,7 +1997,7 @@ class _DeleteTaskDialogState extends State<_DeleteTaskDialog> {
         children: [
           Text(
             'Esta acción no se puede deshacer.',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 14, color: Colors.grey),
           ),
 
           if (widget.hasRelatedTasks) ...[
@@ -2661,7 +2933,7 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
     );
   }
 
-  void _saveTask() {
+  Future<void> _saveTask() async {
     if (_titleController.text.isEmpty) return;
 
     final newStart = DateTime(
@@ -2714,16 +2986,53 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
     );
 
     if (_applyToAllRelated) {
-      // ✅ NUEVO: usa la ORIGINAL para localizar el grupo y aplica UPDATED a todas
-      widget.pendingProvider.updateAllRelatedTasksFromOriginal(
-        originalTask: widget.task,
-        updatedTask: updated,
+      // Mostrar indicador de carga para tareas repetidas
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Sincronizando todas las fechas...',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'No cerrar la app',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       );
+      
+      try {
+        // ✅ NUEVO: usa la ORIGINAL para localizar el grupo y aplica UPDATED a todas
+        await widget.pendingProvider.updateAllRelatedTasksFromOriginal(
+          originalTask: widget.task,
+          updatedTask: updated,
+        );
+      } finally {
+        if (mounted) {
+          Navigator.of(context).pop(); // Cerrar indicador de carga
+        }
+      }
     } else {
       widget.pendingProvider.updateTask(updated);
     }
 
-    Navigator.of(context).pop();
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 }
 

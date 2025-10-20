@@ -69,13 +69,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late DateTime _focusedMonth;
   late DateTime _today;
 
-  // Función para detectar si un color es claro
-  bool _isLightColor(Color color) {
-    final brightness =
-        (color.red * 0.299 + color.green * 0.587 + color.blue * 0.114) / 255;
-    return brightness > 0.7;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -321,16 +314,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // Mes calculado correctamente
 
-    return GridView.builder(
-      physics:
-          const ClampingScrollPhysics(), // Optimizado: physics más eficientes
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        childAspectRatio: 0.9, // Aumentado de 0.8 a 0.9 para más altura
-        crossAxisSpacing: 1,
-        mainAxisSpacing: 1,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calcular dimensiones dinámicamente para responsividad
+        final availableWidth = constraints.maxWidth - 16;
+        final cellWidth = availableWidth / 7;
+        final aspectRatio = (cellWidth / (cellWidth * 0.85)).clamp(0.75, 1.1);
+        
+        return GridView.builder(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            childAspectRatio: aspectRatio,
+            crossAxisSpacing: 0, // Sin espacio - las líneas harán la separación
+            mainAxisSpacing: 0,  // Sin espacio - las líneas harán la separación
+          ),
       itemCount: 42, // Optimizado: 6 semanas * 7 días (constante)
       itemBuilder: (context, index) {
         if (index < firstDayWeekday) {
@@ -355,6 +354,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         }
       },
     );
+      },
+    );
   }
 
   /// Construye un día individual del calendario
@@ -377,35 +378,46 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.all(2),
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: isSelected && isToday
-              ? const Color(0xFF374151).withOpacity(0.2)
-              : isSelected
-                  ? const Color(0xFF374151).withOpacity(0.1)
-                  : isToday
-                      ? const Color(0xFF374151).withOpacity(0.15)
-                      : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          border: isSelected && isToday
-              ? Border.all(color: const Color(0xFF374151), width: 2.5)
-              : isSelected
-                  ? Border.all(color: const Color(0xFF374151), width: 2)
-                  : isToday
-                      ? Border.all(color: const Color(0xFF374151), width: 2)
-                      : null,
-          boxShadow: isToday
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF374151).withOpacity(0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : null,
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final cellHeight = constraints.maxHeight;
+          final isSmallCell = cellHeight < 60;
+          
+          return Container(
+            padding: EdgeInsets.all(isSmallCell ? 2 : 4),
+            decoration: BoxDecoration(
+              color: isSelected && isToday
+                  ? const Color(0xFF374151).withOpacity(0.2)
+                  : isSelected
+                      ? const Color(0xFF374151).withOpacity(0.1)
+                      : isToday
+                          ? const Color(0xFF374151).withOpacity(0.15)
+                          : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              
+              // Líneas divisorias más evidentes para crear cuadrícula
+              border: Border(
+                right: BorderSide(
+                  color: Colors.grey.withOpacity(0.4), // Más opacidad
+                  width: 1.0, // Más grosor
+                ),
+                bottom: BorderSide(
+                  color: Colors.grey.withOpacity(0.4), // Más opacidad
+                  width: 1.0, // Más grosor
+                ),
+              ),
+              
+              // Sombra solo para día actual
+              boxShadow: isToday
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF374151).withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ]
+                  : null,
+            ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -414,89 +426,67 @@ class _CalendarScreenState extends State<CalendarScreen> {
               decoration: isToday
                   ? BoxDecoration(
                       color: const Color(0xFF374151),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     )
                   : null,
               padding: isToday
-                  ? const EdgeInsets.symmetric(horizontal: 6, vertical: 2)
+                  ? EdgeInsets.symmetric(
+                      horizontal: isSmallCell ? 3 : 6,
+                      vertical: isSmallCell ? 1 : 2)
                   : EdgeInsets.zero,
-              child: Text(
-                '${date.day}',
-                style: TextStyle(
-                  fontSize: isToday ? 13 : 12,
-                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
-                  color: isOtherMonth
-                      ? Colors.grey.withOpacity(0.4)
-                      : isToday
-                          ? Colors.white
-                          : const Color(0xFF2E3A59),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '${date.day}',
+                  style: TextStyle(
+                    fontSize: isSmallCell ? 11 : (isToday ? 13 : 12),
+                    fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
+                    color: isOtherMonth
+                        ? Colors.grey.withOpacity(0.4)
+                        : isToday
+                            ? Colors.white
+                            : const Color(0xFF2E3A59),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-            // Tareas como etiquetas pequeñas
+            // Sistema de semáforo para tareas - SIEMPRE mostrar contador
             Expanded(
               child: tasks.isEmpty
                   ? const SizedBox()
-                  : SingleChildScrollView(
-                      child: Column(
-                        children: tasks.take(2).map((task) {
-                              // Optimizado: solo 2 tareas visibles
-                              return Container(
-                                width: double.infinity,
-                                margin: const EdgeInsets.only(top: 3),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: task.completed
-                                      ? Colors.grey.withOpacity(0.3)
-                                      : _isLightColor(task.color)
-                                          ? task.color.withOpacity(0.9)
-                                          : task.color.withOpacity(0.8),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: _isLightColor(task.color)
-                                      ? Border.all(
-                                          color: Colors.grey.shade400,
-                                          width: 0.5)
-                                      : null,
-                                ),
-                                child: Text(
-                                  task.title,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: task.completed
-                                        ? Colors.grey[600]
-                                        : _isLightColor(task.color)
-                                            ? Colors.grey[800]
-                                            : Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              );
-                            }).toList() +
-                            (tasks.length > 2
-                                ? [
-                                    Container(
-                                      width: double.infinity,
-                                      margin: const EdgeInsets.only(top: 1),
-                                      child: Text(
-                                        '+${tasks.length - 2} más',
-                                        style: const TextStyle(
-                                          fontSize: 7,
-                                          color: Colors.grey,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ]
-                                : []),
-                      ),
+                  : LayoutBuilder(
+                      builder: (context, taskConstraints) {
+                        final taskCount = tasks.length;
+                        
+                        // SIEMPRE mostrar contador con semáforo (sin importar si es 1 o más tareas)
+                        Color getTaskCountColor(int count) {
+                          if (count <= 3) return Colors.green[600]!;      // Verde: 1-3 tareas
+                          if (count <= 7) return Colors.orange[600]!;     // Naranja: 4-7 tareas
+                          return Colors.red[600]!;                       // Rojo: 8+ tareas
+                        }
+                        
+                        return Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '$taskCount',
+                              style: TextStyle(
+                                fontSize: isSmallCell ? 16.0 : 18.0,
+                                color: getTaskCountColor(taskCount),
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      },
                     ),
             ),
           ],
         ),
+      );
+        },
       ),
     );
   }
