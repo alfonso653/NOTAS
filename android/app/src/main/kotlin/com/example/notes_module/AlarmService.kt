@@ -22,6 +22,7 @@ class AlarmService : Service() {
     companion object {
         const val TAG = "AlarmService"
         const val EXTRA_TASK_TITLE = "task_title"
+        const val EXTRA_TASK_ID = "task_id"
         const val ACTION_STOP_ALARM = "STOP_ALARM"
     }
     
@@ -37,16 +38,29 @@ class AlarmService : Service() {
             }
             else -> {
                 val taskTitle = intent?.getStringExtra(EXTRA_TASK_TITLE) ?: "Tarea"
-                startAlarm(taskTitle)
+                val taskId = intent?.getStringExtra(EXTRA_TASK_ID) ?: ""
+                startAlarm(taskTitle, taskId)
             }
         }
         
         return START_STICKY
     }
     
-    private fun startAlarm(taskTitle: String) {
+    private fun startAlarm(taskTitle: String, taskId: String) {
         try {
-            // � Convertir en servicio en primer plano
+            // Notificar a Flutter que la alarma se activó
+            try {
+                MainActivity.methodChannel?.invokeMethod("onAlarmTriggered", mapOf(
+                    "taskId" to taskId,
+                    "taskTitle" to taskTitle,
+                    "scheduledTime" to System.currentTimeMillis()
+                ))
+                Log.d(TAG, "📱 Callback de alarma enviado a Flutter: $taskTitle")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error enviando callback a Flutter: ${e.message}")
+            }
+            
+            // 🎨 Convertir en servicio en primer plano
             startForegroundService(taskTitle)
             
             // �🔓 Adquirir WakeLock para despertar el dispositivo

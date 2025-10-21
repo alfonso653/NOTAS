@@ -19,7 +19,10 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        methodChannel = channel
+        
+        channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "scheduleAlarm" -> {
                     val taskId = call.argument<String>("taskId") ?: ""
@@ -123,5 +126,10 @@ class MainActivity : FlutterActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error al parar alarma: ${e.message}")
         }
+    }
+    
+    companion object {
+        @Volatile
+        var methodChannel: MethodChannel? = null
     }
 }

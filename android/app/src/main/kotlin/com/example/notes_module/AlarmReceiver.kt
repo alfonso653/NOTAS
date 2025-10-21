@@ -24,6 +24,7 @@ class AlarmReceiver : BroadcastReceiver() {
         // Iniciar el servicio de alarma que reproducirá el sonido
         val alarmServiceIntent = Intent(context, AlarmService::class.java).apply {
             putExtra(AlarmService.EXTRA_TASK_TITLE, taskTitle)
+            putExtra(AlarmService.EXTRA_TASK_ID, taskId)
         }
         
         try {

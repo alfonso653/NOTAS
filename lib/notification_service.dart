@@ -4,6 +4,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'real_alarm_service.dart';
+import 'alarm_screen_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -124,9 +125,44 @@ class NotificationService {
   static void _onNotificationTapped(NotificationResponse response) {
     try {
       debugPrint('🔔 Notificación tocada: ${response.payload}');
-      // Aquí puedes agregar lógica para navegar a la tarea específica
+
+      if (response.payload != null && response.payload!.startsWith('alarm_')) {
+        // Es una alarma - mostrar pantalla completa
+        _showFullScreenAlarmFromPayload(response.payload!);
+      } else if (response.payload != null &&
+          response.payload!.startsWith('notification_')) {
+        // Es una notificación normal - mostrar pantalla completa también
+        _showFullScreenAlarmFromPayload(response.payload!);
+      }
     } catch (e) {
       debugPrint('❌ Error al manejar notificación tocada: $e');
+    }
+  }
+
+  /// Muestra la pantalla de alarma completa basada en el payload
+  static void _showFullScreenAlarmFromPayload(String payload) {
+    try {
+      // Extraer información del payload
+      // Formato esperado: "alarm_taskId" o "notification_taskId"
+      final isAlarm = payload.startsWith('alarm_');
+      final taskId =
+          payload.replaceFirst(isAlarm ? 'alarm_' : 'notification_', '');
+
+      // Mostrar pantalla completa cuando se toca la notificación
+      AlarmScreenService.showFullScreenAlarm(
+        taskTitle: 'Tarea Programada',
+        taskDescription: isAlarm
+            ? 'Alarma activada - Toque para ver detalles'
+            : 'Notificación de tarea - Toque para ver detalles',
+        taskDateTime: DateTime.now(),
+        alarmType: isAlarm ? 'before' : 'after',
+        minutes: 5,
+      );
+
+      debugPrint('🚨 Mostrando pantalla de alarma completa para: $taskId');
+      debugPrint('📱 Tipo: ${isAlarm ? "ALARMA" : "NOTIFICACIÓN"}');
+    } catch (e) {
+      debugPrint('❌ Error al mostrar pantalla de alarma desde payload: $e');
     }
   }
 
@@ -184,11 +220,35 @@ class NotificationService {
     }
   }
 
+  /// Muestra inmediatamente la pantalla de alarma completa
+  static Future<void> showImmediateAlarm({
+    required String taskTitle,
+    required String taskDescription,
+    required DateTime taskDateTime,
+    required String alarmType, // 'before' o 'after'
+    required int minutes,
+  }) async {
+    try {
+      debugPrint('🚨 Mostrando alarma completa inmediata para: $taskTitle');
+
+      await AlarmScreenService.showFullScreenAlarm(
+        taskTitle: taskTitle,
+        taskDescription: taskDescription,
+        taskDateTime: taskDateTime,
+        alarmType: alarmType,
+        minutes: minutes,
+      );
+    } catch (e) {
+      debugPrint('❌ Error al mostrar alarma inmediata: $e');
+    }
+  }
+
   /// Programa una ALARMA (sonido fuerte) para una tarea
   static Future<bool> scheduleTaskAlarm({
     required String taskId,
     required String taskTitle,
     required DateTime taskDateTime,
+    String? taskDescription,
     int? minutesBefore,
     int? minutesAfter,
   }) async {
@@ -605,6 +665,32 @@ class NotificationService {
       debugPrint('✅ Notificación de prueba enviada');
     } catch (e) {
       debugPrint('❌ Error en notificación de prueba: $e');
+    }
+  }
+
+  /// Muestra inmediatamente una alarma de pantalla completa (para testing y alarmas inmediatas)
+  static Future<void> showImmediateAlarmForTesting({
+    required String taskTitle,
+    required String taskDescription,
+    required DateTime taskDateTime,
+    required String alarmType,
+    required int minutes,
+  }) async {
+    try {
+      debugPrint('🚨 Activando alarma inmediata de pantalla completa');
+      debugPrint('📝 Tarea: $taskTitle');
+
+      await AlarmScreenService.showFullScreenAlarm(
+        taskTitle: taskTitle,
+        taskDescription: taskDescription,
+        taskDateTime: taskDateTime,
+        alarmType: alarmType,
+        minutes: minutes,
+      );
+
+      debugPrint('🖥️ Pantalla de alarma activada correctamente');
+    } catch (e) {
+      debugPrint('❌ Error al mostrar alarma inmediata: $e');
     }
   }
 

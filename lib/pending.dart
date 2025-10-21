@@ -18,6 +18,7 @@ class PendingTask {
   String?
       repeatType; // Tipo de repetición: daily, weekly, saturday, sunday, weekdays, yearly, custom
   List<int>? customDays; // Días personalizados (1=Lunes, 7=Domingo)
+  bool isAutoEndTime; // Si la hora final fue asignada automáticamente
 
   // Propiedades de alarma (sonido fuerte)
   bool hasAlarm;
@@ -41,6 +42,7 @@ class PendingTask {
     this.isAllDay = false,
     this.repeatType,
     this.customDays = const [],
+    this.isAutoEndTime = false,
     this.hasAlarm = false,
     this.alarmMinutesBefore,
     this.alarmMinutesAfter,
@@ -63,6 +65,7 @@ class PendingTask {
       'isAllDay': isAllDay,
       'repeatType': repeatType,
       'customDays': customDays ?? [],
+      'isAutoEndTime': isAutoEndTime,
       // Propiedades de alarma (sonido fuerte)
       'hasAlarm': hasAlarm,
       'alarmMinutesBefore': alarmMinutesBefore,
@@ -91,6 +94,7 @@ class PendingTask {
       repeatType: json['repeatType'],
       customDays:
           json['customDays'] != null ? List<int>.from(json['customDays']) : [],
+      isAutoEndTime: json['isAutoEndTime'] ?? false,
       // Propiedades de alarma (sonido fuerte)
       hasAlarm: json['hasAlarm'] ?? false,
       alarmMinutesBefore: json['alarmMinutesBefore'],
@@ -208,8 +212,7 @@ class PendingProvider extends ChangeNotifier {
   List<PendingTask> getRelatedTasks(PendingTask task) {
     final List<PendingTask> relatedTasks = [];
 
-    String normalizeDesc(String d) =>
-        d.trim();
+    String normalizeDesc(String d) => d.trim();
 
     final baseTitle = task.title.trim();
     final baseDescription = normalizeDesc(task.description);
@@ -351,7 +354,7 @@ class PendingProvider extends ChangeNotifier {
     // 3) Procesar en lotes más grandes para mayor velocidad
     const int batchSize = 10; // Aumentado de 3 a 10
     final List<Future<void>> updateFutures = [];
-    
+
     for (int i = 0; i < relatedTasks.length; i++) {
       final related = relatedTasks[i];
       final newDescription = updatedTask.description;
@@ -391,7 +394,7 @@ class PendingProvider extends ChangeNotifier {
           );
         }),
       );
-      
+
       // Procesar en lotes más grandes
       if (updateFutures.length >= batchSize || i == relatedTasks.length - 1) {
         await Future.wait(updateFutures);
@@ -431,7 +434,7 @@ class PendingProvider extends ChangeNotifier {
     // Procesar TODAS las tareas relacionadas en paralelo sin delays
     final List<Future<void>> updateFutures = relatedTasks.map((relatedTask) {
       final newDescription = updatedTask.description;
-      
+
       return Future.microtask(() {
         updateTaskInPlace(
           relatedTask.id,
@@ -469,7 +472,7 @@ class PendingProvider extends ChangeNotifier {
 
     // Ejecutar todas las actualizaciones en paralelo
     await Future.wait(updateFutures);
-    
+
     // Una sola notificación al final
     notifyListeners();
   }

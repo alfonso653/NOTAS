@@ -60,7 +60,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
         widget.selectedDate.day == now.day;
   }
 
-  // Método removido: _scrollToCurrentHour() 
+  // Método removido: _scrollToCurrentHour()
   // Ya no se hace scroll automático al entrar al día
 
   @override
@@ -787,7 +787,6 @@ class _DayViewScreenState extends State<DayViewScreen> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 12),
 
                   // Fila inferior: Botones
@@ -821,30 +820,31 @@ class _DayViewScreenState extends State<DayViewScreen> {
     // Si no tiene repetición, buscar si hay tareas relacionadas para obtener el patrón
     final provider = Provider.of<PendingProvider>(context, listen: false);
     final relatedTasks = provider.getRelatedTasks(task);
-    
+
     if (relatedTasks.isNotEmpty) {
       // Si hay tareas relacionadas, inferir el patrón basado en los días que ocupan
       final Set<int> weekdays = <int>{};
-      
+
       // Agregar el día de la tarea actual
       weekdays.add(task.dateTime.weekday);
-      
+
       // Agregar los días de las tareas relacionadas
       for (final related in relatedTasks) {
         weekdays.add(related.dateTime.weekday);
       }
-      
+
       // Convertir a lista ordenada
       final sortedWeekdays = weekdays.toList()..sort();
-      
+
       // Determinar el patrón basado en los días encontrados
       if (sortedWeekdays.length == 7) {
         return 'L M M J V S D'; // Diario
-      } else if (sortedWeekdays.length == 5 && 
-                 sortedWeekdays.every((day) => day <= 5)) {
+      } else if (sortedWeekdays.length == 5 &&
+          sortedWeekdays.every((day) => day <= 5)) {
         return 'L M M J V'; // Entre semana
-      } else if (sortedWeekdays.length == 2 && 
-                 sortedWeekdays.contains(6) && sortedWeekdays.contains(7)) {
+      } else if (sortedWeekdays.length == 2 &&
+          sortedWeekdays.contains(6) &&
+          sortedWeekdays.contains(7)) {
         return 'S D'; // Fines de semana
       } else if (sortedWeekdays.length == 1) {
         if (sortedWeekdays.first == 6) return 'S'; // Solo sábados
@@ -852,12 +852,10 @@ class _DayViewScreenState extends State<DayViewScreen> {
         return _getDayInitial(sortedWeekdays.first); // Semanal
       } else {
         // Patrón personalizado
-        return sortedWeekdays
-            .map((day) => _getDayInitial(day))
-            .join(' ');
+        return sortedWeekdays.map((day) => _getDayInitial(day)).join(' ');
       }
     }
-    
+
     // Si no hay relacionadas, mostrar solo el día actual
     return _getDayInitial(task.dateTime.weekday);
   }
@@ -868,7 +866,8 @@ class _DayViewScreenState extends State<DayViewScreen> {
       case 'daily':
         return 'L M M J V S D';
       case 'weekly':
-        return _getDayInitial(DateTime.now().weekday); // Se mostrará el día específico
+        return _getDayInitial(
+            DateTime.now().weekday); // Se mostrará el día específico
       case 'saturday':
         return 'S';
       case 'sunday':
@@ -876,12 +875,11 @@ class _DayViewScreenState extends State<DayViewScreen> {
       case 'weekdays':
         return 'L M M J V';
       case 'yearly':
-        return _getDayInitial(DateTime.now().weekday); // Se mostrará el día específico
+        return _getDayInitial(
+            DateTime.now().weekday); // Se mostrará el día específico
       case 'custom':
         if (customDays != null && customDays.isNotEmpty) {
-          return customDays
-              .map((day) => _getDayInitial(day))
-              .join(' ');
+          return customDays.map((day) => _getDayInitial(day)).join(' ');
         }
         return _getDayInitial(DateTime.now().weekday);
       default:
@@ -892,19 +890,32 @@ class _DayViewScreenState extends State<DayViewScreen> {
   /// Convierte el número de día a inicial
   String _getDayInitial(int weekday) {
     switch (weekday) {
-      case 1: return 'L'; // Lunes
-      case 2: return 'M'; // Martes
-      case 3: return 'M'; // Miércoles
-      case 4: return 'J'; // Jueves
-      case 5: return 'V'; // Viernes
-      case 6: return 'S'; // Sábado
-      case 7: return 'D'; // Domingo
-      default: return 'L';
+      case 1:
+        return 'L'; // Lunes
+      case 2:
+        return 'M'; // Martes
+      case 3:
+        return 'M'; // Miércoles
+      case 4:
+        return 'J'; // Jueves
+      case 5:
+        return 'V'; // Viernes
+      case 6:
+        return 'S'; // Sábado
+      case 7:
+        return 'D'; // Domingo
+      default:
+        return 'L';
     }
   }
 
   String _getTimeRangeForTask(PendingTask task, int hour) {
     final end = task.endDateTime ?? task.dateTime.add(const Duration(hours: 1));
+
+    // Si la hora final fue asignada automáticamente, solo mostrar la hora inicial cuando corresponda
+    if (task.isAutoEndTime && task.dateTime.hour == hour) {
+      return _formatTime12Hour(task.dateTime.hour, task.dateTime.minute);
+    }
 
     if (task.dateTime.hour == hour && end.hour == hour) {
       return '${_formatTime12Hour(task.dateTime.hour, task.dateTime.minute)}-${_formatTime12Hour(end.hour, end.minute)}';
@@ -1224,11 +1235,9 @@ class _DayViewScreenState extends State<DayViewScreen> {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Tarea repetida'),
-              content: Text(
-                task.completed 
+              content: Text(task.completed
                   ? '¿Desmarcar como completada esta tarea y todas las repetidas (${relatedTasks.length + 1} tareas)?'
-                  : '¿Marcar como completada esta tarea y todas las repetidas (${relatedTasks.length + 1} tareas)?'
-              ),
+                  : '¿Marcar como completada esta tarea y todas las repetidas (${relatedTasks.length + 1} tareas)?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
@@ -1360,244 +1369,275 @@ class _DayViewScreenState extends State<DayViewScreen> {
             final relatedTasks = provider.getRelatedTasks(task);
             final hasRelatedTasks = relatedTasks.isNotEmpty;
 
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-                left: 16,
-                right: 16,
-                top: 16,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Alarma (sonido fuerte)',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    value: hasAlarm,
-                    onChanged: (v) => setBS(() => hasAlarm = v),
-                    title: const Text('Activar alarma'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  if (hasAlarm) ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('En el momento',
+            final screenHeight = MediaQuery.of(ctx).size.height;
+            final keyboardHeight = MediaQuery.of(ctx).viewInsets.bottom;
+            final maxHeight = screenHeight * 0.75;
+
+            return Container(
+              height: maxHeight,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: keyboardHeight > 0 ? 16 : 16,
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Alarma (sonido fuerte)',
                           style: TextStyle(
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildAlarmOption(
-                        'Exactamente a la hora', 0, before, (v) => setBS(() => before = v)),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Antes de la hora',
-                          style: TextStyle(
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildAlarmOption(
-                        '5 min', 5, before, (v) => setBS(() => before = v)),
-                    _buildAlarmOption(
-                        '10 min', 10, before, (v) => setBS(() => before = v)),
-                    _buildAlarmOption(
-                        '15 min', 15, before, (v) => setBS(() => before = v)),
-                    _buildAlarmOption(
-                        '30 min', 30, before, (v) => setBS(() => before = v)),
-                    _buildAlarmOption(
-                        '1 hora', 60, before, (v) => setBS(() => before = v)),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Después de la hora',
-                          style: TextStyle(
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildAlarmOption(
-                        '5 min', 5, after, (v) => setBS(() => after = v)),
-                    _buildAlarmOption(
-                        '10 min', 10, after, (v) => setBS(() => after = v)),
-                    _buildAlarmOption(
-                        '15 min', 15, after, (v) => setBS(() => after = v)),
-                  ],
-                  if (hasRelatedTasks) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        value: hasAlarm,
+                        onChanged: (v) => setBS(() => hasAlarm = v),
+                        title: const Text('Activar alarma'),
+                        contentPadding: EdgeInsets.zero,
                       ),
-                      child: Column(
-                        children: [
-                          const Text('Esta tarea se repite en otros días',
-                              style: TextStyle(fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 8),
-                          Row(
+                      if (hasAlarm) ...[
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('En el momento',
+                              style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(height: 6),
+                        _buildAlarmOption('Exactamente a la hora', 0, before,
+                            (v) => setBS(() => before = v)),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Antes de la hora',
+                              style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(height: 6),
+                        _buildAlarmOption(
+                            '5 min', 5, before, (v) => setBS(() => before = v)),
+                        _buildAlarmOption('10 min', 10, before,
+                            (v) => setBS(() => before = v)),
+                        _buildAlarmOption('15 min', 15, before,
+                            (v) => setBS(() => before = v)),
+                        _buildAlarmOption('30 min', 30, before,
+                            (v) => setBS(() => before = v)),
+                        _buildAlarmOption('1 hora', 60, before,
+                            (v) => setBS(() => before = v)),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Después de la hora',
+                              style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(height: 6),
+                        _buildAlarmOption(
+                            '5 min', 5, after, (v) => setBS(() => after = v)),
+                        _buildAlarmOption(
+                            '10 min', 10, after, (v) => setBS(() => after = v)),
+                        _buildAlarmOption(
+                            '15 min', 15, after, (v) => setBS(() => after = v)),
+                      ],
+                      if (hasRelatedTasks) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Column(
                             children: [
-                              Expanded(
-                                child: RadioListTile<bool>(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  value: false,
-                                  groupValue: applyToAll,
-                                  onChanged: (v) => setBS(() => applyToAll = v!),
-                                  title: const Text('Solo este día', style: TextStyle(fontSize: 14)),
-                                ),
-                              ),
-                              Expanded(
-                                child: RadioListTile<bool>(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  value: true,
-                                  groupValue: applyToAll,
-                                  onChanged: (v) => setBS(() => applyToAll = v!),
-                                  title: const Text('Todos los días', style: TextStyle(fontSize: 14)),
-                                ),
+                              const Text('Esta tarea se repite en otros días',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: RadioListTile<bool>(
+                                      dense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      value: false,
+                                      groupValue: applyToAll,
+                                      onChanged: (v) =>
+                                          setBS(() => applyToAll = v!),
+                                      title: const Text('Solo este día',
+                                          style: TextStyle(fontSize: 14)),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: RadioListTile<bool>(
+                                      dense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      value: true,
+                                      groupValue: applyToAll,
+                                      onChanged: (v) =>
+                                          setBS(() => applyToAll = v!),
+                                      title: const Text('Todos los días',
+                                          style: TextStyle(fontSize: 14)),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Cancelar'),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF374151),
-                            foregroundColor: Colors.white,
+                      ],
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancelar'),
+                            ),
                           ),
-                          onPressed: () async {
-                            if (applyToAll && hasRelatedTasks) {
-                              // Aplicar a todas las tareas relacionadas
-                              final updatedTask = PendingTask(
-                                id: task.id,
-                                title: task.title,
-                                description: task.description,
-                                categoria: task.categoria,
-                                dateTime: task.dateTime,
-                                endDateTime: task.endDateTime,
-                                completed: task.completed,
-                                colorHex: task.colorHex,
-                                isAllDay: task.isAllDay,
-                                repeatType: task.repeatType,
-                                customDays: task.customDays,
-                                hasAlarm: hasAlarm,
-                                alarmMinutesBefore: hasAlarm ? before : null,
-                                alarmMinutesAfter: hasAlarm ? after : null,
-                                hasNotification: task.hasNotification,
-                                notificationMinutesBefore: task.notificationMinutesBefore,
-                                notificationMinutesAfter: task.notificationMinutesAfter,
-                              );
-                              
-                              // Mostrar indicador de carga
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const Center(
-                                  child: Card(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(20.0),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          CircularProgressIndicator(),
-                                          SizedBox(height: 16),
-                                          Text(
-                                            'Sincronizando todas las fechas...',
-                                            style: TextStyle(fontWeight: FontWeight.bold),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF374151),
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () async {
+                                if (applyToAll && hasRelatedTasks) {
+                                  // Aplicar a todas las tareas relacionadas
+                                  final updatedTask = PendingTask(
+                                    id: task.id,
+                                    title: task.title,
+                                    description: task.description,
+                                    categoria: task.categoria,
+                                    dateTime: task.dateTime,
+                                    endDateTime: task.endDateTime,
+                                    completed: task.completed,
+                                    colorHex: task.colorHex,
+                                    isAllDay: task.isAllDay,
+                                    repeatType: task.repeatType,
+                                    customDays: task.customDays,
+                                    hasAlarm: hasAlarm,
+                                    alarmMinutesBefore:
+                                        hasAlarm ? before : null,
+                                    alarmMinutesAfter: hasAlarm ? after : null,
+                                    hasNotification: task.hasNotification,
+                                    notificationMinutesBefore:
+                                        task.notificationMinutesBefore,
+                                    notificationMinutesAfter:
+                                        task.notificationMinutesAfter,
+                                  );
+
+                                  // Mostrar indicador de carga
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (context) => const Center(
+                                      child: Card(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(20.0),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              CircularProgressIndicator(),
+                                              SizedBox(height: 16),
+                                              Text(
+                                                'Sincronizando todas las fechas...',
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold),
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'No cerrar la app',
+                                                style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey),
+                                              ),
+                                            ],
                                           ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'No cerrar la app',
-                                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                                          ),
-                                        ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                              );
-                              
-                              try {
-                                await provider.updateAllRelatedTasksFromOriginal(
-                                  originalTask: task,
-                                  updatedTask: updatedTask,
-                                );
-                                
-                                // Programar alarmas para todas las tareas relacionadas
-                                for (final relatedTask in [...relatedTasks, task]) {
-                                  if (hasAlarm) {
-                                    await NotificationService.scheduleTaskAlarm(
-                                      taskId: relatedTask.id,
-                                      taskTitle: relatedTask.title,
-                                      taskDateTime: relatedTask.dateTime,
-                                      minutesBefore: before,
-                                      minutesAfter: after,
+                                  );
+
+                                  try {
+                                    await provider
+                                        .updateAllRelatedTasksFromOriginal(
+                                      originalTask: task,
+                                      updatedTask: updatedTask,
                                     );
-                                  } else {
-                                    await NotificationService.cancelTaskAlarm(relatedTask.id);
+
+                                    // Programar alarmas para todas las tareas relacionadas
+                                    for (final relatedTask in [
+                                      ...relatedTasks,
+                                      task
+                                    ]) {
+                                      if (hasAlarm) {
+                                        await NotificationService
+                                            .scheduleTaskAlarm(
+                                          taskId: relatedTask.id,
+                                          taskTitle: relatedTask.title,
+                                          taskDateTime: relatedTask.dateTime,
+                                          minutesBefore: before,
+                                          minutesAfter: after,
+                                        );
+                                      } else {
+                                        await NotificationService
+                                            .cancelTaskAlarm(relatedTask.id);
+                                      }
+                                    }
+                                  } catch (e) {
+                                    debugPrint('Alarm error: $e');
+                                  } finally {
+                                    if (context.mounted) {
+                                      Navigator.of(context)
+                                          .pop(); // Cerrar indicador de carga
+                                    }
+                                  }
+                                } else {
+                                  // Aplicar solo a esta tarea
+                                  provider.updateTaskInPlace(
+                                    task.id,
+                                    hasAlarm: hasAlarm,
+                                    alarmMinutesBefore:
+                                        hasAlarm ? before : null,
+                                    alarmMinutesAfter: hasAlarm ? after : null,
+                                  );
+
+                                  try {
+                                    if (hasAlarm) {
+                                      await NotificationService
+                                          .scheduleTaskAlarm(
+                                        taskId: task.id,
+                                        taskTitle: task.title,
+                                        taskDateTime: task.dateTime,
+                                        minutesBefore: before,
+                                        minutesAfter: after,
+                                      );
+                                    } else {
+                                      await NotificationService.cancelTaskAlarm(
+                                          task.id);
+                                    }
+                                  } catch (e) {
+                                    debugPrint('Alarm error: $e');
                                   }
                                 }
-                              } catch (e) {
-                                debugPrint('Alarm error: $e');
-                              } finally {
-                                if (context.mounted) {
-                                  Navigator.of(context).pop(); // Cerrar indicador de carga
-                                }
-                              }
-                            } else {
-                              // Aplicar solo a esta tarea
-                              provider.updateTaskInPlace(
-                                task.id,
-                                hasAlarm: hasAlarm,
-                                alarmMinutesBefore: hasAlarm ? before : null,
-                                alarmMinutesAfter: hasAlarm ? after : null,
-                              );
 
-                              try {
-                                if (hasAlarm) {
-                                  await NotificationService.scheduleTaskAlarm(
-                                    taskId: task.id,
-                                    taskTitle: task.title,
-                                    taskDateTime: task.dateTime,
-                                    minutesBefore: before,
-                                    minutesAfter: after,
-                                  );
-                                } else {
-                                  await NotificationService.cancelTaskAlarm(task.id);
-                                }
-                              } catch (e) {
-                                debugPrint('Alarm error: $e');
-                              }
-                            }
-
-                            if (mounted) Navigator.pop(ctx);
-                          },
-                          child: const Text('Guardar'),
-                        ),
+                                if (mounted) Navigator.pop(ctx);
+                              },
+                              child: const Text('Guardar'),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             );
           },
@@ -1635,233 +1675,256 @@ class _DayViewScreenState extends State<DayViewScreen> {
                 right: 16,
                 top: 16,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Notificación (silenciosa)',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    value: hasNotif,
-                    onChanged: (v) => setBS(() => hasNotif = v),
-                    title: const Text('Activar notificación'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  if (hasNotif) ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('En el momento',
-                          style: TextStyle(
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w600)),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Notificación (silenciosa)',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      value: hasNotif,
+                      onChanged: (v) => setBS(() => hasNotif = v),
+                      title: const Text('Activar notificación'),
+                      contentPadding: EdgeInsets.zero,
                     ),
-                    const SizedBox(height: 6),
-                    _buildNotificationOption(
-                        'Exactamente a la hora', 0, before, (v) => setBS(() => before = v)),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Antes de la hora',
-                          style: TextStyle(
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildNotificationOption(
-                        '5 min', 5, before, (v) => setBS(() => before = v)),
-                    _buildNotificationOption(
-                        '10 min', 10, before, (v) => setBS(() => before = v)),
-                    _buildNotificationOption(
-                        '15 min', 15, before, (v) => setBS(() => before = v)),
-                    _buildNotificationOption(
-                        '30 min', 30, before, (v) => setBS(() => before = v)),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Después de la hora',
-                          style: TextStyle(
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildNotificationOption(
-                        '5 min', 5, after, (v) => setBS(() => after = v)),
-                    _buildNotificationOption(
-                        '10 min', 10, after, (v) => setBS(() => after = v)),
-                  ],
-                  if (hasRelatedTasks) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade200),
+                    if (hasNotif) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('En el momento',
+                            style: TextStyle(
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w600)),
                       ),
-                      child: Column(
-                        children: [
-                          const Text('Esta tarea se repite en otros días',
-                              style: TextStyle(fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: RadioListTile<bool>(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  value: false,
-                                  groupValue: applyToAll,
-                                  onChanged: (v) => setBS(() => applyToAll = v!),
-                                  title: const Text('Solo este día', style: TextStyle(fontSize: 14)),
-                                ),
-                              ),
-                              Expanded(
-                                child: RadioListTile<bool>(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  value: true,
-                                  groupValue: applyToAll,
-                                  onChanged: (v) => setBS(() => applyToAll = v!),
-                                  title: const Text('Todos los días', style: TextStyle(fontSize: 14)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                      const SizedBox(height: 6),
+                      _buildNotificationOption('Exactamente a la hora', 0,
+                          before, (v) => setBS(() => before = v)),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Antes de la hora',
+                            style: TextStyle(
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w600)),
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Cancelar'),
+                      const SizedBox(height: 6),
+                      _buildNotificationOption(
+                          '5 min', 5, before, (v) => setBS(() => before = v)),
+                      _buildNotificationOption(
+                          '10 min', 10, before, (v) => setBS(() => before = v)),
+                      _buildNotificationOption(
+                          '15 min', 15, before, (v) => setBS(() => before = v)),
+                      _buildNotificationOption(
+                          '30 min', 30, before, (v) => setBS(() => before = v)),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Después de la hora',
+                            style: TextStyle(
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(height: 6),
+                      _buildNotificationOption(
+                          '5 min', 5, after, (v) => setBS(() => after = v)),
+                      _buildNotificationOption(
+                          '10 min', 10, after, (v) => setBS(() => after = v)),
+                    ],
+                    if (hasRelatedTasks) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text('Esta tarea se repite en otros días',
+                                style: TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: RadioListTile<bool>(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    value: false,
+                                    groupValue: applyToAll,
+                                    onChanged: (v) =>
+                                        setBS(() => applyToAll = v!),
+                                    title: const Text('Solo este día',
+                                        style: TextStyle(fontSize: 14)),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: RadioListTile<bool>(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    value: true,
+                                    groupValue: applyToAll,
+                                    onChanged: (v) =>
+                                        setBS(() => applyToAll = v!),
+                                    title: const Text('Todos los días',
+                                        style: TextStyle(fontSize: 14)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF374151),
-                            foregroundColor: Colors.white,
+                    ],
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancelar'),
                           ),
-                          onPressed: () async {
-                            if (applyToAll && hasRelatedTasks) {
-                              // Aplicar a todas las tareas relacionadas
-                              final updatedTask = PendingTask(
-                                id: task.id,
-                                title: task.title,
-                                description: task.description,
-                                categoria: task.categoria,
-                                dateTime: task.dateTime,
-                                endDateTime: task.endDateTime,
-                                completed: task.completed,
-                                colorHex: task.colorHex,
-                                isAllDay: task.isAllDay,
-                                repeatType: task.repeatType,
-                                customDays: task.customDays,
-                                hasAlarm: task.hasAlarm,
-                                alarmMinutesBefore: task.alarmMinutesBefore,
-                                alarmMinutesAfter: task.alarmMinutesAfter,
-                                hasNotification: hasNotif,
-                                notificationMinutesBefore: hasNotif ? before : null,
-                                notificationMinutesAfter: hasNotif ? after : null,
-                              );
-                              
-                              // Mostrar indicador de carga
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const Center(
-                                  child: Card(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(20.0),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          CircularProgressIndicator(),
-                                          SizedBox(height: 16),
-                                          Text(
-                                            'Sincronizando todas las fechas...',
-                                            style: TextStyle(fontWeight: FontWeight.bold),
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'No cerrar la app',
-                                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                                          ),
-                                        ],
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF374151),
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () async {
+                              if (applyToAll && hasRelatedTasks) {
+                                // Aplicar a todas las tareas relacionadas
+                                final updatedTask = PendingTask(
+                                  id: task.id,
+                                  title: task.title,
+                                  description: task.description,
+                                  categoria: task.categoria,
+                                  dateTime: task.dateTime,
+                                  endDateTime: task.endDateTime,
+                                  completed: task.completed,
+                                  colorHex: task.colorHex,
+                                  isAllDay: task.isAllDay,
+                                  repeatType: task.repeatType,
+                                  customDays: task.customDays,
+                                  hasAlarm: task.hasAlarm,
+                                  alarmMinutesBefore: task.alarmMinutesBefore,
+                                  alarmMinutesAfter: task.alarmMinutesAfter,
+                                  hasNotification: hasNotif,
+                                  notificationMinutesBefore:
+                                      hasNotif ? before : null,
+                                  notificationMinutesAfter:
+                                      hasNotif ? after : null,
+                                );
+
+                                // Mostrar indicador de carga
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => const Center(
+                                    child: Card(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(20.0),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            CircularProgressIndicator(),
+                                            SizedBox(height: 16),
+                                            Text(
+                                              'Sincronizando todas las fechas...',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'No cerrar la app',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              );
-                              
-                              try {
-                                await provider.updateAllRelatedTasksFromOriginal(
-                                  originalTask: task,
-                                  updatedTask: updatedTask,
                                 );
-                                
-                                // Programar notificaciones para todas las tareas relacionadas
-                                for (final relatedTask in [...relatedTasks, task]) {
+
+                                try {
+                                  await provider
+                                      .updateAllRelatedTasksFromOriginal(
+                                    originalTask: task,
+                                    updatedTask: updatedTask,
+                                  );
+
+                                  // Programar notificaciones para todas las tareas relacionadas
+                                  for (final relatedTask in [
+                                    ...relatedTasks,
+                                    task
+                                  ]) {
+                                    if (hasNotif) {
+                                      await NotificationService
+                                          .scheduleTaskNotification(
+                                        taskId: relatedTask.id,
+                                        taskTitle: relatedTask.title,
+                                        taskDateTime: relatedTask.dateTime,
+                                        minutesBefore: before,
+                                        minutesAfter: after,
+                                      );
+                                    } else {
+                                      await NotificationService
+                                          .cancelTaskNotification(
+                                              relatedTask.id);
+                                    }
+                                  }
+                                } catch (e) {
+                                  debugPrint('Notification error: $e');
+                                } finally {
+                                  if (context.mounted) {
+                                    Navigator.of(context)
+                                        .pop(); // Cerrar indicador de carga
+                                  }
+                                }
+                              } else {
+                                // Aplicar solo a esta tarea
+                                provider.updateTaskInPlace(
+                                  task.id,
+                                  hasNotification: hasNotif,
+                                  notificationMinutesBefore:
+                                      hasNotif ? before : null,
+                                  notificationMinutesAfter:
+                                      hasNotif ? after : null,
+                                );
+
+                                try {
                                   if (hasNotif) {
-                                    await NotificationService.scheduleTaskNotification(
-                                      taskId: relatedTask.id,
-                                      taskTitle: relatedTask.title,
-                                      taskDateTime: relatedTask.dateTime,
+                                    await NotificationService
+                                        .scheduleTaskNotification(
+                                      taskId: task.id,
+                                      taskTitle: task.title,
+                                      taskDateTime: task.dateTime,
                                       minutesBefore: before,
                                       minutesAfter: after,
                                     );
                                   } else {
-                                    await NotificationService.cancelTaskNotification(relatedTask.id);
+                                    await NotificationService
+                                        .cancelTaskNotification(task.id);
                                   }
-                                }
-                              } catch (e) {
-                                debugPrint('Notification error: $e');
-                              } finally {
-                                if (context.mounted) {
-                                  Navigator.of(context).pop(); // Cerrar indicador de carga
+                                } catch (e) {
+                                  debugPrint('Notification error: $e');
                                 }
                               }
-                            } else {
-                              // Aplicar solo a esta tarea
-                              provider.updateTaskInPlace(
-                                task.id,
-                                hasNotification: hasNotif,
-                                notificationMinutesBefore: hasNotif ? before : null,
-                                notificationMinutesAfter: hasNotif ? after : null,
-                              );
 
-                              try {
-                                if (hasNotif) {
-                                  await NotificationService.scheduleTaskNotification(
-                                    taskId: task.id,
-                                    taskTitle: task.title,
-                                    taskDateTime: task.dateTime,
-                                    minutesBefore: before,
-                                    minutesAfter: after,
-                                  );
-                                } else {
-                                  await NotificationService.cancelTaskNotification(task.id);
-                                }
-                              } catch (e) {
-                                debugPrint('Notification error: $e');
-                              }
-                            }
-
-                            if (mounted) Navigator.pop(ctx);
-                          },
-                          child: const Text('Guardar'),
+                              if (mounted) Navigator.pop(ctx);
+                            },
+                            child: const Text('Guardar'),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -2055,8 +2118,7 @@ class _DeleteTaskDialogState extends State<_DeleteTaskDialog> {
                   ),
                 const SizedBox(height: 4),
                 Text(
-                  '${_formatTime12Hour(widget.task.dateTime.hour, widget.task.dateTime.minute)}'
-                  '${widget.task.endDateTime != null ? ' - ${_formatTime12Hour(widget.task.endDateTime!.hour, widget.task.endDateTime!.minute)}' : ''}',
+                  _getTaskTimeDisplay(widget.task),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[500],
@@ -2116,6 +2178,24 @@ class _DeleteTaskDialogState extends State<_DeleteTaskDialog> {
     final now = DateTime.now();
     final dateTime = DateTime(now.year, now.month, now.day, hour, minute);
     return DateFormat.jm().format(dateTime);
+  }
+
+  String _getTaskTimeDisplay(PendingTask task) {
+    final startTime = _formatTime12Hour(task.dateTime.hour, task.dateTime.minute);
+    
+    // Si la hora final fue asignada automáticamente, solo mostrar la hora inicial
+    if (task.isAutoEndTime) {
+      return startTime;
+    }
+    
+    // Si tiene hora final específica, mostrar el rango
+    if (task.endDateTime != null) {
+      final endTime = _formatTime12Hour(task.endDateTime!.hour, task.endDateTime!.minute);
+      return '$startTime - $endTime';
+    }
+    
+    // Sin hora final
+    return startTime;
   }
 }
 
@@ -2503,6 +2583,8 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
     );
 
     DateTime? endDateTime;
+    bool isAutoEndTime = false;
+    
     if (_hasEndTime && _endHour != null && _endMinute != null) {
       endDateTime = DateTime(
         widget.selectedDate.year,
@@ -2522,6 +2604,10 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
         );
         return;
       }
+    } else {
+      // Si no se especifica hora final, asignar automáticamente 1 hora después
+      endDateTime = taskDateTime.add(const Duration(hours: 1));
+      isAutoEndTime = true;
     }
 
     final task = PendingTask(
@@ -2535,6 +2621,7 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
       isAllDay: _isAllDay,
       repeatType: _repeatType != 'none' ? _repeatType : null,
       customDays: _repeatType == 'custom' ? _customDays : null,
+      isAutoEndTime: isAutoEndTime,
     );
 
     widget.pendingProvider.addTask(task);
@@ -3014,7 +3101,7 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
           ),
         ),
       );
-      
+
       try {
         // ✅ NUEVO: usa la ORIGINAL para localizar el grupo y aplica UPDATED a todas
         await widget.pendingProvider.updateAllRelatedTasksFromOriginal(

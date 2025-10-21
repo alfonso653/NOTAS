@@ -320,7 +320,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final availableWidth = constraints.maxWidth - 16;
         final cellWidth = availableWidth / 7;
         final aspectRatio = (cellWidth / (cellWidth * 0.85)).clamp(0.75, 1.1);
-        
+
         return GridView.builder(
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -328,32 +328,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
             crossAxisCount: 7,
             childAspectRatio: aspectRatio,
             crossAxisSpacing: 0, // Sin espacio - las líneas harán la separación
-            mainAxisSpacing: 0,  // Sin espacio - las líneas harán la separación
+            mainAxisSpacing: 0, // Sin espacio - las líneas harán la separación
           ),
-      itemCount: 42, // Optimizado: 6 semanas * 7 días (constante)
-      itemBuilder: (context, index) {
-        if (index < firstDayWeekday) {
-          // Días del mes anterior
-          final prevMonth = DateTime(monthDate.year, monthDate.month - 1, 1);
-          final lastDayPrevMonth =
-              DateTime(monthDate.year, monthDate.month, 0).day;
-          final day = lastDayPrevMonth - (firstDayWeekday - index - 1);
-          final date = DateTime(prevMonth.year, prevMonth.month, day);
-          return _buildCalendarDay(date, allTasks, isOtherMonth: true);
-        } else if (index - firstDayWeekday >= daysInMonth) {
-          // Días del mes siguiente
-          final nextMonth = DateTime(monthDate.year, monthDate.month + 1, 1);
-          final day = index - firstDayWeekday - daysInMonth + 1;
-          final date = DateTime(nextMonth.year, nextMonth.month, day);
-          return _buildCalendarDay(date, allTasks, isOtherMonth: true);
-        } else {
-          // Días del mes actual
-          final day = index - firstDayWeekday + 1;
-          final date = DateTime(monthDate.year, monthDate.month, day);
-          return _buildCalendarDay(date, allTasks);
-        }
-      },
-    );
+          itemCount: 42, // Optimizado: 6 semanas * 7 días (constante)
+          itemBuilder: (context, index) {
+            if (index < firstDayWeekday) {
+              // Días del mes anterior
+              final prevMonth =
+                  DateTime(monthDate.year, monthDate.month - 1, 1);
+              final lastDayPrevMonth =
+                  DateTime(monthDate.year, monthDate.month, 0).day;
+              final day = lastDayPrevMonth - (firstDayWeekday - index - 1);
+              final date = DateTime(prevMonth.year, prevMonth.month, day);
+              return _buildCalendarDay(date, allTasks, isOtherMonth: true);
+            } else if (index - firstDayWeekday >= daysInMonth) {
+              // Días del mes siguiente
+              final nextMonth =
+                  DateTime(monthDate.year, monthDate.month + 1, 1);
+              final day = index - firstDayWeekday - daysInMonth + 1;
+              final date = DateTime(nextMonth.year, nextMonth.month, day);
+              return _buildCalendarDay(date, allTasks, isOtherMonth: true);
+            } else {
+              // Días del mes actual
+              final day = index - firstDayWeekday + 1;
+              final date = DateTime(monthDate.year, monthDate.month, day);
+              return _buildCalendarDay(date, allTasks);
+            }
+          },
+        );
       },
     );
   }
@@ -382,7 +384,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         builder: (context, constraints) {
           final cellHeight = constraints.maxHeight;
           final isSmallCell = cellHeight < 60;
-          
+
           return Container(
             padding: EdgeInsets.all(isSmallCell ? 2 : 4),
             decoration: BoxDecoration(
@@ -394,7 +396,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ? const Color(0xFF374151).withOpacity(0.15)
                           : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
-              
+
               // Líneas divisorias más evidentes para crear cuadrícula
               border: Border(
                 right: BorderSide(
@@ -406,7 +408,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   width: 1.0, // Más grosor
                 ),
               ),
-              
+
               // Sombra solo para día actual
               boxShadow: isToday
                   ? [
@@ -418,74 +420,77 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ]
                   : null,
             ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Número del día
-            Container(
-              decoration: isToday
-                  ? BoxDecoration(
-                      color: const Color(0xFF374151),
-                      borderRadius: BorderRadius.circular(8),
-                    )
-                  : null,
-              padding: isToday
-                  ? EdgeInsets.symmetric(
-                      horizontal: isSmallCell ? 3 : 6,
-                      vertical: isSmallCell ? 1 : 2)
-                  : EdgeInsets.zero,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '${date.day}',
-                  style: TextStyle(
-                    fontSize: isSmallCell ? 11 : (isToday ? 13 : 12),
-                    fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
-                    color: isOtherMonth
-                        ? Colors.grey.withOpacity(0.4)
-                        : isToday
-                            ? Colors.white
-                            : const Color(0xFF2E3A59),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            // Sistema de semáforo para tareas - SIEMPRE mostrar contador
-            Expanded(
-              child: tasks.isEmpty
-                  ? const SizedBox()
-                  : LayoutBuilder(
-                      builder: (context, taskConstraints) {
-                        final taskCount = tasks.length;
-                        
-                        // SIEMPRE mostrar contador con semáforo (sin importar si es 1 o más tareas)
-                        Color getTaskCountColor(int count) {
-                          if (count <= 3) return Colors.green[600]!;      // Verde: 1-3 tareas
-                          if (count <= 7) return Colors.orange[600]!;     // Naranja: 4-7 tareas
-                          return Colors.red[600]!;                       // Rojo: 8+ tareas
-                        }
-                        
-                        return Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              '$taskCount',
-                              style: TextStyle(
-                                fontSize: isSmallCell ? 16.0 : 18.0,
-                                color: getTaskCountColor(taskCount),
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        );
-                      },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Número del día
+                Container(
+                  decoration: isToday
+                      ? BoxDecoration(
+                          color: const Color(0xFF374151),
+                          borderRadius: BorderRadius.circular(8),
+                        )
+                      : null,
+                  padding: isToday
+                      ? EdgeInsets.symmetric(
+                          horizontal: isSmallCell ? 3 : 6,
+                          vertical: isSmallCell ? 1 : 2)
+                      : EdgeInsets.zero,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${date.day}',
+                      style: TextStyle(
+                        fontSize: isSmallCell ? 11 : (isToday ? 13 : 12),
+                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
+                        color: isOtherMonth
+                            ? Colors.grey.withOpacity(0.4)
+                            : isToday
+                                ? Colors.white
+                                : const Color(0xFF2E3A59),
+                      ),
+                      textAlign: TextAlign.center,
                     ),
+                  ),
+                ),
+                // Sistema de semáforo para tareas - SIEMPRE mostrar contador
+                Expanded(
+                  child: tasks.isEmpty
+                      ? const SizedBox()
+                      : LayoutBuilder(
+                          builder: (context, taskConstraints) {
+                            final taskCount = tasks.length;
+
+                            // SIEMPRE mostrar contador con semáforo (sin importar si es 1 o más tareas)
+                            Color getTaskCountColor(int count) {
+                              if (count <= 3)
+                                return Colors.green[600]!; // Verde: 1-3 tareas
+                              if (count <= 7)
+                                return Colors
+                                    .orange[600]!; // Naranja: 4-7 tareas
+                              return Colors.red[600]!; // Rojo: 8+ tareas
+                            }
+
+                            return Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '$taskCount',
+                                  style: TextStyle(
+                                    fontSize: isSmallCell ? 16.0 : 18.0,
+                                    color: getTaskCountColor(taskCount),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
+          );
         },
       ),
     );

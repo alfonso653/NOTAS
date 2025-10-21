@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
+import 'dart:ui' as ui;
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'calendar_verse_service.dart';
 import 'quotes_service.dart';
 
@@ -587,6 +594,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   // 🌟 Mostrar texto en pantalla completa con fondo difuminado
   void _showFullScreenText(
       BuildContext context, String text, String subtitle, bool isVerse) {
+    final GlobalKey screenshotKey = GlobalKey();
+    
     showGeneralDialog(
       context: context,
       barrierDismissible: true, // ✅ PERMITE CERRAR TOCANDO FUERA
@@ -597,6 +606,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
           subtitle: subtitle,
           isVerse: isVerse,
           animation: animation,
+          screenshotKey: screenshotKey,
         );
       },
       transitionDuration: const Duration(milliseconds: 400),
@@ -625,13 +635,90 @@ class _FullScreenTextDialog extends StatelessWidget {
   final String subtitle;
   final bool isVerse;
   final Animation<double> animation;
+  final GlobalKey screenshotKey;
 
   const _FullScreenTextDialog({
     required this.text,
     required this.subtitle,
     required this.isVerse,
     required this.animation,
+    required this.screenshotKey,
   });
+
+  // 📱 Método para compartir el contenido como imagen
+  Future<void> _shareContent(String text, String subtitle, bool isVerse) async {
+    try {
+      print('🔄 Iniciando captura de screenshot...');
+      
+      // Verificar que el context existe
+      if (screenshotKey.currentContext == null) {
+        print('❌ Error: screenshotKey.currentContext es null');
+        throw Exception('Context no disponible');
+      }
+      
+      // 📸 Capturar screenshot del widget
+      RenderRepaintBoundary boundary = screenshotKey.currentContext!
+          .findRenderObject() as RenderRepaintBoundary;
+      
+      print('🎯 RenderRepaintBoundary encontrado: ${boundary.size}');
+      
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      print('📸 Imagen capturada: ${image.width}x${image.height}');
+      
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        print('❌ Error: No se pudo convertir imagen a ByteData');
+        throw Exception('Error al procesar imagen');
+      }
+      
+      Uint8List pngBytes = byteData.buffer.asUint8List();
+      print('💾 Bytes de imagen generados: ${pngBytes.length} bytes');
+      
+      // 💾 Guardar imagen temporalmente
+      final tempDir = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'verse_${timestamp}.png';
+      final file = await File('${tempDir.path}/$fileName').create();
+      await file.writeAsBytes(pngBytes);
+      
+      print('✅ Imagen guardada en: ${file.path}');
+      print('📊 Tamaño del archivo: ${await file.length()} bytes');
+      
+      // 📤 Compartir imagen
+      final subject = isVerse ? 'Versículo del día' : 'Reflexión del día';
+      final message = isVerse 
+          ? '✝️ Compartiendo la palabra de Dios desde mi aplicación Emeth Agenda'
+          : '� Compartiendo desde Emeth Agenda';
+      
+      print('🚀 Iniciando compartir con ShareXFiles...');
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: message,
+        subject: subject,
+      );
+      
+      print('✅ Screenshot compartido exitosamente como imagen');
+      
+    } catch (e, stackTrace) {
+      print('❌ Error al capturar screenshot: $e');
+      print('📋 Stack trace: $stackTrace');
+      
+      // 📝 Fallback a texto si falla el screenshot
+      final content = isVerse 
+          ? '$text\n\n— $subtitle'
+          : '$text\n\n— $subtitle';
+      
+      final message = isVerse
+          ? '🙏 Versículo del día:\n\n$content\n\n✨ Compartido desde mi app de notas'
+          : '💭 Reflexión del día:\n\n$content\n\n✨ Compartido desde mi app de notas';
+      
+      print('📝 Compartiendo como texto (fallback)');
+      await Share.share(
+        message,
+        subject: isVerse ? 'Versículo del día' : 'Reflexión del día',
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -666,104 +753,125 @@ class _FullScreenTextDialog extends StatelessWidget {
             ),
           ),
 
-          // 📖 Contenido principal
+          // � Contenido principal
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
-                children: [
-                  // Botón de cerrar elegante
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const SizedBox(width: 40),
-                      Icon(
-                        isVerse ? Icons.menu_book : Icons.auto_awesome,
-                        color: Colors.white.withOpacity(0.8),
-                        size: 24,
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Espacio flexible
-                  const Spacer(flex: 1),
-
-                  // 📝 Texto principal con animación - NO CERRAR AL TOCAR
-                  GestureDetector(
-                    onTap:
-                        () {}, // 🛑 ABSORBER toques en la tarjeta (no cerrar)
-                    child: Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 20,
-                            spreadRadius: 5,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Texto principal
-                          Text(
-                            text,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                              height: 1.4,
-                              fontFamily: 'serif',
-                              fontStyle:
-                                  isVerse ? FontStyle.normal : FontStyle.italic,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Subtítulo (referencia o autor)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Botones superiores: Compartir y Cerrar
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // 📱 Botón de compartir (esquina superior izquierda) - GRANDE para dedos grandes
+                        IconButton(
+                          onPressed: () => _shareContent(text, subtitle, isVerse),
+                          icon: Container(
+                            padding: const EdgeInsets.all(16), // Más padding para dedos grandes
                             decoration: BoxDecoration(
-                              color: (isVerse
-                                      ? const Color(0xFF374151)
-                                      : const Color(0xFF8B5CF6))
-                                  .withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            child: Text(
-                              subtitle,
+                            child: const Icon(
+                              Icons.share,
+                              color: Colors.white,
+                              size: 28, // Ícono más grande
+                            ),
+                          ),
+                          tooltip: 'Compartir',
+                        ),
+                        // 📖 Ícono central
+                        Icon(
+                          isVerse ? Icons.menu_book : Icons.auto_awesome,
+                          color: Colors.white.withOpacity(0.8),
+                          size: 24,
+                        ),
+                        // ❌ Botón de cerrar (esquina superior derecha)
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          tooltip: 'Cerrar',
+                        ),
+                      ],
+                    ),
+
+                    // Espacio flexible
+                    const Spacer(flex: 1),
+
+                    // 📝 Texto principal con animación - NO CERRAR AL TOCAR
+                    GestureDetector(
+                      onTap: () {}, // 🛑 ABSORBER toques en la tarjeta (no cerrar)
+                      child: RepaintBoundary(
+                        key: screenshotKey,
+                        child: Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.95),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 20,
+                                spreadRadius: 5,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Texto principal
+                            Text(
+                              text,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 22,
                                 fontWeight: FontWeight.w600,
-                                color: isVerse
-                                    ? const Color(0xFF374151)
-                                    : const Color(0xFF8B5CF6),
-                                fontStyle: FontStyle.italic,
+                                color: Colors.black87,
+                                height: 1.4,
+                                fontFamily: 'serif',
+                                fontStyle: isVerse ? FontStyle.normal : FontStyle.italic,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
 
-                  const Spacer(flex: 2),
+                            const SizedBox(height: 24),
+
+                            // Subtítulo (referencia o autor)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: (isVerse
+                                        ? const Color(0xFF374151)
+                                        : const Color(0xFF8B5CF6))
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                subtitle,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: isVerse
+                                      ? const Color(0xFF374151)
+                                      : const Color(0xFF8B5CF6),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ], // Cierre del children del Column
+                        ), // Cierre del Column
+                      ), // Cierre del Container
+                    ), // Cierre del RepaintBoundary  
+                  ), // Cierre del GestureDetector
+
+                  const SizedBox(height: 40),
 
                   // 💡 Indicación para cerrar
                   Opacity(
@@ -780,7 +888,10 @@ class _FullScreenTextDialog extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 20),
-                ],
+                  
+                  // Espacio flexible para centrar el contenido
+                  const Spacer(flex: 1),
+                ], // Cierre del children del Column principal
               ),
             ),
           ),

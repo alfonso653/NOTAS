@@ -14,6 +14,8 @@ import 'pending.dart';
 import 'calendar_screen.dart';
 import 'notification_service.dart';
 import 'notebook_provider.dart';
+import 'alarm_screen_service.dart';
+import 'real_alarm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +25,9 @@ void main() async {
 
   // 📱 Inicializar servicio de notificaciones
   await NotificationService.initialize();
+
+  // 🚨 Inicializar servicio de alarmas reales
+  await RealAlarmService.initialize();
 
   runApp(const NotesApp());
 }
@@ -41,6 +46,8 @@ class NotesApp extends StatelessWidget {
             create: (_) => NotebookProvider()..initialize()),
       ],
       child: MaterialApp(
+        navigatorKey:
+            AlarmScreenService.navigatorKey, // Para pantallas de alarma
         debugShowCheckedModeBanner: false,
         title: 'Notas',
         // 🌍 Localización básica (selectores mantienen formato original)
