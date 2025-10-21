@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'real_alarm_service.dart';
 
 /// Pantalla de alarma que ocupa toda la pantalla
 class AlarmScreen extends StatefulWidget {
@@ -82,33 +83,84 @@ class _AlarmScreenState extends State<AlarmScreen>
 
   String _getAlarmMessage() {
     if (widget.alarmType == 'before') {
-      return '⏰ ¡ALARMA!\nTu tarea comenzará en ${widget.minutes} minutos';
+      return '⏰ Es hora!\nTu tarea comenzará en ${widget.minutes} minutos';
     } else {
-      return '🔔 ¡RECORDATORIO!\nTu tarea terminó hace ${widget.minutes} minutos';
+      return '🌟 Recordatorio\nTu tarea terminó hace ${widget.minutes} minutos';
     }
   }
 
-  Color _getBackgroundColor() {
+  LinearGradient _getBackgroundGradient() {
     if (widget.alarmType == 'before') {
-      return Colors.red[700]!; // Rojo fuerte para alarmas previas
+      // Gradiente azul-púrpura elegante para alarmas previas
+      return const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF667eea), // Azul suave
+          Color(0xFF764ba2), // Púrpura elegante
+        ],
+      );
     } else {
-      return Colors.orange[700]!; // Naranja para recordatorios posteriores
+      // Gradiente verde-teal para recordatorios posteriores
+      return const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF11998e), // Teal profundo
+          Color(0xFF38ef7d), // Verde fresco
+        ],
+      );
     }
   }
 
-  void _dismissAlarm() {
+  Color _getAccentColor() {
+    if (widget.alarmType == 'before') {
+      return const Color(0xFF667eea);
+    } else {
+      return const Color(0xFF11998e);
+    }
+  }
+
+  void _dismissAlarm() async {
+    try {
+      // Detener solo el SONIDO de la alarma nativa (mantener notificación visual)
+      await RealAlarmService.stopCurrentAlarm();
+      debugPrint('🛑 Sonido de alarma detenido - notificación mantenida como recordatorio');
+    } catch (e) {
+      debugPrint('❌ Error al detener sonido de alarma: $e');
+    }
+    
+    // Cerrar la pantalla
     Navigator.of(context).pop();
   }
 
-  void _snoozeAlarm() {
-    // Posponer por 5 minutos
+  void _snoozeAlarm() async {
+    try {
+      // Detener solo el SONIDO de la alarma actual (mantener notificación)
+      await RealAlarmService.stopCurrentAlarm();
+      debugPrint('🛑 Sonido de alarma detenido para posponer - notificación mantenida');
+      
+      // Programar nueva alarma en 5 minutos
+      final newAlarmTime = DateTime.now().add(const Duration(minutes: 5));
+      await RealAlarmService.scheduleRealAlarm(
+        taskId: 'snooze_${DateTime.now().millisecondsSinceEpoch}',
+        taskTitle: '⏰ ${widget.taskTitle} (Pospuesta)',
+        scheduledTime: newAlarmTime,
+      );
+      
+      debugPrint('⏰ Nueva alarma programada para: $newAlarmTime');
+    } catch (e) {
+      debugPrint('❌ Error al posponer alarma: $e');
+    }
+    
+    // Cerrar pantalla
     Navigator.of(context).pop();
 
-    // Aquí podrías programar una nueva alarma en 5 minutos
+    // Mostrar confirmación
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('⏰ Alarma pospuesta por 5 minutos'),
-        duration: Duration(seconds: 3),
+        content: Text('⏰ Alarma pospuesta por 5 minutos - Notificación mantenida como recordatorio'),
+        duration: Duration(seconds: 4),
       ),
     );
   }
@@ -119,8 +171,11 @@ class _AlarmScreenState extends State<AlarmScreen>
     final isSmallScreen = screenSize.height < 700;
 
     return Scaffold(
-      backgroundColor: _getBackgroundColor(),
-      body: SafeArea(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: _getBackgroundGradient(),
+        ),
+        child: SafeArea(
         child: Container(
           width: double.infinity,
           height: double.infinity,
@@ -138,22 +193,28 @@ class _AlarmScreenState extends State<AlarmScreen>
                       width: isSmallScreen ? 120 : 150,
                       height: isSmallScreen ? 120 : 150,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withOpacity(0.95),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 20,
-                            spreadRadius: 5,
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 25,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 8),
+                          ),
+                          BoxShadow(
+                            color: _getAccentColor().withOpacity(0.3),
+                            blurRadius: 15,
+                            spreadRadius: -5,
                           ),
                         ],
                       ),
                       child: Icon(
                         widget.alarmType == 'before'
-                            ? Icons.alarm
-                            : Icons.notifications_active,
+                            ? Icons.access_time_rounded
+                            : Icons.check_circle_outline_rounded,
                         size: isSmallScreen ? 70 : 90,
-                        color: _getBackgroundColor(),
+                        color: _getAccentColor(),
                       ),
                     ),
                   );
@@ -171,10 +232,11 @@ class _AlarmScreenState extends State<AlarmScreen>
                         Text(
                           _getAlarmMessage(),
                           style: TextStyle(
-                            fontSize: isSmallScreen ? 24 : 32,
-                            fontWeight: FontWeight.bold,
+                            fontSize: isSmallScreen ? 28 : 36,
+                            fontWeight: FontWeight.w300,
                             color: Colors.white,
-                            height: 1.3,
+                            height: 1.2,
+                            letterSpacing: 0.5,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -182,14 +244,21 @@ class _AlarmScreenState extends State<AlarmScreen>
 
                         // Información de la tarea
                         Container(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(16),
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: Colors.white.withOpacity(0.3),
-                              width: 2,
+                              width: 1,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
                           child: Column(
                             children: [
@@ -261,11 +330,15 @@ class _AlarmScreenState extends State<AlarmScreen>
                       onPressed: _dismissAlarm,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: _getBackgroundColor(),
-                        elevation: 8,
-                        shadowColor: Colors.black.withOpacity(0.3),
+                        foregroundColor: _getAccentColor(),
+                        elevation: 0,
+                        shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
+                        ),
+                      ).copyWith(
+                        overlayColor: MaterialStateProperty.all(
+                          _getAccentColor().withOpacity(0.1),
                         ),
                       ),
                       child: Text(
@@ -313,6 +386,7 @@ class _AlarmScreenState extends State<AlarmScreen>
             ],
           ),
         ),
+      ),
       ),
     );
   }

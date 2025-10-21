@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'pending.dart';
 import 'notification_service.dart';
 import 'notebook_screen.dart';
+import 'real_alarm_service.dart';
 
 /// Clase auxiliar para manejar información de rangos de tiempo
 class TaskRangeInfo {
@@ -1371,16 +1372,23 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
             final screenHeight = MediaQuery.of(ctx).size.height;
             final keyboardHeight = MediaQuery.of(ctx).viewInsets.bottom;
-            final maxHeight = screenHeight * 0.75;
+            // Cálculo para ocupar toda la pantalla pero con padding elegante
+            final availableHeight = screenHeight - keyboardHeight - 80;
+            final maxHeight = keyboardHeight > 0 
+                ? availableHeight * 0.92  // Casi toda la pantalla con teclado
+                : availableHeight * 0.95;  // Casi toda la pantalla sin teclado
 
             return Container(
-              height: maxHeight,
+              constraints: BoxConstraints(
+                maxHeight: maxHeight.clamp(400, screenHeight * 0.95),
+                minHeight: 400,
+              ),
               child: Padding(
                 padding: EdgeInsets.only(
-                  bottom: keyboardHeight > 0 ? 16 : 16,
+                  bottom: keyboardHeight > 0 ? 120 : 60,  // Súper pulcro
                   left: 16,
                   right: 16,
-                  top: 16,
+                  top: 20,
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -1578,6 +1586,21 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                       task
                                     ]) {
                                       if (hasAlarm) {
+                                        // Programar alarma nativa real
+                                        DateTime alarmTime = relatedTask.dateTime;
+                                        if (before != null && before! > 0) {
+                                          alarmTime = relatedTask.dateTime.subtract(Duration(minutes: before!));
+                                        } else if (after != null && after! > 0) {
+                                          alarmTime = relatedTask.dateTime.add(Duration(minutes: after!));
+                                        }
+                                        
+                                        await RealAlarmService.scheduleRealAlarm(
+                                          taskId: relatedTask.id,
+                                          taskTitle: relatedTask.title,
+                                          scheduledTime: alarmTime,
+                                        );
+                                        
+                                        // También programar notificación de respaldo
                                         await NotificationService
                                             .scheduleTaskAlarm(
                                           taskId: relatedTask.id,
@@ -1587,6 +1610,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                           minutesAfter: after,
                                         );
                                       } else {
+                                        await RealAlarmService.cancelRealAlarm(relatedTask.id);
                                         await NotificationService
                                             .cancelTaskAlarm(relatedTask.id);
                                       }
@@ -1611,6 +1635,21 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
                                   try {
                                     if (hasAlarm) {
+                                      // Programar alarma nativa real
+                                      DateTime alarmTime = task.dateTime;
+                                      if (before != null && before! > 0) {
+                                        alarmTime = task.dateTime.subtract(Duration(minutes: before!));
+                                      } else if (after != null && after! > 0) {
+                                        alarmTime = task.dateTime.add(Duration(minutes: after!));
+                                      }
+                                      
+                                      await RealAlarmService.scheduleRealAlarm(
+                                        taskId: task.id,
+                                        taskTitle: task.title,
+                                        scheduledTime: alarmTime,
+                                      );
+                                      
+                                      // También programar notificación de respaldo
                                       await NotificationService
                                           .scheduleTaskAlarm(
                                         taskId: task.id,
@@ -1620,6 +1659,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                         minutesAfter: after,
                                       );
                                     } else {
+                                      await RealAlarmService.cancelRealAlarm(task.id);
                                       await NotificationService.cancelTaskAlarm(
                                           task.id);
                                     }
@@ -1668,18 +1708,31 @@ class _DayViewScreenState extends State<DayViewScreen> {
             final relatedTasks = provider.getRelatedTasks(task);
             final hasRelatedTasks = relatedTasks.isNotEmpty;
 
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-                left: 16,
-                right: 16,
-                top: 16,
+            final screenHeight = MediaQuery.of(ctx).size.height;
+            final keyboardHeight = MediaQuery.of(ctx).viewInsets.bottom;
+            // Cálculo para ocupar toda la pantalla pero con padding elegante
+            final availableHeight = screenHeight - keyboardHeight - 80;
+            final maxHeight = keyboardHeight > 0 
+                ? availableHeight * 0.92  // Casi toda la pantalla con teclado
+                : availableHeight * 0.95;  // Casi toda la pantalla sin teclado
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: maxHeight.clamp(400, screenHeight * 0.95),
+                minHeight: 400,
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Notificación (silenciosa)',
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: keyboardHeight > 0 ? 120 : 60,  // Súper pulcro
+                  left: 16,
+                  right: 16,
+                  top: 20,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Notificación (silenciosa)',
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
@@ -1926,6 +1979,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
                   ],
                 ),
               ),
+            ),
             );
           },
         );
@@ -2255,12 +2309,26 @@ class _AddTaskHourlyFormState extends State<AddTaskHourlyForm> {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final maxHeight = screenHeight * 0.85;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    // Cálculo para ocupar toda la pantalla pero con padding elegante
+    final availableHeight = screenHeight - keyboardHeight - 80;
+    final maxHeight = keyboardHeight > 0 
+        ? availableHeight * 0.92  // Casi toda la pantalla con teclado
+        : availableHeight * 0.95;  // Casi toda la pantalla sin teclado
 
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
+      constraints: BoxConstraints(
+        maxHeight: maxHeight.clamp(400, screenHeight * 0.95),
+        minHeight: 400,
+      ),
       child: Material(
         child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: keyboardHeight > 0 ? 120 : 60,  // Súper pulcro
+            top: 20,
+            left: 12,
+            right: 12,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2694,12 +2762,26 @@ class _EditTaskHourlyFormState extends State<EditTaskHourlyForm> {
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final maxHeight = screenHeight * 0.85;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    // Cálculo para ocupar toda la pantalla pero con padding elegante
+    final availableHeight = screenHeight - keyboardHeight - 80;
+    final maxHeight = keyboardHeight > 0 
+        ? availableHeight * 0.92  // Casi toda la pantalla con teclado
+        : availableHeight * 0.95;  // Casi toda la pantalla sin teclado
 
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
+      constraints: BoxConstraints(
+        maxHeight: maxHeight.clamp(400, screenHeight * 0.95),
+        minHeight: 400,
+      ),
       child: Material(
         child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: keyboardHeight > 0 ? 120 : 60,  // Súper pulcro
+            top: 20,
+            left: 12,
+            right: 12,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

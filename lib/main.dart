@@ -538,6 +538,46 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // 🚨 Función para probar alarmas rápidamente
+  void _testAlarm() async {
+    try {
+      final testTime = DateTime.now().add(const Duration(seconds: 5));
+      
+      // Programar alarma de prueba
+      final success = await RealAlarmService.scheduleRealAlarm(
+        taskId: 'test_${DateTime.now().millisecondsSinceEpoch}',
+        taskTitle: '🧪 Prueba de Alarma',
+        scheduledTime: testTime,
+      );
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🚨 Alarma de prueba programada para ${testTime.hour}:${testTime.minute.toString().padLeft(2, '0')}'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.green[600],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Error al programar alarma de prueba'),
+            duration: Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error: $e'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -769,6 +809,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      // 🚨 Botón flotante de prueba de alarmas (solo en Agenda)
+      floatingActionButton: _selectedIndex == 1 ? FloatingActionButton(
+        mini: true,
+        backgroundColor: Colors.red[600],
+        foregroundColor: Colors.white,
+        onPressed: _testAlarm,
+        tooltip: 'Probar Alarma en 5 seg',
+        child: const Icon(Icons.alarm, size: 20),
+      ) : null,
     );
   }
 }

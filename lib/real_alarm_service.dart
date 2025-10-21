@@ -23,13 +23,14 @@ class RealAlarmService {
       debugPrint('🔔 Callback recibido: ${call.method}');
 
       if (call.method == 'onAlarmTriggered') {
+        final String taskId = call.arguments['taskId'] ?? '';
         final String taskTitle = call.arguments['taskTitle'] ?? 'Alarma';
         final int scheduledTimeMs = call.arguments['scheduledTime'] ?? 0;
 
         final DateTime scheduledTime =
             DateTime.fromMillisecondsSinceEpoch(scheduledTimeMs);
 
-        debugPrint('🚨 ALARMA REAL ACTIVADA: $taskTitle');
+        debugPrint('🚨 ALARMA REAL ACTIVADA: $taskTitle (ID: $taskId)');
         debugPrint('⏰ Tiempo programado: $scheduledTime');
 
         // Mostrar pantalla completa de alarma automáticamente
@@ -87,14 +88,15 @@ class RealAlarmService {
     }
   }
 
-  /// Detiene la alarma que está sonando actualmente
+  /// Detiene el SONIDO de la alarma que está sonando actualmente
+  /// Mantiene la notificación visual como recordatorio para el usuario
   static Future<bool> stopCurrentAlarm() async {
     try {
       final success = await _channel.invokeMethod('stopAlarm');
-      debugPrint('🛑 Alarma detenida: $success');
+      debugPrint('🛑 Sonido de alarma detenido (notificación mantenida): $success');
       return success ?? false;
     } catch (e) {
-      debugPrint('❌ Error al detener alarma: $e');
+      debugPrint('❌ Error al detener sonido de alarma: $e');
       return false;
     }
   }
