@@ -93,7 +93,8 @@ class RealAlarmService {
   static Future<bool> stopCurrentAlarm() async {
     try {
       final success = await _channel.invokeMethod('stopAlarm');
-      debugPrint('🛑 Sonido de alarma detenido (notificación mantenida): $success');
+      debugPrint(
+          '🛑 Sonido de alarma detenido (notificación mantenida): $success');
       return success ?? false;
     } catch (e) {
       debugPrint('❌ Error al detener sonido de alarma: $e');

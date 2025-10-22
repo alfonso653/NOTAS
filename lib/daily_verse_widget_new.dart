@@ -64,28 +64,30 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   Future<void> _shareContent(String text, String subtitle, bool isVerse) async {
     try {
       print('🔄 Iniciando captura de screenshot...');
-      
+
       final RenderRepaintBoundary boundary = screenshotKey.currentContext!
           .findRenderObject() as RenderRepaintBoundary;
-      
+
       // Capturar el widget como imagen
       final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
       print('📸 Imagen capturada con éxito');
-      
-      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      
+
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+
       if (byteData != null) {
         final Uint8List imageBytes = byteData.buffer.asUint8List();
         print('💾 Bytes de imagen generados: ${imageBytes.length} bytes');
-        
+
         // Guardar en directorio temporal
         final Directory tempDir = await getTemporaryDirectory();
-        final String fileName = 'verse_${DateTime.now().millisecondsSinceEpoch}.png';
+        final String fileName =
+            'verse_${DateTime.now().millisecondsSinceEpoch}.png';
         final File imageFile = File('${tempDir.path}/$fileName');
-        
+
         await imageFile.writeAsBytes(imageBytes);
         print('📁 Imagen guardada en: ${imageFile.path}');
-        
+
         // Compartir la imagen
         final XFile xFile = XFile(imageFile.path);
         await Share.shareXFiles(
@@ -93,7 +95,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
           text: 'Compartido desde app de notas',
           subject: isVerse ? 'Versículo del día' : 'Reflexión del día',
         );
-        
+
         print('✅ Imagen compartida exitosamente');
       } else {
         print('❌ Error: No se pudieron obtener los bytes de la imagen');
@@ -159,7 +161,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                       particleAnimation.value * 50 - 25,
                     ),
                     child: Opacity(
-                      opacity: 0.1 + (sin(particleAnimation.value + index) * 0.1),
+                      opacity:
+                          0.1 + (sin(particleAnimation.value + index) * 0.1),
                       child: Icon(
                         isVerse ? Icons.auto_awesome : Icons.bubble_chart,
                         color: Colors.white,
@@ -252,7 +255,9 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                                 color: Colors.black87,
                                 height: 1.4,
                                 fontFamily: 'serif',
-                                fontStyle: isVerse ? FontStyle.normal : FontStyle.italic,
+                                fontStyle: isVerse
+                                    ? FontStyle.normal
+                                    : FontStyle.italic,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -261,7 +266,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
 
                             // Subtítulo estilizado
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
                               decoration: BoxDecoration(
                                 color: (isVerse
                                         ? const Color(0xFF374151)

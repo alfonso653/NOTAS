@@ -595,7 +595,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   void _showFullScreenText(
       BuildContext context, String text, String subtitle, bool isVerse) {
     final GlobalKey screenshotKey = GlobalKey();
-    
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true, // ✅ PERMITE CERRAR TOCANDO FUERA
@@ -649,69 +649,67 @@ class _FullScreenTextDialog extends StatelessWidget {
   Future<void> _shareContent(String text, String subtitle, bool isVerse) async {
     try {
       print('🔄 Iniciando captura de screenshot...');
-      
+
       // Verificar que el context existe
       if (screenshotKey.currentContext == null) {
         print('❌ Error: screenshotKey.currentContext es null');
         throw Exception('Context no disponible');
       }
-      
+
       // 📸 Capturar screenshot del widget
       RenderRepaintBoundary boundary = screenshotKey.currentContext!
           .findRenderObject() as RenderRepaintBoundary;
-      
+
       print('🎯 RenderRepaintBoundary encontrado: ${boundary.size}');
-      
+
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       print('📸 Imagen capturada: ${image.width}x${image.height}');
-      
-      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+      ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
         print('❌ Error: No se pudo convertir imagen a ByteData');
         throw Exception('Error al procesar imagen');
       }
-      
+
       Uint8List pngBytes = byteData.buffer.asUint8List();
       print('💾 Bytes de imagen generados: ${pngBytes.length} bytes');
-      
+
       // 💾 Guardar imagen temporalmente
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'verse_${timestamp}.png';
       final file = await File('${tempDir.path}/$fileName').create();
       await file.writeAsBytes(pngBytes);
-      
+
       print('✅ Imagen guardada en: ${file.path}');
       print('📊 Tamaño del archivo: ${await file.length()} bytes');
-      
+
       // 📤 Compartir imagen
       final subject = isVerse ? 'Versículo del día' : 'Reflexión del día';
-      final message = isVerse 
+      final message = isVerse
           ? '✝️ Compartiendo la palabra de Dios desde mi aplicación Emeth Agenda'
           : '� Compartiendo desde Emeth Agenda';
-      
+
       print('🚀 Iniciando compartir con ShareXFiles...');
       await Share.shareXFiles(
         [XFile(file.path)],
         text: message,
         subject: subject,
       );
-      
+
       print('✅ Screenshot compartido exitosamente como imagen');
-      
     } catch (e, stackTrace) {
       print('❌ Error al capturar screenshot: $e');
       print('📋 Stack trace: $stackTrace');
-      
+
       // 📝 Fallback a texto si falla el screenshot
-      final content = isVerse 
-          ? '$text\n\n— $subtitle'
-          : '$text\n\n— $subtitle';
-      
+      final content = isVerse ? '$text\n\n— $subtitle' : '$text\n\n— $subtitle';
+
       final message = isVerse
           ? '🙏 Versículo del día:\n\n$content\n\n✨ Compartido desde mi app de notas'
           : '💭 Reflexión del día:\n\n$content\n\n✨ Compartido desde mi app de notas';
-      
+
       print('📝 Compartiendo como texto (fallback)');
       await Share.share(
         message,
@@ -758,71 +756,73 @@ class _FullScreenTextDialog extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Botones superiores: Compartir y Cerrar
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // 📱 Botón de compartir (esquina superior izquierda) - GRANDE para dedos grandes
-                        IconButton(
-                          onPressed: () => _shareContent(text, subtitle, isVerse),
-                          icon: Container(
-                            padding: const EdgeInsets.all(16), // Más padding para dedos grandes
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(
-                              Icons.share,
-                              color: Colors.white,
-                              size: 28, // Ícono más grande
-                            ),
-                          ),
-                          tooltip: 'Compartir',
-                        ),
-                        // 📖 Ícono central
-                        Icon(
-                          isVerse ? Icons.menu_book : Icons.auto_awesome,
-                          color: Colors.white.withOpacity(0.8),
-                          size: 24,
-                        ),
-                        // ❌ Botón de cerrar (esquina superior derecha)
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                          tooltip: 'Cerrar',
-                        ),
-                      ],
-                    ),
-
-                    // Espacio flexible
-                    const Spacer(flex: 1),
-
-                    // 📝 Texto principal con animación - NO CERRAR AL TOCAR
-                    GestureDetector(
-                      onTap: () {}, // 🛑 ABSORBER toques en la tarjeta (no cerrar)
-                      child: RepaintBoundary(
-                        key: screenshotKey,
-                        child: Container(
-                          padding: const EdgeInsets.all(32),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Botones superiores: Compartir y Cerrar
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // 📱 Botón de compartir (esquina superior izquierda) - GRANDE para dedos grandes
+                      IconButton(
+                        onPressed: () => _shareContent(text, subtitle, isVerse),
+                        icon: Container(
+                          padding: const EdgeInsets.all(
+                              16), // Más padding para dedos grandes
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 20,
-                                spreadRadius: 5,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Column(
+                          child: const Icon(
+                            Icons.share,
+                            color: Colors.white,
+                            size: 28, // Ícono más grande
+                          ),
+                        ),
+                        tooltip: 'Compartir',
+                      ),
+                      // 📖 Ícono central
+                      Icon(
+                        isVerse ? Icons.menu_book : Icons.auto_awesome,
+                        color: Colors.white.withOpacity(0.8),
+                        size: 24,
+                      ),
+                      // ❌ Botón de cerrar (esquina superior derecha)
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        tooltip: 'Cerrar',
+                      ),
+                    ],
+                  ),
+
+                  // Espacio flexible
+                  const Spacer(flex: 1),
+
+                  // 📝 Texto principal con animación - NO CERRAR AL TOCAR
+                  GestureDetector(
+                    onTap:
+                        () {}, // 🛑 ABSORBER toques en la tarjeta (no cerrar)
+                    child: RepaintBoundary(
+                      key: screenshotKey,
+                      child: Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.95),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 20,
+                              spreadRadius: 5,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // Texto principal
@@ -834,7 +834,9 @@ class _FullScreenTextDialog extends StatelessWidget {
                                 color: Colors.black87,
                                 height: 1.4,
                                 fontFamily: 'serif',
-                                fontStyle: isVerse ? FontStyle.normal : FontStyle.italic,
+                                fontStyle: isVerse
+                                    ? FontStyle.normal
+                                    : FontStyle.italic,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -868,7 +870,7 @@ class _FullScreenTextDialog extends StatelessWidget {
                           ], // Cierre del children del Column
                         ), // Cierre del Column
                       ), // Cierre del Container
-                    ), // Cierre del RepaintBoundary  
+                    ), // Cierre del RepaintBoundary
                   ), // Cierre del GestureDetector
 
                   const SizedBox(height: 40),
@@ -888,7 +890,7 @@ class _FullScreenTextDialog extends StatelessWidget {
                   ),
 
                   const SizedBox(height: 20),
-                  
+
                   // Espacio flexible para centrar el contenido
                   const Spacer(flex: 1),
                 ], // Cierre del children del Column principal

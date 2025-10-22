@@ -38,6 +38,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.3
+  flutter_native_splash: ^2.3.10
 
 flutter:
   uses-material-design: true
@@ -48,6 +49,7 @@ flutter:
     - assets/IA.png
     - assets/agenda_icon.png
     - assets/agenda.png
+    - assets/splash/
     - assets/dots.png
     - assets/grid.png
     - assets/lines.png
@@ -91,3 +93,20 @@ flutter:
         - asset: assets/fonts/Nunito-BoldItalic.ttf
           weight: 700
           style: italic
+
+# Configuración del Splash Screen
+flutter_native_splash:
+  # Color de fondo del splash screen
+  color: "#FEF7F0"
+  # Imagen del splash (tu logo principal)
+  image: assets/splash/logo.png
+  # Color del logo si es monocromático (opcional)
+  color_dark: "#2E3A59"
+  # Configuración para Android
+  android_12:
+    image: assets/splash/logo.png
+    color: "#FEF7F0"
+  # Configuración para iOS
+  ios:
+    image: assets/splash/logo.png
+    color: "#FEF7F0"

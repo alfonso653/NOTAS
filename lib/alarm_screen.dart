@@ -125,11 +125,12 @@ class _AlarmScreenState extends State<AlarmScreen>
     try {
       // Detener solo el SONIDO de la alarma nativa (mantener notificación visual)
       await RealAlarmService.stopCurrentAlarm();
-      debugPrint('🛑 Sonido de alarma detenido - notificación mantenida como recordatorio');
+      debugPrint(
+          '🛑 Sonido de alarma detenido - notificación mantenida como recordatorio');
     } catch (e) {
       debugPrint('❌ Error al detener sonido de alarma: $e');
     }
-    
+
     // Cerrar la pantalla
     Navigator.of(context).pop();
   }
@@ -138,8 +139,9 @@ class _AlarmScreenState extends State<AlarmScreen>
     try {
       // Detener solo el SONIDO de la alarma actual (mantener notificación)
       await RealAlarmService.stopCurrentAlarm();
-      debugPrint('🛑 Sonido de alarma detenido para posponer - notificación mantenida');
-      
+      debugPrint(
+          '🛑 Sonido de alarma detenido para posponer - notificación mantenida');
+
       // Programar nueva alarma en 5 minutos
       final newAlarmTime = DateTime.now().add(const Duration(minutes: 5));
       await RealAlarmService.scheduleRealAlarm(
@@ -147,19 +149,20 @@ class _AlarmScreenState extends State<AlarmScreen>
         taskTitle: '⏰ ${widget.taskTitle} (Pospuesta)',
         scheduledTime: newAlarmTime,
       );
-      
+
       debugPrint('⏰ Nueva alarma programada para: $newAlarmTime');
     } catch (e) {
       debugPrint('❌ Error al posponer alarma: $e');
     }
-    
+
     // Cerrar pantalla
     Navigator.of(context).pop();
 
     // Mostrar confirmación
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('⏰ Alarma pospuesta por 5 minutos - Notificación mantenida como recordatorio'),
+        content: Text(
+            '⏰ Alarma pospuesta por 5 minutos - Notificación mantenida como recordatorio'),
         duration: Duration(seconds: 4),
       ),
     );
@@ -176,217 +179,218 @@ class _AlarmScreenState extends State<AlarmScreen>
           gradient: _getBackgroundGradient(),
         ),
         child: SafeArea(
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Ícono de alarma animado
-              AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _pulseAnimation.value,
-                    child: Container(
-                      width: isSmallScreen ? 120 : 150,
-                      height: isSmallScreen ? 120 : 150,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 25,
-                            spreadRadius: 0,
-                            offset: const Offset(0, 8),
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Ícono de alarma animado
+                AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _pulseAnimation.value,
+                      child: Container(
+                        width: isSmallScreen ? 120 : 150,
+                        height: isSmallScreen ? 120 : 150,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.95),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 25,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 8),
+                            ),
+                            BoxShadow(
+                              color: _getAccentColor().withOpacity(0.3),
+                              blurRadius: 15,
+                              spreadRadius: -5,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          widget.alarmType == 'before'
+                              ? Icons.access_time_rounded
+                              : Icons.check_circle_outline_rounded,
+                          size: isSmallScreen ? 70 : 90,
+                          color: _getAccentColor(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                // Mensaje principal animado
+                AnimatedBuilder(
+                  animation: _shakeAnimation,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(_shakeAnimation.value, 0),
+                      child: Column(
+                        children: [
+                          Text(
+                            _getAlarmMessage(),
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 28 : 36,
+                              fontWeight: FontWeight.w300,
+                              color: Colors.white,
+                              height: 1.2,
+                              letterSpacing: 0.5,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          BoxShadow(
-                            color: _getAccentColor().withOpacity(0.3),
-                            blurRadius: 15,
-                            spreadRadius: -5,
+                          const SizedBox(height: 24),
+
+                          // Información de la tarea
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  widget.taskTitle,
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 22 : 28,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    fontFamily: 'Georgia',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+
+                                if (widget.taskDescription.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    widget.taskDescription,
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 16 : 18,
+                                      color: Colors.white.withOpacity(0.9),
+                                      height: 1.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+
+                                const SizedBox(height: 16),
+
+                                // Hora de la tarea
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    DateFormat('HH:mm - dd/MM/yyyy')
+                                        .format(widget.taskDateTime),
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 16 : 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      child: Icon(
-                        widget.alarmType == 'before'
-                            ? Icons.access_time_rounded
-                            : Icons.check_circle_outline_rounded,
-                        size: isSmallScreen ? 70 : 90,
-                        color: _getAccentColor(),
-                      ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
 
-              // Mensaje principal animado
-              AnimatedBuilder(
-                animation: _shakeAnimation,
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(_shakeAnimation.value, 0),
-                    child: Column(
-                      children: [
-                        Text(
-                          _getAlarmMessage(),
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 28 : 36,
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white,
-                            height: 1.2,
-                            letterSpacing: 0.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Información de la tarea
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                widget.taskTitle,
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 22 : 28,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                  fontFamily: 'Georgia',
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-
-                              if (widget.taskDescription.isNotEmpty) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  widget.taskDescription,
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 16 : 18,
-                                    color: Colors.white.withOpacity(0.9),
-                                    height: 1.2,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-
-                              const SizedBox(height: 16),
-
-                              // Hora de la tarea
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  DateFormat('HH:mm - dd/MM/yyyy')
-                                      .format(widget.taskDateTime),
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 16 : 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-
-              // Botones de acción
-              Column(
-                children: [
-                  // Botón principal - Detener
-                  SizedBox(
-                    width: double.infinity,
-                    height: isSmallScreen ? 65 : 75,
-                    child: ElevatedButton(
-                      onPressed: _dismissAlarm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: _getAccentColor(),
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ).copyWith(
-                        overlayColor: MaterialStateProperty.all(
-                          _getAccentColor().withOpacity(0.1),
-                        ),
-                      ),
-                      child: Text(
-                        widget.alarmType == 'before'
-                            ? '✅ ENTENDIDO'
-                            : '✅ COMPLETADO',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 20 : 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Botón secundario - Posponer (solo para alarmas previas)
-                  if (widget.alarmType == 'before')
+                // Botones de acción
+                Column(
+                  children: [
+                    // Botón principal - Detener
                     SizedBox(
                       width: double.infinity,
-                      height: isSmallScreen ? 55 : 65,
-                      child: OutlinedButton(
-                        onPressed: _snoozeAlarm,
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.1),
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white, width: 2),
-                          elevation: 4,
-                          shadowColor: Colors.black.withOpacity(0.2),
+                      height: isSmallScreen ? 65 : 75,
+                      child: ElevatedButton(
+                        onPressed: _dismissAlarm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: _getAccentColor(),
+                          elevation: 0,
+                          shadowColor: Colors.transparent,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
+                        ).copyWith(
+                          overlayColor: MaterialStateProperty.all(
+                            _getAccentColor().withOpacity(0.1),
+                          ),
                         ),
                         child: Text(
-                          '⏰ POSPONER 5 MIN',
+                          widget.alarmType == 'before'
+                              ? '✅ ENTENDIDO'
+                              : '✅ COMPLETADO',
                           style: TextStyle(
-                            fontSize: isSmallScreen ? 16 : 18,
-                            fontWeight: FontWeight.w600,
+                            fontSize: isSmallScreen ? 20 : 24,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                     ),
-                ],
-              ),
-            ],
+
+                    const SizedBox(height: 16),
+
+                    // Botón secundario - Posponer (solo para alarmas previas)
+                    if (widget.alarmType == 'before')
+                      SizedBox(
+                        width: double.infinity,
+                        height: isSmallScreen ? 55 : 65,
+                        child: OutlinedButton(
+                          onPressed: _snoozeAlarm,
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.1),
+                            foregroundColor: Colors.white,
+                            side:
+                                const BorderSide(color: Colors.white, width: 2),
+                            elevation: 4,
+                            shadowColor: Colors.black.withOpacity(0.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Text(
+                            '⏰ POSPONER 5 MIN',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 16 : 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

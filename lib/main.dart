@@ -16,6 +16,7 @@ import 'notification_service.dart';
 import 'notebook_provider.dart';
 import 'alarm_screen_service.dart';
 import 'real_alarm_service.dart';
+import 'welcome_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,9 +69,37 @@ class NotesApp extends StatelessWidget {
           splashColor: const Color(0xFFFFFFFF),
           highlightColor: const Color(0xFFFFFFFF).withOpacity(0),
         ),
-        home: const HomeScreen(),
+        home: const AppInitializer(),
       ),
     );
+  }
+}
+
+/// Inicializador de la aplicación que maneja la secuencia:
+/// Splash Screen (nativo) → Welcome Screen → Home Screen
+class AppInitializer extends StatefulWidget {
+  const AppInitializer({super.key});
+
+  @override
+  State<AppInitializer> createState() => _AppInitializerState();
+}
+
+class _AppInitializerState extends State<AppInitializer> {
+  bool _showWelcome = true;
+
+  void _onWelcomeComplete() {
+    setState(() {
+      _showWelcome = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showWelcome) {
+      return WelcomeScreen(onComplete: _onWelcomeComplete);
+    } else {
+      return const HomeScreen();
+    }
   }
 }
 
@@ -542,18 +571,19 @@ class _HomeScreenState extends State<HomeScreen> {
   void _testAlarm() async {
     try {
       final testTime = DateTime.now().add(const Duration(seconds: 5));
-      
+
       // Programar alarma de prueba
       final success = await RealAlarmService.scheduleRealAlarm(
         taskId: 'test_${DateTime.now().millisecondsSinceEpoch}',
         taskTitle: '🧪 Prueba de Alarma',
         scheduledTime: testTime,
       );
-      
+
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🚨 Alarma de prueba programada para ${testTime.hour}:${testTime.minute.toString().padLeft(2, '0')}'),
+            content: Text(
+                '🚨 Alarma de prueba programada para ${testTime.hour}:${testTime.minute.toString().padLeft(2, '0')}'),
             duration: const Duration(seconds: 3),
             backgroundColor: Colors.green[600],
           ),
@@ -810,14 +840,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       // 🚨 Botón flotante de prueba de alarmas (solo en Agenda)
-      floatingActionButton: _selectedIndex == 1 ? FloatingActionButton(
-        mini: true,
-        backgroundColor: Colors.red[600],
-        foregroundColor: Colors.white,
-        onPressed: _testAlarm,
-        tooltip: 'Probar Alarma en 5 seg',
-        child: const Icon(Icons.alarm, size: 20),
-      ) : null,
+      floatingActionButton: _selectedIndex == 1
+          ? FloatingActionButton(
+              mini: true,
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              onPressed: _testAlarm,
+              tooltip: 'Probar Alarma en 5 seg',
+              child: const Icon(Icons.alarm, size: 20),
+            )
+          : null,
     );
   }
 }
