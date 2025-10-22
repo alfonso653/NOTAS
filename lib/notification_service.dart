@@ -417,7 +417,18 @@ class NotificationService {
     int? minutesBefore,
     int? minutesAfter,
   }) async {
+    // 🐛 LOGS DE DEBUGGING DETALLADOS
+    debugPrint('🔍 =================================');
+    debugPrint('🔍 INICIANDO scheduleTaskNotification');
+    debugPrint('🔍 TaskID: $taskId');
+    debugPrint('🔍 TaskTitle: $taskTitle');
+    debugPrint('🔍 TaskDateTime: $taskDateTime');
+    debugPrint('🔍 MinutesBefore: $minutesBefore');
+    debugPrint('🔍 MinutesAfter: $minutesAfter');
+    debugPrint('🔍 =================================');
+
     if (!_initialized) {
+      debugPrint('🔍 NotificationService no inicializado, inicializando...');
       await initialize();
     }
 
@@ -434,23 +445,35 @@ class NotificationService {
 
       // Determinar si es antes o después
       if (minutesBefore != null) {
-        notificationTime = minutesBefore == 0
-            ? taskDateTime
-            : taskDateTime.subtract(Duration(minutes: minutesBefore));
+        debugPrint('🔍 Usando minutesBefore: $minutesBefore');
+        if (minutesBefore == 0) {
+          // Si es "en el momento", programar para dentro de 1 minuto desde ahora para evitar problemas de timing
+          final now = DateTime.now();
+          notificationTime = now.add(Duration(minutes: 1));
+          debugPrint('🔍 "En el momento" ajustado a 1 minuto desde ahora: $notificationTime');
+        } else {
+          notificationTime = taskDateTime.subtract(Duration(minutes: minutesBefore));
+        }
+        debugPrint('🔍 NotificationTime calculado: $notificationTime');
       } else if (minutesAfter != null) {
+        debugPrint('🔍 Usando minutesAfter: $minutesAfter');
         notificationTime = taskDateTime.add(Duration(minutes: minutesAfter));
+        debugPrint('🔍 NotificationTime calculado: $notificationTime');
       } else {
-        debugPrint('⚠️ No hay tiempo configurado para la notificación');
+        debugPrint('⚠️ ERROR: No hay tiempo configurado para la notificación');
+        debugPrint('⚠️ minutesBefore: $minutesBefore, minutesAfter: $minutesAfter');
         return false; // No hay tiempo configurado
       }
 
-      // Solo programar si la fecha es futura (con margen de 1 minuto)
-      final now = DateTime.now();
-      if (notificationTime.isBefore(now.subtract(Duration(minutes: 1)))) {
+      // Solo programar si la fecha es futura (con margen de seguridad)
+      final currentTime2 = DateTime.now();
+      debugPrint('🔍 Verificando tiempo: $notificationTime vs ahora: $currentTime2');
+      if (notificationTime.isBefore(currentTime2.add(Duration(seconds: 10)))) {
         debugPrint(
-            '⚠️ La fecha de notificación ya pasó: $notificationTime (actual: $now)');
+            '⚠️ RECHAZADO: La fecha de notificación está muy cerca o ya pasó: $notificationTime (actual: $currentTime2)');
         return false;
       }
+      debugPrint('🔍 ✅ Tiempo válido, continuando...');
 
       // Crear el mensaje de la NOTIFICACIÓN ¡SÚPER SONORA!
       String title = '� ¡RECORDATORIO SÚPER SONORO!';
@@ -522,29 +545,28 @@ class NotificationService {
       // Programar la NOTIFICACIÓN (ID con sufijo _notification)
       final notificationId = '${taskId}_notification'.hashCode.abs();
 
-      // Crear TZDateTime de forma más segura - método actualizado
-      final scheduledDate = tz.TZDateTime(
-        tz.local,
-        notificationTime.year,
-        notificationTime.month,
-        notificationTime.day,
-        notificationTime.hour,
-        notificationTime.minute,
-        notificationTime.second,
-        notificationTime.millisecond,
-      );
-
-      await _notifications.zonedSchedule(
-        notificationId,
-        title,
-        body,
-        scheduledDate,
-        notificationDetails,
-        payload: 'notification_$taskId',
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
+      // USAR EL MÉTODO QUE SÍ FUNCIONA: Timer + showNotificationBar
+      final now = DateTime.now();
+      final timeUntilNotification = notificationTime.difference(now);
+      
+      debugPrint('🔍 Programando con Timer: $timeUntilNotification desde ahora');
+      debugPrint('🔍 Notificación llegará en: ${timeUntilNotification.inMinutes} min ${timeUntilNotification.inSeconds % 60} seg');
+      
+      if (timeUntilNotification.isNegative || timeUntilNotification.inSeconds < 5) {
+        debugPrint('⚠️ RECHAZADO: Tiempo muy pequeño o negativo: $timeUntilNotification');
+        return false;
+      }
+      
+      // COMENTADO - MÉTODO PROBLEMÁTICO
+      // Timer(timeUntilNotification, () async {
+      //   debugPrint('🔔 ⏰ EJECUTANDO NOTIFICACIÓN PROGRAMADA: $taskTitle');
+      //   await showNotificationBar(
+      //     title: '🔔 EMETH AGENDA - Recordatorio',
+      //     body: 'Recordatorio: $taskTitle',
+      //   );
+      // });
+      
+      debugPrint('⚠️ USANDO NotificationFix en su lugar');
 
       debugPrint(
           '� ¡NOTIFICACIÓN SÚPER SONORA programada para: $notificationTime!');
@@ -555,9 +577,12 @@ class NotificationService {
       } else {
         debugPrint('� Tiempo: $minutesAfter min después (¡SÚPER SONORO!)');
       }
+      debugPrint('🎉 ¡NOTIFICACIÓN SÚPER SONORA PROGRAMADA EXITOSAMENTE!');
+      debugPrint('🔍 =================================');
       return true;
     } catch (e) {
       debugPrint('❌ Error al programar notificación: $e');
+      debugPrint('🔍 =================================');
       return false;
     }
   }
@@ -621,33 +646,50 @@ class NotificationService {
     }
   }
 
-  /// Muestra una notificación inmediata (para testing)
-  static Future<void> showTestNotification() async {
+  /// ✨ NUEVA FUNCIÓN: Mostrar notificación en la barra superior
+  static Future<void> showNotificationBar({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
     try {
       if (!_initialized) {
         await initialize();
         if (!_initialized) {
-          debugPrint('❌ No se pudo inicializar el servicio para la prueba');
+          debugPrint('❌ No se pudo inicializar para mostrar notificación');
           return;
         }
       }
 
+      // Pedir permisos si no los tenemos
+      await requestPermissionsIfNeeded();
+
+      // Configuración específica para OPPO y Android moderno
       final androidDetails = AndroidNotificationDetails(
-        'test_channel',
-        '🧪 Notificaciones de Prueba',
-        channelDescription: 'Canal para probar notificaciones básicas',
-        importance: Importance.high,
-        priority: Priority.high,
+        'task_notifications_silent', // Usar canal de notificaciones
+        '🔔 NOTIFICACIONES EMETH AGENDA',
+        channelDescription: 'Recordatorios y notificaciones de EMETH AGENDA',
+        importance: Importance.high, // ALTA importancia
+        priority: Priority.high, // ALTA prioridad
         enableVibration: true,
         playSound: true,
         autoCancel: true,
-        fullScreenIntent: false, // No es un despertador, solo una prueba
+        ongoing: false, // Que se pueda descartar
+        fullScreenIntent: false, // Solo en barra de notificaciones
+        showWhen: true,
+        when: DateTime.now().millisecondsSinceEpoch,
+        usesChronometer: false,
+        icon: '@mipmap/ic_launcher', // Usar ícono de la app
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        styleInformation: const BigTextStyleInformation(''),
+        visibility: NotificationVisibility.public,
       );
 
       const iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
+        badgeNumber: 1,
       );
 
       final notificationDetails = NotificationDetails(
@@ -655,14 +697,50 @@ class NotificationService {
         iOS: iosDetails,
       );
 
+      // Generar ID único basado en timestamp
+      final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
       await _notifications.show(
-        999,
-        '🧪 Notificación de Prueba',
-        '✅ Las notificaciones están funcionando correctamente',
+        notificationId,
+        title,
+        body,
         notificationDetails,
+        payload: payload,
       );
 
-      debugPrint('✅ Notificación de prueba enviada');
+      debugPrint('✅ Notificación enviada a la barra: $title');
+    } catch (e) {
+      debugPrint('❌ Error al mostrar notificación en barra: $e');
+    }
+  }
+
+  /// ✨ NUEVA FUNCIÓN: Mostrar notificación de recordatorio
+  static Future<void> showReminderNotification({
+    required String taskTitle,
+    required String reminderText,
+    String? taskId,
+  }) async {
+    try {
+      await showNotificationBar(
+        title: 'EMETH AGENDA - Recordatorio',
+        body: '$taskTitle: $reminderText',
+        payload: taskId != null ? 'reminder_$taskId' : null,
+      );
+      debugPrint('📝 Recordatorio enviado: $taskTitle');
+    } catch (e) {
+      debugPrint('❌ Error al mostrar recordatorio: $e');
+    }
+  }
+
+  /// Muestra una notificación inmediata (para testing)
+  static Future<void> showTestNotification() async {
+    try {
+      await showNotificationBar(
+        title: '🧪 EMETH AGENDA - Prueba',
+        body: '✅ Las notificaciones están funcionando correctamente en la barra superior',
+        payload: 'test_notification',
+      );
+      debugPrint('✅ Notificación de prueba enviada a la barra');
     } catch (e) {
       debugPrint('❌ Error en notificación de prueba: $e');
     }

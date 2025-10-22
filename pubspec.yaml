@@ -1,5 +1,5 @@
-name: notes_module
-description: Módulo de notas diseñado para integrarse en tu aplicación de Biblia. Incluye pantallas y proveedores para crear, listar y editar notas con fondos personalizables.
+name: emeth_agenda
+description: EMETH AGENDA - Tu agenda personal con notas, recordatorios y planificación diaria.
 version: 1.0.0+1
 
 environment:
@@ -39,6 +39,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^2.0.3
   flutter_native_splash: ^2.3.10
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -96,17 +97,22 @@ flutter:
 
 # Configuración del Splash Screen
 flutter_native_splash:
-  # Color de fondo del splash screen
   color: "#FEF7F0"
-  # Imagen del splash (tu logo principal)
-  image: assets/splash/logo.png
-  # Color del logo si es monocromático (opcional)
-  color_dark: "#2E3A59"
-  # Configuración para Android
-  android_12:
-    image: assets/splash/logo.png
-    color: "#FEF7F0"
-  # Configuración para iOS
-  ios:
-    image: assets/splash/logo.png
-    color: "#FEF7F0"
+  # Cuando tengas tu logo PNG, descomenta la siguiente línea:
+  # image: assets/splash/logo.png
+
+# Configuración del Ícono de la App
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  web:
+    generate: true
+    image_path: "assets/icon.png"
+  windows:
+    generate: true
+    image_path: "assets/icon.png"
+  macos:
+    generate: true
+    image_path: "assets/icon.png"

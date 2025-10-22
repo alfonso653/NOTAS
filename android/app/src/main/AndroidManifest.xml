@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <application
-        android:label="notes_module"
+        android:label="EMETH AGENDA"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:provider/provider.dart';
@@ -16,7 +17,6 @@ import 'notification_service.dart';
 import 'notebook_provider.dart';
 import 'alarm_screen_service.dart';
 import 'real_alarm_service.dart';
-import 'welcome_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +68,8 @@ class NotesApp extends StatelessWidget {
           fontFamily: 'Roboto',
           splashColor: const Color(0xFFFFFFFF),
           highlightColor: const Color(0xFFFFFFFF).withOpacity(0),
+          // Configuración para splash screen
+          scaffoldBackgroundColor: const Color(0xFFFEF7F0),
         ),
         home: const AppInitializer(),
       ),
@@ -76,7 +78,7 @@ class NotesApp extends StatelessWidget {
 }
 
 /// Inicializador de la aplicación que maneja la secuencia:
-/// Splash Screen (nativo) → Welcome Screen → Home Screen
+/// Splash Personalizado (5s) → App Principal
 class AppInitializer extends StatefulWidget {
   const AppInitializer({super.key});
 
@@ -85,21 +87,82 @@ class AppInitializer extends StatefulWidget {
 }
 
 class _AppInitializerState extends State<AppInitializer> {
-  bool _showWelcome = true;
+  bool _showCustomSplash = true;
+  double _splashOpacity = 1.0; // Empezar visible directamente
+  
+  @override
+  void initState() {
+    super.initState();
+    _startSplashSequence();
+  }
 
-  void _onWelcomeComplete() {
+  void _startSplashSequence() async {
+    // Mostrar tu splash inmediatamente por 6 segundos
+    await Future.delayed(const Duration(seconds: 6));
+    
+    // Solo fade-out rápido al final
     setState(() {
-      _showWelcome = false;
+      _splashOpacity = 0.0;
+    });
+    
+    // Transición rápida y directa a la app
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    // Restaurar la barra de estado y cambiar a la app
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    
+    setState(() {
+      _showCustomSplash = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_showWelcome) {
-      return WelcomeScreen(onComplete: _onWelcomeComplete);
+    if (_showCustomSplash) {
+      return _buildCustomSplash();
     } else {
       return const HomeScreen();
     }
+  }
+
+  Widget _buildCustomSplash() {
+    // Pantalla completa sin barras del sistema
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+    
+    return Scaffold(
+      body: AnimatedOpacity(
+        opacity: _splashOpacity,
+        duration: const Duration(milliseconds: 300), // Transición más suave
+        curve: Curves.easeOut, // Curva optimizada para salida
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Colors.black, // Fondo negro simple
+          child: Image.asset(
+            'assets/splash/splash.gif', // Tu GIF expandido
+            fit: BoxFit.cover, // Cubrir toda la pantalla
+            width: double.infinity,
+            height: double.infinity,
+            // Configuración para GIF:
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback si no encuentra la imagen
+              return Container(
+                color: Colors.black,
+                child: const Center(
+                  child: Icon(
+                    Icons.note_alt_outlined,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -608,6 +671,42 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // 📱 NUEVA FUNCIÓN: Probar notificaciones de la barra superior
+  void _testNotification() async {
+    try {
+      // Probar notificación inmediata en la barra
+      await NotificationService.showNotificationBar(
+        title: '🔔 EMETH AGENDA - Prueba',
+        body: '✅ Esta notificación debería aparecer en la barra superior de tu OPPO',
+        payload: 'test_notification_bar',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('📱 Notificación enviada a la barra superior - Revisa arriba'),
+          duration: const Duration(seconds: 4),
+          backgroundColor: Colors.blue[600],
+        ),
+      );
+
+      // También probar un recordatorio
+      await Future.delayed(const Duration(seconds: 2));
+      await NotificationService.showReminderNotification(
+        taskTitle: 'Prueba de Recordatorio',
+        reminderText: 'Este es un recordatorio de prueba para verificar que funciona',
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al enviar notificación: $e'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -839,15 +938,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      // 🚨 Botón flotante de prueba de alarmas (solo en Agenda)
+      // � Botón flotante de prueba de NOTIFICACIONES (solo en Agenda)
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton(
               mini: true,
-              backgroundColor: Colors.red[600],
+              backgroundColor: Colors.blue[600],
               foregroundColor: Colors.white,
-              onPressed: _testAlarm,
-              tooltip: 'Probar Alarma en 5 seg',
-              child: const Icon(Icons.alarm, size: 20),
+              onPressed: _testNotification,
+              tooltip: 'Probar Notificación Barra',
+              child: const Icon(Icons.notifications, size: 20),
             )
           : null,
     );

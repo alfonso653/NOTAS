@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'pending.dart';
 import 'notification_service.dart';
+import 'notification_fix.dart';
 import 'notebook_screen.dart';
 import 'real_alarm_service.dart';
 
@@ -1970,8 +1971,17 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                   );
 
                                   try {
+                                    debugPrint('🔍 CONFIGURANDO NOTIFICACIÓN INDIVIDUAL');
+                                    debugPrint('🔍 hasNotif: $hasNotif');
+                                    debugPrint('🔍 taskId: ${task.id}');
+                                    debugPrint('🔍 taskTitle: ${task.title}');
+                                    debugPrint('🔍 taskDateTime: ${task.dateTime}');
+                                    debugPrint('🔍 before: $before');
+                                    debugPrint('🔍 after: $after');
+                                    
                                     if (hasNotif) {
-                                      await NotificationService
+                                      debugPrint('🔍 LLAMANDO NotificationFix...');
+                                      final result = await NotificationFix
                                           .scheduleTaskNotification(
                                         taskId: task.id,
                                         taskTitle: task.title,
@@ -1979,12 +1989,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                         minutesBefore: before,
                                         minutesAfter: after,
                                       );
+                                      debugPrint('🔍 RESULTADO NotificationFix: $result');
                                     } else {
+                                      debugPrint('🔍 CANCELANDO notificación...');
                                       await NotificationService
                                           .cancelTaskNotification(task.id);
                                     }
                                   } catch (e) {
-                                    debugPrint('Notification error: $e');
+                                    debugPrint('❌ Notification error: $e');
                                   }
                                 }
 
