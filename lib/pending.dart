@@ -108,18 +108,23 @@ class PendingTask {
 
   /// Duración de la tarea en minutos
   int get durationInMinutes {
-    if (endDateTime == null) return 60; // Duración por defecto de 1 hora
+    if (endDateTime == null) return 0; // Sin duración específica
     return endDateTime!.difference(dateTime).inMinutes;
   }
 
   /// Verifica si la tarea ocurre en una hora específica (considerando minutos)
   bool occursInHour(int hour) {
+    // Si no tiene hora final, solo ocurre en su hora específica
+    if (endDateTime == null) {
+      return dateTime.hour == hour;
+    }
+    
     final hourStart =
         DateTime(dateTime.year, dateTime.month, dateTime.day, hour);
     final hourEnd = hourStart.add(const Duration(hours: 1));
 
     final taskStart = dateTime;
-    final taskEnd = endDateTime ?? dateTime.add(const Duration(hours: 1));
+    final taskEnd = endDateTime!;
 
     final overlaps = taskStart.isBefore(hourEnd) && taskEnd.isAfter(hourStart);
     return overlaps;
@@ -127,12 +132,17 @@ class PendingTask {
 
   /// Obtiene la porción de la tarea que ocurre en una hora específica (0.0 a 1.0)
   double getPortionInHour(int hour) {
+    // Si no tiene hora final, es una tarea puntual (no abarca porción)
+    if (endDateTime == null) {
+      return dateTime.hour == hour ? 0.0 : 0.0;
+    }
+    
     final hourStart =
         DateTime(dateTime.year, dateTime.month, dateTime.day, hour);
     final hourEnd = hourStart.add(const Duration(hours: 1));
 
     final taskStart = dateTime;
-    final taskEnd = endDateTime ?? dateTime.add(const Duration(hours: 1));
+    final taskEnd = endDateTime!;
 
     final start = taskStart.isAfter(hourStart) ? taskStart : hourStart;
     final end = taskEnd.isBefore(hourEnd) ? taskEnd : hourEnd;
