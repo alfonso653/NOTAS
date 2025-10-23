@@ -26,10 +26,12 @@ class TaskRangeInfo {
 /// Pantalla de vista diaria con franjas horarias
 class DayViewScreen extends StatefulWidget {
   final DateTime selectedDate;
+  final String? targetTaskId; // Tarea específica a mostrar
 
   const DayViewScreen({
     super.key,
     required this.selectedDate,
+    this.targetTaskId, // Parámetro opcional
   });
 
   @override
@@ -45,8 +47,39 @@ class _DayViewScreenState extends State<DayViewScreen> {
     super.initState();
     _scrollController = ScrollController();
 
-    // Removido: scroll automático a la hora actual
-    // Ahora siempre se queda en la primera hora (00:00)
+    // Si hay una tarea específica, hacer scroll hacia ella
+    if (widget.targetTaskId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToTargetTask();
+      });
+    }
+  }
+
+  void _scrollToTargetTask() {
+    if (widget.targetTaskId == null) return;
+    
+    final provider = Provider.of<PendingProvider>(context, listen: false);
+    final tasks = _getTasksForDay(provider.tasks);
+    
+    // Buscar la tarea específica
+    final targetTask = tasks.where((task) => task.id == widget.targetTaskId).firstOrNull;
+    if (targetTask == null) return;
+    
+    // Calcular la hora de la tarea
+    final taskHour = targetTask.dateTime.hour;
+    
+    // Expandir la hora donde está la tarea
+    setState(() {
+      _expandedHours.add(taskHour);
+    });
+    
+    // Hacer scroll hacia esa hora (cada hora son aproximadamente 60px)
+    final scrollOffset = taskHour * 60.0;
+    _scrollController.animateTo(
+      scrollOffset,
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -112,8 +145,14 @@ class _DayViewScreenState extends State<DayViewScreen> {
                 tooltip: 'Cuaderno del día',
               ),
               IconButton(
-                icon: const Icon(Icons.add, color: Color(0xFF374151)),
-                onPressed: () => _showAddTaskDialog(context, provider),
+                icon: const Icon(Icons.add, color: Colors.black, size: 28),
+                onPressed: () {
+                  // 🕐 FUNCIONALIDAD ESPECIAL: Crear tarea con hora actual exacta
+                  final now = DateTime.now();
+                  _showAddTaskDialog(context, provider,
+                      hour: now.hour, minute: now.minute);
+                },
+                tooltip: 'Crear tarea ahora',
               ),
             ],
           ),
@@ -486,7 +525,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
     for (var task in tasks) {
       // Solo procesar tareas que tienen hora final específica
       if (task.endDateTime == null) continue;
-      
+
       final DateTime taskEnd = task.endDateTime!;
       if (taskEnd.isAfter(task.dateTime) && task.occursInHour(hour)) {
         final current = DateTime(2025, 1, 1, hour, minute);
@@ -918,7 +957,7 @@ class _DayViewScreenState extends State<DayViewScreen> {
     if (task.endDateTime == null) {
       return _formatTime12Hour(task.dateTime.hour, task.dateTime.minute);
     }
-    
+
     final end = task.endDateTime!;
 
     // Si la hora final fue asignada automáticamente, solo mostrar la hora inicial cuando corresponda
@@ -1971,16 +2010,19 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                   );
 
                                   try {
-                                    debugPrint('🔍 CONFIGURANDO NOTIFICACIÓN INDIVIDUAL');
+                                    debugPrint(
+                                        '🔍 CONFIGURANDO NOTIFICACIÓN INDIVIDUAL');
                                     debugPrint('🔍 hasNotif: $hasNotif');
                                     debugPrint('🔍 taskId: ${task.id}');
                                     debugPrint('🔍 taskTitle: ${task.title}');
-                                    debugPrint('🔍 taskDateTime: ${task.dateTime}');
+                                    debugPrint(
+                                        '🔍 taskDateTime: ${task.dateTime}');
                                     debugPrint('🔍 before: $before');
                                     debugPrint('🔍 after: $after');
-                                    
+
                                     if (hasNotif) {
-                                      debugPrint('🔍 LLAMANDO NotificationFix...');
+                                      debugPrint(
+                                          '🔍 LLAMANDO NotificationFix...');
                                       final result = await NotificationFix
                                           .scheduleTaskNotification(
                                         taskId: task.id,
@@ -1989,9 +2031,11 @@ class _DayViewScreenState extends State<DayViewScreen> {
                                         minutesBefore: before,
                                         minutesAfter: after,
                                       );
-                                      debugPrint('🔍 RESULTADO NotificationFix: $result');
+                                      debugPrint(
+                                          '🔍 RESULTADO NotificationFix: $result');
                                     } else {
-                                      debugPrint('🔍 CANCELANDO notificación...');
+                                      debugPrint(
+                                          '🔍 CANCELANDO notificación...');
                                       await NotificationService
                                           .cancelTaskNotification(task.id);
                                     }

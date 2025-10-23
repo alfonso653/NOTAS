@@ -118,7 +118,7 @@ class PendingTask {
     if (endDateTime == null) {
       return dateTime.hour == hour;
     }
-    
+
     final hourStart =
         DateTime(dateTime.year, dateTime.month, dateTime.day, hour);
     final hourEnd = hourStart.add(const Duration(hours: 1));
@@ -136,7 +136,7 @@ class PendingTask {
     if (endDateTime == null) {
       return dateTime.hour == hour ? 0.0 : 0.0;
     }
-    
+
     final hourStart =
         DateTime(dateTime.year, dateTime.month, dateTime.day, hour);
     final hourEnd = hourStart.add(const Duration(hours: 1));

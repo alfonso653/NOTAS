@@ -22,7 +22,7 @@ class NotificationFix {
     DateTime notificationTime;
     if (minutesBefore != null) {
       notificationTime = minutesBefore == 0
-          ? taskDateTime  // Exactamente a la hora de la tarea
+          ? taskDateTime // Exactamente a la hora de la tarea
           : taskDateTime.subtract(Duration(minutes: minutesBefore));
     } else if (minutesAfter != null) {
       notificationTime = taskDateTime.add(Duration(minutes: minutesAfter));
@@ -33,9 +33,10 @@ class NotificationFix {
 
     final now = DateTime.now();
     final diff = notificationTime.difference(now);
-    
+
     debugPrint('🔍 NotificationTime: $notificationTime');
-    debugPrint('🔍 Tiempo hasta notificación: ${diff.inMinutes} min ${diff.inSeconds % 60} seg');
+    debugPrint(
+        '🔍 Tiempo hasta notificación: ${diff.inMinutes} min ${diff.inSeconds % 60} seg');
 
     if (diff.isNegative || diff.inSeconds < 5) {
       debugPrint('⚠️ RECHAZADO: Tiempo muy pequeño');

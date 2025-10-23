@@ -112,7 +112,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final taskDate = task.dateTime;
       return taskDate.year == targetYear &&
           taskDate.month == targetMonth &&
-          taskDate.day == targetDay;
+          taskDate.day == targetDay &&
+          !task.completed; // 🎯 SOLO tareas NO completadas para el contador
     }).toList();
 
     // Ordenar las tareas por hora y minuto

@@ -17,6 +17,7 @@ import 'notification_service.dart';
 import 'notebook_provider.dart';
 import 'alarm_screen_service.dart';
 import 'real_alarm_service.dart';
+import 'monthly_tasks_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -89,7 +90,7 @@ class AppInitializer extends StatefulWidget {
 class _AppInitializerState extends State<AppInitializer> {
   bool _showCustomSplash = true;
   double _splashOpacity = 1.0; // Empezar visible directamente
-  
+
   @override
   void initState() {
     super.initState();
@@ -99,18 +100,18 @@ class _AppInitializerState extends State<AppInitializer> {
   void _startSplashSequence() async {
     // Mostrar tu splash inmediatamente por 6 segundos
     await Future.delayed(const Duration(seconds: 6));
-    
+
     // Solo fade-out rápido al final
     setState(() {
       _splashOpacity = 0.0;
     });
-    
+
     // Transición rápida y directa a la app
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     // Restaurar la barra de estado y cambiar a la app
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    
+
     setState(() {
       _showCustomSplash = false;
     });
@@ -128,7 +129,7 @@ class _AppInitializerState extends State<AppInitializer> {
   Widget _buildCustomSplash() {
     // Pantalla completa sin barras del sistema
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-    
+
     return Scaffold(
       body: AnimatedOpacity(
         opacity: _splashOpacity,
@@ -519,109 +520,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showSearchDialog() async {
-    final categorias = [
-      '',
-      'Sermón',
-      'Estudio Bíblico',
-      'Reflexión',
-      'Devocional',
-      'Testimonio',
-      'Apuntes Generales',
-      'Discipulado',
-      'Conexion',
-      'Música',
-      'Cita',
-      'Versículo',
-      'Oración',
-      'Culto',
-      'Otro',
-    ];
-    String tempQuery = _searchQuery;
-    String tempCategory = _searchCategory;
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (context) {
-        final queryController = TextEditingController(text: tempQuery);
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Buscar'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'Nombre, fecha o palabra clave',
-                      suffixIcon: tempQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                setState(() {
-                                  tempQuery = '';
-                                  queryController.clear();
-                                });
-                              },
-                            )
-                          : null,
-                    ),
-                    onChanged: (v) => setState(() => tempQuery = v),
-                    controller: queryController,
-                    onSubmitted: (v) => Navigator.of(context).pop({
-                      'query': v,
-                      'category': tempCategory,
-                    }),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: tempCategory,
-                    items: categorias
-                        .map((cat) => DropdownMenuItem(
-                              value: cat,
-                              child: Text(
-                                  cat.isEmpty ? 'Todas las categorías' : cat),
-                            ))
-                        .toList(),
-                    onChanged: (v) => setState(() => tempCategory = v ?? ''),
-                    decoration: const InputDecoration(
-                      labelText: 'Categoría',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      tempQuery = '';
-                      tempCategory = '';
-                      queryController.clear();
-                    });
-                    Navigator.of(context).pop({'query': '', 'category': ''});
-                  },
-                  child: const Text('Quitar filtros'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop({
-                    'query': tempQuery,
-                    'category': tempCategory,
-                  }),
-                  child: const Text('Buscar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+  void _showMonthlyTasksView() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const MonthlyTasksView(),
+      ),
     );
-    if (result != null) {
-      setState(() {
-        _searchQuery = result['query']?.trim() ?? '';
-        _searchCategory = result['category'] ?? '';
-      });
-    }
+  }
+
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Buscar Notas'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Buscar en notas...',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) {
+                // Aquí puedes implementar la búsqueda en notas
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onItemTapped(int index) {
@@ -677,13 +610,15 @@ class _HomeScreenState extends State<HomeScreen> {
       // Probar notificación inmediata en la barra
       await NotificationService.showNotificationBar(
         title: '🔔 EMETH AGENDA - Prueba',
-        body: '✅ Esta notificación debería aparecer en la barra superior de tu OPPO',
+        body:
+            '✅ Esta notificación debería aparecer en la barra superior de tu OPPO',
         payload: 'test_notification_bar',
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('📱 Notificación enviada a la barra superior - Revisa arriba'),
+          content: const Text(
+              '📱 Notificación enviada a la barra superior - Revisa arriba'),
           duration: const Duration(seconds: 4),
           backgroundColor: Colors.blue[600],
         ),
@@ -693,9 +628,9 @@ class _HomeScreenState extends State<HomeScreen> {
       await Future.delayed(const Duration(seconds: 2));
       await NotificationService.showReminderNotification(
         taskTitle: 'Prueba de Recordatorio',
-        reminderText: 'Este es un recordatorio de prueba para verificar que funciona',
+        reminderText:
+            'Este es un recordatorio de prueba para verificar que funciona',
       );
-
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -769,8 +704,8 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: Image.asset('assets/lupa.png', width: 28, height: 28),
-            onPressed: _showSearchDialog,
-            tooltip: 'Buscar',
+            onPressed: _selectedIndex == 0 ? _showSearchDialog : _showMonthlyTasksView,
+            tooltip: _selectedIndex == 0 ? 'Buscar notas' : 'Ver tareas del mes',
           ),
         ],
       ),

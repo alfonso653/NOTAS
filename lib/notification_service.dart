@@ -450,9 +450,11 @@ class NotificationService {
           // Si es "en el momento", programar para dentro de 1 minuto desde ahora para evitar problemas de timing
           final now = DateTime.now();
           notificationTime = now.add(Duration(minutes: 1));
-          debugPrint('🔍 "En el momento" ajustado a 1 minuto desde ahora: $notificationTime');
+          debugPrint(
+              '🔍 "En el momento" ajustado a 1 minuto desde ahora: $notificationTime');
         } else {
-          notificationTime = taskDateTime.subtract(Duration(minutes: minutesBefore));
+          notificationTime =
+              taskDateTime.subtract(Duration(minutes: minutesBefore));
         }
         debugPrint('🔍 NotificationTime calculado: $notificationTime');
       } else if (minutesAfter != null) {
@@ -461,13 +463,15 @@ class NotificationService {
         debugPrint('🔍 NotificationTime calculado: $notificationTime');
       } else {
         debugPrint('⚠️ ERROR: No hay tiempo configurado para la notificación');
-        debugPrint('⚠️ minutesBefore: $minutesBefore, minutesAfter: $minutesAfter');
+        debugPrint(
+            '⚠️ minutesBefore: $minutesBefore, minutesAfter: $minutesAfter');
         return false; // No hay tiempo configurado
       }
 
       // Solo programar si la fecha es futura (con margen de seguridad)
       final currentTime2 = DateTime.now();
-      debugPrint('🔍 Verificando tiempo: $notificationTime vs ahora: $currentTime2');
+      debugPrint(
+          '🔍 Verificando tiempo: $notificationTime vs ahora: $currentTime2');
       if (notificationTime.isBefore(currentTime2.add(Duration(seconds: 10)))) {
         debugPrint(
             '⚠️ RECHAZADO: La fecha de notificación está muy cerca o ya pasó: $notificationTime (actual: $currentTime2)');
@@ -548,15 +552,19 @@ class NotificationService {
       // USAR EL MÉTODO QUE SÍ FUNCIONA: Timer + showNotificationBar
       final now = DateTime.now();
       final timeUntilNotification = notificationTime.difference(now);
-      
-      debugPrint('🔍 Programando con Timer: $timeUntilNotification desde ahora');
-      debugPrint('🔍 Notificación llegará en: ${timeUntilNotification.inMinutes} min ${timeUntilNotification.inSeconds % 60} seg');
-      
-      if (timeUntilNotification.isNegative || timeUntilNotification.inSeconds < 5) {
-        debugPrint('⚠️ RECHAZADO: Tiempo muy pequeño o negativo: $timeUntilNotification');
+
+      debugPrint(
+          '🔍 Programando con Timer: $timeUntilNotification desde ahora');
+      debugPrint(
+          '🔍 Notificación llegará en: ${timeUntilNotification.inMinutes} min ${timeUntilNotification.inSeconds % 60} seg');
+
+      if (timeUntilNotification.isNegative ||
+          timeUntilNotification.inSeconds < 5) {
+        debugPrint(
+            '⚠️ RECHAZADO: Tiempo muy pequeño o negativo: $timeUntilNotification');
         return false;
       }
-      
+
       // COMENTADO - MÉTODO PROBLEMÁTICO
       // Timer(timeUntilNotification, () async {
       //   debugPrint('🔔 ⏰ EJECUTANDO NOTIFICACIÓN PROGRAMADA: $taskTitle');
@@ -565,7 +573,7 @@ class NotificationService {
       //     body: 'Recordatorio: $taskTitle',
       //   );
       // });
-      
+
       debugPrint('⚠️ USANDO NotificationFix en su lugar');
 
       debugPrint(
@@ -737,7 +745,8 @@ class NotificationService {
     try {
       await showNotificationBar(
         title: '🧪 EMETH AGENDA - Prueba',
-        body: '✅ Las notificaciones están funcionando correctamente en la barra superior',
+        body:
+            '✅ Las notificaciones están funcionando correctamente en la barra superior',
         payload: 'test_notification',
       );
       debugPrint('✅ Notificación de prueba enviada a la barra');
