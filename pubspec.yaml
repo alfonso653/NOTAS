@@ -48,6 +48,7 @@ flutter:
     - assets/agenda_icon.png
     - assets/agenda.png
     - assets/splash/
+    - assets/data/biblia.json
     - assets/dots.png
     - assets/grid.png
     - assets/lines.png
