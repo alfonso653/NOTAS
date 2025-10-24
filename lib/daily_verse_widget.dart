@@ -689,7 +689,7 @@ class _FullScreenTextDialog extends StatelessWidget {
       final subject = isVerse ? 'Versículo del día' : 'Reflexión del día';
       final message = isVerse
           ? '✝️ Compartiendo la palabra de Dios desde mi aplicación Emeth Agenda'
-          : '� Compartiendo desde Emeth Agenda';
+          : '✨ Compartiendo desde Emeth Agenda';
 
       print('🚀 Iniciando compartir con ShareXFiles...');
       await Share.shareXFiles(
@@ -751,150 +751,176 @@ class _FullScreenTextDialog extends StatelessWidget {
             ),
           ),
 
-          // � Contenido principal
+          // 📝 Contenido principal adaptativo
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Botones superiores: Compartir y Cerrar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // 📱 Botón de compartir (esquina superior izquierda) - GRANDE para dedos grandes
-                      IconButton(
-                        onPressed: () => _shareContent(text, subtitle, isVerse),
-                        icon: Container(
-                          padding: const EdgeInsets.all(
-                              16), // Más padding para dedos grandes
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.share,
-                            color: Colors.white,
-                            size: 28, // Ícono más grande
-                          ),
-                        ),
-                        tooltip: 'Compartir',
-                      ),
-                      // 📖 Ícono central
-                      Icon(
-                        isVerse ? Icons.menu_book : Icons.auto_awesome,
-                        color: Colors.white.withOpacity(0.8),
-                        size: 24,
-                      ),
-                      // ❌ Botón de cerrar (esquina superior derecha)
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        tooltip: 'Cerrar',
-                      ),
-                    ],
-                  ),
-
-                  // Espacio flexible
-                  const Spacer(flex: 1),
-
-                  // 📝 Texto principal con animación - NO CERRAR AL TOCAR
-                  GestureDetector(
-                    onTap:
-                        () {}, // 🛑 ABSORBER toques en la tarjeta (no cerrar)
-                    child: RepaintBoundary(
-                      key: screenshotKey,
-                      child: Container(
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 20,
-                              spreadRadius: 5,
-                              offset: const Offset(0, 10),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 📱 Obtener información del dispositivo y configuraciones de accesibilidad
+                final mediaQuery = MediaQuery.of(context);
+                final screenSize = mediaQuery.size;
+                final textScaleFactor = mediaQuery.textScaleFactor;
+                final isLargeText = textScaleFactor > 1.2;
+                final isSmallScreen = screenSize.width < 400 || screenSize.height < 700;
+                
+                // 📏 Calcular tamaños adaptativos
+                final responsivePadding = screenSize.width * 0.04; // 4% del ancho de pantalla
+                final maxContentWidth = screenSize.width * 0.9; // 90% del ancho
+                final baseTextSize = isSmallScreen ? 18.0 : 22.0;
+                final adaptiveTextSize = (baseTextSize / textScaleFactor).clamp(16.0, 28.0);
+                final subtitleSize = (adaptiveTextSize * 0.73).clamp(12.0, 20.0);
+                
+                return SingleChildScrollView(
+                  padding: EdgeInsets.all(responsivePadding),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - (responsivePadding * 2),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Botones superiores: Compartir y Cerrar (adaptativos)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // 📱 Botón de compartir - tamaño adaptativo
+                            IconButton(
+                              onPressed: () => _shareContent(text, subtitle, isVerse),
+                              icon: Container(
+                                padding: EdgeInsets.all(isLargeText ? 20 : 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Icon(
+                                  Icons.share,
+                                  color: Colors.white,
+                                  size: isLargeText ? 32 : 28,
+                                ),
+                              ),
+                              tooltip: 'Compartir',
+                            ),
+                            
+                            // 📖 Ícono central adaptativo
+                            Icon(
+                              isVerse ? Icons.menu_book : Icons.auto_awesome,
+                              color: Colors.white.withOpacity(0.8),
+                              size: isLargeText ? 28 : 24,
+                            ),
+                            
+                            // ❌ Botón de cerrar adaptativo
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: isLargeText ? 32 : 28,
+                              ),
+                              tooltip: 'Cerrar',
                             ),
                           ],
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Texto principal
-                            Text(
-                              text,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                                height: 1.4,
-                                fontFamily: 'serif',
-                                fontStyle: isVerse
-                                    ? FontStyle.normal
-                                    : FontStyle.italic,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
 
-                            const SizedBox(height: 24),
+                        SizedBox(height: screenSize.height * 0.05), // 5% de la altura
 
-                            // Subtítulo (referencia o autor)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                        // 📝 Texto principal con diseño responsivo
+                        GestureDetector(
+                          onTap: () {}, // 🛑 ABSORBER toques en la tarjeta
+                          child: RepaintBoundary(
+                            key: screenshotKey,
+                            child: Container(
+                              width: maxContentWidth,
+                              padding: EdgeInsets.all(isLargeText ? 40 : 32),
+                              margin: EdgeInsets.symmetric(horizontal: responsivePadding),
                               decoration: BoxDecoration(
-                                color: (isVerse
-                                        ? const Color(0xFF374151)
-                                        : const Color(0xFF8B5CF6))
-                                    .withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
+                                color: Colors.white.withOpacity(0.95),
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
                               ),
-                              child: Text(
-                                subtitle,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: isVerse
-                                      ? const Color(0xFF374151)
-                                      : const Color(0xFF8B5CF6),
-                                  fontStyle: FontStyle.italic,
-                                ),
-                                textAlign: TextAlign.center,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Texto principal con tamaño adaptativo
+                                  Text(
+                                    text,
+                                    style: TextStyle(
+                                      fontSize: adaptiveTextSize,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                      height: isLargeText ? 1.6 : 1.4,
+                                      fontFamily: 'serif',
+                                      fontStyle: isVerse
+                                          ? FontStyle.normal
+                                          : FontStyle.italic,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    textScaleFactor: 1.0, // Controlar el escalado manualmente
+                                  ),
+
+                                  SizedBox(height: isLargeText ? 32 : 24),
+
+                                  // Subtítulo adaptativo
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isLargeText ? 20 : 16,
+                                      vertical: isLargeText ? 12 : 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: (isVerse
+                                              ? const Color(0xFF374151)
+                                              : const Color(0xFF8B5CF6))
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      subtitle,
+                                      style: TextStyle(
+                                        fontSize: subtitleSize,
+                                        fontWeight: FontWeight.w600,
+                                        color: isVerse
+                                            ? const Color(0xFF374151)
+                                            : const Color(0xFF8B5CF6),
+                                        fontStyle: FontStyle.italic,
+                                        height: isLargeText ? 1.5 : 1.3,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      textScaleFactor: 1.0, // Controlar el escalado manualmente
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ], // Cierre del children del Column
-                        ), // Cierre del Column
-                      ), // Cierre del Container
-                    ), // Cierre del RepaintBoundary
-                  ), // Cierre del GestureDetector
+                          ),
+                        ),
 
-                  const SizedBox(height: 40),
+                        SizedBox(height: screenSize.height * 0.06), // 6% de la altura
 
-                  // 💡 Indicación para cerrar
-                  Opacity(
-                    opacity: 0.6,
-                    child: Text(
-                      'Toca fuera del texto para cerrar',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.8),
-                        fontWeight: FontWeight.w400,
-                      ),
-                      textAlign: TextAlign.center,
+                        // 💡 Indicación adaptativa para cerrar
+                        Opacity(
+                          opacity: 0.6,
+                          child: Text(
+                            'Toca fuera del texto para cerrar',
+                            style: TextStyle(
+                              fontSize: (14 * textScaleFactor).clamp(12.0, 18.0),
+                              color: Colors.white.withOpacity(0.8),
+                              fontWeight: FontWeight.w400,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+
+                        SizedBox(height: screenSize.height * 0.02), // 2% de la altura
+                      ],
                     ),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // Espacio flexible para centrar el contenido
-                  const Spacer(flex: 1),
-                ], // Cierre del children del Column principal
-              ),
+                );
+              },
             ),
           ),
         ],

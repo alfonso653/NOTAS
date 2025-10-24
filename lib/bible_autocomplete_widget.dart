@@ -14,7 +14,8 @@ class BibleAutoCompleteWidget extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<BibleAutoCompleteWidget> createState() => _BibleAutoCompleteWidgetState();
+  State<BibleAutoCompleteWidget> createState() =>
+      _BibleAutoCompleteWidgetState();
 }
 
 class _BibleAutoCompleteWidgetState extends State<BibleAutoCompleteWidget> {
@@ -35,7 +36,7 @@ class _BibleAutoCompleteWidgetState extends State<BibleAutoCompleteWidget> {
 
   void _onTextChanged() {
     final query = widget.controller.text;
-    
+
     if (query.trim().isEmpty) {
       setState(() {
         _suggestions = [];
@@ -45,8 +46,9 @@ class _BibleAutoCompleteWidgetState extends State<BibleAutoCompleteWidget> {
     }
 
     // Buscar sugerencias
-    final suggestions = BibleService.instance.searchSuggestions(query, maxResults: 8);
-    
+    final suggestions =
+        BibleService.instance.searchSuggestions(query, maxResults: 8);
+
     setState(() {
       _suggestions = suggestions;
       _showSuggestions = suggestions.isNotEmpty;
@@ -55,29 +57,29 @@ class _BibleAutoCompleteWidgetState extends State<BibleAutoCompleteWidget> {
 
   String _formatSuggestion(BibleVerse verse, String query) {
     final cleanQuery = query.trim().toLowerCase();
-    
+
     // Caso 1: Solo escribió libro ("j", "juan") → mostrar solo nombre del libro
     if (!cleanQuery.contains(' ')) {
       return verse.bookName;
     }
-    
+
     final parts = cleanQuery.split(' ');
-    
+
     // Caso 2: Escribió libro + capítulo ("juan 3") → mostrar todos los versículos
     if (parts.length >= 2 && !cleanQuery.contains(':')) {
       final chapterPart = parts[1];
-      
+
       // Si no hay capítulo específico, mostrar capítulos disponibles
       if (chapterPart.isEmpty) {
         return '${verse.bookName} ${verse.chapter}';
       }
-      
+
       // Si hay capítulo, mostrar versículos del capítulo
       return '${verse.reference} - ${verse.text.length > 60 ? verse.text.substring(0, 60) + '...' : verse.text}';
     }
-    
+
     // Caso 3: Referencia completa ("juan 3:16") → mostrar versículo específico
-    final text = verse.text.length > 80 
+    final text = verse.text.length > 80
         ? '${verse.text.substring(0, 80)}...'
         : verse.text;
     return '${verse.reference} - $text';
@@ -138,7 +140,7 @@ class _BibleAutoCompleteWidgetState extends State<BibleAutoCompleteWidget> {
                 ),
               ),
             ),
-            
+
             // Suggestions dropdown
             if (_showSuggestions) ...[
               const SizedBox(height: 8),
@@ -160,8 +162,9 @@ class _BibleAutoCompleteWidgetState extends State<BibleAutoCompleteWidget> {
                   itemCount: _suggestions.length,
                   itemBuilder: (context, index) {
                     final verse = _suggestions[index];
-                    final displayText = _formatSuggestion(verse, widget.controller.text);
-                    
+                    final displayText =
+                        _formatSuggestion(verse, widget.controller.text);
+
                     return InkWell(
                       onTap: () => widget.onVerseSelected(verse),
                       child: Container(

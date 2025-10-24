@@ -572,8 +572,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -636,8 +634,10 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: Image.asset('assets/lupa.png', width: 28, height: 28),
-            onPressed: _selectedIndex == 0 ? _showSearchDialog : _showMonthlyTasksView,
-            tooltip: _selectedIndex == 0 ? 'Buscar notas' : 'Ver tareas del mes',
+            onPressed:
+                _selectedIndex == 0 ? _showSearchDialog : _showMonthlyTasksView,
+            tooltip:
+                _selectedIndex == 0 ? 'Buscar notas' : 'Ver tareas del mes',
           ),
         ],
       ),

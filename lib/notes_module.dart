@@ -414,7 +414,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   // Estado UI
   late AnimationController _blinkController;
   late Animation<double> _blinkAnimation;
-  
+
   // Animation Controller para la biblia
   late AnimationController _bibleAnimationController;
   late Animation<double> _bibleScaleAnimation;
@@ -1441,7 +1441,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   Future<void> _addBibleVerse() async {
     // Cargar biblia si no está cargada
     await BibleService.instance.loadBible();
-    
+
     // Guardar texto actual si existe
     final String currentText = _hiddenController.text.trim();
     if (currentText.isNotEmpty) {
@@ -1463,7 +1463,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     setState(() {
       _showBibleAutocomplete = true;
     });
-    
+
     _bibleController.clear();
     _bibleAnimationController.forward();
   }
@@ -1478,17 +1478,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     setState(() {
       _contentParts.add(_TextPart(
         '📖 ${verse.fullText}',
-        true,  // bold para destacar
+        true, // bold para destacar
         false, // underline
-        null,  // underlineColor
-        true,  // highlight con color bíblico
+        null, // underlineColor
+        true, // highlight con color bíblico
         0xFFF3E8FF, // Color púrpura muy suave
         false, // no es imagen especial
       ));
     });
 
     _saveNote(pop: false);
-    
+
     // Mostrar confirmación
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1520,7 +1520,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     // Buscar versículo
     final verse = BibleService.instance.searchVerse(reference);
-    
+
     if (verse != null) {
       // Reemplazar placeholder con versículo encontrado
       final lastPartIndex = _contentParts.length - 1;
@@ -1528,17 +1528,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         setState(() {
           _contentParts[lastPartIndex] = _TextPart(
             '📖 ${verse.fullText}',
-            true,  // bold para destacar
+            true, // bold para destacar
             false, // underline
-            null,  // underlineColor
-            true,  // highlight con color bíblico
+            null, // underlineColor
+            true, // highlight con color bíblico
             0xFFF3E8FF, // Color púrpura muy suave
             false, // no es imagen especial
           );
         });
         _hiddenController.clear(); // Limpiar el input
         _saveNote(pop: false);
-        
+
         // Mostrar confirmación
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1624,7 +1624,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     if (pop) Navigator.pop(context);
   }
 
-  Widget _buildIconBox({required Widget icon, required VoidCallback onTap}) {
+  Widget _buildIconBox({
+    required Widget icon, 
+    required VoidCallback onTap,
+    bool isActive = false,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -1632,7 +1636,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         width: 56,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isActive ? const Color(0xFF059669) : Colors.white,
           border: Border.all(color: Colors.black12),
           borderRadius: BorderRadius.circular(10),
         ),
@@ -1682,7 +1686,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _bibleScaleAnimation = Tween<double>(
       begin: 0.3,
       end: 1.0,
@@ -1690,7 +1694,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       parent: _bibleAnimationController,
       curve: Curves.elasticOut,
     ));
-    
+
     _bibleOpacityAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -1698,7 +1702,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       parent: _bibleAnimationController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     _bibleSlideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.5),
       end: Offset.zero,
@@ -1760,7 +1764,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       _updateContentRect();
       setState(() {});
       _saveNote(pop: false);
-      
+
       // Cargar biblia en background
       BibleService.instance.loadBible();
     });
@@ -1768,7 +1772,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   void _onAnyChange() {
     setHasUnsavedChanges(true);
-    
+
     // Detectar si estamos en un párrafo bíblico y procesar referencia
     if (_contentParts.isNotEmpty && _contentParts.last.isImage) {
       final currentText = _hiddenController.text.trim();
@@ -1821,1214 +1825,1341 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           backgroundColor: _noteColor,
           // Configuración nativa de Android para animaciones fluidas
           extendBodyBehindAppBar: false,
-      appBar: AppBar(
-        backgroundColor: _noteColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_rounded,
-            size: 22,
-            color: Color(0xFF374151),
-          ),
-          onPressed: () => Navigator.pop(context),
-          tooltip: 'Volver',
-        ),
-        title: const Text(
-          'Editar nota',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: AnimatedBuilder(
-              animation: _blinkAnimation,
-              builder: (context, child) {
-                return IconButton(
-                  icon: Opacity(
-                    opacity: _hasUnsavedChanges ? _blinkAnimation.value : 1.0,
-                    child: Icon(
-                      Icons.save_rounded,
-                      size: 24,
-                      color: _hasUnsavedChanges 
-                          ? const Color(0xFF059669) 
-                          : const Color(0xFF6B7280),
-                    ),
-                  ),
-                  tooltip: 'Guardar',
-                  onPressed: () {
-                    _showSavedSnackbar = true;
-                    setHasUnsavedChanges(false);
-                    _saveNote(pop: false);
+          appBar: AppBar(
+            backgroundColor: _noteColor,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_rounded,
+                size: 22,
+                color: Color(0xFF374151),
+              ),
+              onPressed: () => Navigator.pop(context),
+              tooltip: 'Volver',
+            ),
+            title: const Text(
+              'Editar nota',
+              style:
+                  TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: AnimatedBuilder(
+                  animation: _blinkAnimation,
+                  builder: (context, child) {
+                    return IconButton(
+                      icon: Opacity(
+                        opacity:
+                            _hasUnsavedChanges ? _blinkAnimation.value : 1.0,
+                        child: Icon(
+                          Icons.save_rounded,
+                          size: 24,
+                          color: _hasUnsavedChanges
+                              ? const Color(0xFF059669)
+                              : const Color(0xFF6B7280),
+                        ),
+                      ),
+                      tooltip: 'Guardar',
+                      onPressed: () {
+                        _showSavedSnackbar = true;
+                        setHasUnsavedChanges(false);
+                        _saveNote(pop: false);
+                      },
+                    );
                   },
-                );
-              },
-            ),
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.share_rounded,
-              size: 22,
-              color: Color(0xFF374151),
-            ),
-            tooltip: 'Compartir',
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-                builder: (ctx) => Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      leading: const Text('🟢', style: TextStyle(fontSize: 22)),
-                      title: const Text('Compartir como texto'),
-                      onTap: () async {
-                        Navigator.pop(ctx);
-                        await _shareAsText();
-                      },
-                    ),
-                    ListTile(
-                      leading: const Text('🟡', style: TextStyle(fontSize: 22)),
-                      title: const Text('Compartir como PDF'),
-                      onTap: () async {
-                        Navigator.pop(ctx);
-                        await _shareAsPdf();
-                      },
-                    ),
-                    ListTile(
-                      leading: const Text('🔴', style: TextStyle(fontSize: 22)),
-                      title: const Text('Compartir como imagen'),
-                      onTap: () async {
-                        Navigator.pop(ctx);
-                        await _shareAsImage();
-                      },
-                    ),
-                  ],
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.share_rounded,
+                  size: 22,
+                  color: Color(0xFF374151),
                 ),
-              );
-            },
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(
-              Icons.more_vert_rounded,
-              size: 22,
-              color: Color(0xFF374151),
-            ),
-            tooltip: 'Opciones',
-            onSelected: (value) {
-              switch (value) {
-                case 'skins':
+                tooltip: 'Compartir',
+                onPressed: () {
                   showModalBottomSheet(
                     context: context,
                     shape: const RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.vertical(top: Radius.circular(16)),
                     ),
-                    builder: (_) => SkinPanel(
-                      color: _noteColor,
-                      onColorSelected: (c) {
-                        setState(() {
-                          _noteColor = c;
-                          _saveNote(pop: false);
-                          _scheduleUpdateContentRect();
-                        });
-                      },
-                    ),
-                  );
-                  break;
-                case 'delete':
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Eliminar nota'),
-                      content: const Text(
-                          '¿Estás seguro de que deseas eliminar esta nota?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Cancelar'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            context
-                                .read<NoteProvider>()
-                                .deleteNote(widget.note);
+                    builder: (ctx) => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading:
+                              const Text('🟢', style: TextStyle(fontSize: 22)),
+                          title: const Text('Compartir como texto'),
+                          onTap: () async {
                             Navigator.pop(ctx);
-                            Navigator.pop(context);
+                            await _shareAsText();
                           },
-                          child: const Text('Eliminar',
-                              style: TextStyle(color: Colors.red)),
+                        ),
+                        ListTile(
+                          leading:
+                              const Text('🟡', style: TextStyle(fontSize: 22)),
+                          title: const Text('Compartir como PDF'),
+                          onTap: () async {
+                            Navigator.pop(ctx);
+                            await _shareAsPdf();
+                          },
+                        ),
+                        ListTile(
+                          leading:
+                              const Text('🔴', style: TextStyle(fontSize: 22)),
+                          title: const Text('Compartir como imagen'),
+                          onTap: () async {
+                            Navigator.pop(ctx);
+                            await _shareAsImage();
+                          },
                         ),
                       ],
                     ),
                   );
-                  break;
-              }
-            },
-            itemBuilder: (ctx) => const [
-              PopupMenuItem(value: 'skins', child: Text('Skins y color')),
-              PopupMenuItem(value: 'delete', child: Text('Eliminar nota')),
-            ],
-          ),
-        ],
-      ),
-
-      // ======= BODY: Stack con contenido principal + overlays =======
-      body: RepaintBoundary(
-        key: _noteKey,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // ---- Contenido principal (debajo) ----
-            Column(
-              children: [
-                // Header Flotante Mini - Compacto y elegante
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOutCubic,
-                  margin: EdgeInsets.symmetric(
-                    horizontal: _isHeaderCollapsed ? 50 : 10,
-                    vertical: _isHeaderCollapsed ? 4 : 8,
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: _isHeaderCollapsed ? 8 : 16,
-                    vertical: _isHeaderCollapsed ? 6 : 8,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: _isHeaderCollapsed
-                          ? [
-                              Colors.blue.shade50.withOpacity(0.95),
-                              Colors.white.withOpacity(0.95),
-                            ]
-                          : [
-                              Colors.white.withOpacity(0.85),
-                              Colors.blue.shade50.withOpacity(0.85),
-                            ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius:
-                        BorderRadius.circular(_isHeaderCollapsed ? 20 : 12),
-                    border: Border.all(
-                      color: _isHeaderCollapsed
-                          ? Colors.blue.shade200.withOpacity(0.7)
-                          : Colors.grey.shade300,
-                      width: _isHeaderCollapsed ? 1 : 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black
-                            .withOpacity(_isHeaderCollapsed ? 0.06 : 0.12),
-                        blurRadius: _isHeaderCollapsed ? 3 : 6,
-                        offset: Offset(0, _isHeaderCollapsed ? 1 : 2),
-                        spreadRadius: _isHeaderCollapsed ? 0 : 0.5,
-                      ),
-                    ],
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 350),
-                    transitionBuilder: (child, animation) {
-                      return ScaleTransition(
-                        scale: animation,
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: child,
+                },
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  size: 22,
+                  color: Color(0xFF374151),
+                ),
+                tooltip: 'Opciones',
+                onSelected: (value) {
+                  switch (value) {
+                    case 'skins':
+                      showModalBottomSheet(
+                        context: context,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (_) => SkinPanel(
+                          color: _noteColor,
+                          onColorSelected: (c) {
+                            setState(() {
+                              _noteColor = c;
+                              _saveNote(pop: false);
+                              _scheduleUpdateContentRect();
+                            });
+                          },
                         ),
                       );
-                    },
-                    child: _isHeaderCollapsed
-                        ? _buildMiniFloatingHeader()
-                        : _buildExpandedFloatingHeader(),
-                  ),
-                ),
-
-                // Título y sliders
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
-                  child: Column(
-                    children: [
-                      _editingTitle
-                          ? TextField(
-                              controller: _titleController,
-                              autofocus: true,
-                              textAlign: TextAlign.center,
-                              maxLines: null,
-                              minLines: 1,
-                              decoration: const InputDecoration(
-                                hintText: 'Encabezado',
-                                border: InputBorder.none,
-                                isCollapsed: true,
-                                contentPadding: EdgeInsets.zero,
-                                counterText: '',
-                              ),
-                              style: TextStyle(
-                                fontSize: _titleFontSize,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                              keyboardType: TextInputType.multiline,
-                              textInputAction: TextInputAction.done,
-                              onChanged: (v) => _saveNote(pop: false),
-                              onEditingComplete: () {
-                                setState(() => _editingTitle = false);
-                                _saveNote(pop: false);
+                      break;
+                    case 'delete':
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Eliminar nota'),
+                          content: const Text(
+                              '¿Estás seguro de que deseas eliminar esta nota?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancelar'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                context
+                                    .read<NoteProvider>()
+                                    .deleteNote(widget.note);
+                                Navigator.pop(ctx);
+                                Navigator.pop(context);
                               },
-                            )
-                          : GestureDetector(
-                              onTap: () => setState(() => _editingTitle = true),
-                              child: Center(
-                                child: AutoSizeText(
-                                  _titleController.text.isEmpty
-                                      ? 'Encabezado'
-                                      : _titleController.text,
+                              child: const Text('Eliminar',
+                                  style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                      break;
+                  }
+                },
+                itemBuilder: (ctx) => const [
+                  PopupMenuItem(value: 'skins', child: Text('Skins y color')),
+                  PopupMenuItem(value: 'delete', child: Text('Eliminar nota')),
+                ],
+              ),
+            ],
+          ),
+
+          // ======= BODY: Stack con contenido principal + overlays =======
+          body: RepaintBoundary(
+            key: _noteKey,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // ---- Contenido principal (debajo) ----
+                Column(
+                  children: [
+                    // Header Flotante Mini - Compacto y elegante
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOutCubic,
+                      margin: EdgeInsets.symmetric(
+                        horizontal: _isHeaderCollapsed ? 50 : 10,
+                        vertical: _isHeaderCollapsed ? 4 : 8,
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: _isHeaderCollapsed ? 8 : 16,
+                        vertical: _isHeaderCollapsed ? 6 : 8,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: _isHeaderCollapsed
+                              ? [
+                                  Colors.blue.shade50.withOpacity(0.95),
+                                  Colors.white.withOpacity(0.95),
+                                ]
+                              : [
+                                  Colors.white.withOpacity(0.85),
+                                  Colors.blue.shade50.withOpacity(0.85),
+                                ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius:
+                            BorderRadius.circular(_isHeaderCollapsed ? 20 : 12),
+                        border: Border.all(
+                          color: _isHeaderCollapsed
+                              ? Colors.blue.shade200.withOpacity(0.7)
+                              : Colors.grey.shade300,
+                          width: _isHeaderCollapsed ? 1 : 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black
+                                .withOpacity(_isHeaderCollapsed ? 0.06 : 0.12),
+                            blurRadius: _isHeaderCollapsed ? 3 : 6,
+                            offset: Offset(0, _isHeaderCollapsed ? 1 : 2),
+                            spreadRadius: _isHeaderCollapsed ? 0 : 0.5,
+                          ),
+                        ],
+                      ),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 350),
+                        transitionBuilder: (child, animation) {
+                          return ScaleTransition(
+                            scale: animation,
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _isHeaderCollapsed
+                            ? _buildMiniFloatingHeader()
+                            : _buildExpandedFloatingHeader(),
+                      ),
+                    ),
+
+                    // Título y sliders
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 0),
+                      child: Column(
+                        children: [
+                          _editingTitle
+                              ? TextField(
+                                  controller: _titleController,
+                                  autofocus: true,
                                   textAlign: TextAlign.center,
+                                  maxLines: null,
+                                  minLines: 1,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Encabezado',
+                                    border: InputBorder.none,
+                                    isCollapsed: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    counterText: '',
+                                  ),
                                   style: TextStyle(
                                     fontSize: _titleFontSize,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black87,
                                   ),
-                                  maxLines: 10,
-                                  minFontSize: 10,
-                                  overflow: TextOverflow.visible,
-                                ),
-                              ),
-                            ),
-                      const SizedBox(height: 6),
-
-                      // Slider para el título
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                trackHeight: 2,
-                                thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 6),
-                                overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius: 12),
-                                thumbColor: Colors.black,
-                                activeTrackColor: Colors.black54,
-                                inactiveTrackColor: Colors.black26,
-                              ),
-                              child: Slider(
-                                min: _minTitleFontSize,
-                                max: _maxTitleFontSize,
-                                value: _titleFontSize.clamp(
-                                    _minTitleFontSize, _maxTitleFontSize),
-                                onChanged: (v) {
-                                  setState(() {
-                                    final oldSize = _titleFontSize;
-                                    final newSize = v.clamp(
-                                        _minTitleFontSize, _maxTitleFontSize);
-                                    final scaleFactor = newSize / oldSize;
-
-                                    _titleFontSize = newSize;
-
-                                    for (int i = 0;
-                                        i < _floatingImages.length;
-                                        i++) {
-                                      _floatingImages[i].width *= scaleFactor;
-                                      _floatingImages[i].height *= scaleFactor;
-                                      _floatingImages[i].width =
-                                          _floatingImages[i]
-                                              .width
-                                              .clamp(60.0, 600.0);
-                                      _floatingImages[i].height =
-                                          _floatingImages[i]
-                                              .height
-                                              .clamp(60.0, 600.0);
-                                    }
-                                  });
-                                  _saveNote();
-                                  _scheduleUpdateContentRect();
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Slider para el contenido
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                trackHeight: 2,
-                                thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 6),
-                                overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius: 12),
-                                thumbColor: Colors.blue,
-                                activeTrackColor: Colors.blueAccent,
-                                inactiveTrackColor:
-                                    Colors.blueAccent.withOpacity(0.25),
-                              ),
-                              child: Slider(
-                                min: _minContentFontSize,
-                                max: _maxContentFontSize,
-                                value: _contentFontSize.clamp(
-                                    _minContentFontSize, _maxContentFontSize),
-                                onChanged: (v) {
-                                  setState(() {
-                                    final oldSize = _contentFontSize;
-                                    final newSize = v.clamp(_minContentFontSize,
-                                        _maxContentFontSize);
-                                    final scaleFactor = newSize / oldSize;
-
-                                    _contentFontSize = newSize;
-
-                                    for (int i = 0;
-                                        i < _floatingImages.length;
-                                        i++) {
-                                      _floatingImages[i].width *= scaleFactor;
-                                      _floatingImages[i].height *= scaleFactor;
-                                      _floatingImages[i].width =
-                                          _floatingImages[i]
-                                              .width
-                                              .clamp(60.0, 600.0);
-                                      _floatingImages[i].height =
-                                          _floatingImages[i]
-                                              .height
-                                              .clamp(60.0, 600.0);
-                                    }
-
-                                    for (int i = 0;
-                                        i < _floatingTexts.length;
-                                        i++) {
-                                      _floatingTexts[i].fontSize *= scaleFactor;
-                                      _floatingTexts[i].fontSize =
-                                          _floatingTexts[i]
-                                              .fontSize
-                                              .clamp(8.0, 48.0);
-                                    }
-                                  });
-                                  _saveNote();
-                                  _scheduleUpdateContentRect();
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Contenido + LISTVIEW (llenará el resto)
-                Expanded(
-                  child: Container(
-                    key:
-                        _contentAreaKey, // 📌 Medimos esta caja para el overlay
-                    child: ListView(
-                      controller: _scrollController,
-                      physics: const ClampingScrollPhysics(),
-                      padding: EdgeInsets.fromLTRB(
-                        8,
-                        16,
-                        16,
-                        _bottomBarHeight +
-                            MediaQuery.of(context).padding.bottom +
-                            16,
-                      ),
-                      shrinkWrap: false,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: List.generate(_contentParts.length, (i) {
-                            final part = _contentParts[i];
-
-                            if (part.isImage) {
-                              return const SizedBox.shrink();
-                            }
-
-                            if (_editingPartIndex == i) {
-                              _partControllers[i] ??=
-                                  TextEditingController(text: part.text);
-                              return Focus(
-                                onFocusChange: (hasFocus) {
-                                  if (!hasFocus) {
-                                    setState(() {
-                                      _contentParts[i] = _TextPart(
-                                        _partControllers[i]?.text ?? part.text,
-                                        _contentFormat.bold,
-                                        _contentFormat.underline,
-                                        _contentFormat.underline
-                                            ? _contentFormat
-                                                .underlineColor.value
-                                            : null,
-                                        _contentFormat.highlight,
-                                        _contentFormat.highlight
-                                            ? _contentFormat
-                                                .highlightColor.value
-                                            : null,
-                                        false,
-                                      );
-                                      _editingPartIndex = null;
-                                      _partControllers.remove(i);
-                                    });
-                                    _saveNote();
-                                  }
-                                },
-                                child: TextField(
-                                  controller: _partControllers[i],
-                                  autofocus: true,
-                                  maxLines: null,
-                                  style: TextStyle(
-                                    fontSize: _contentFontSize,
-                                    fontWeight: _contentFormat.bold
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: Colors.black87,
-                                    decoration: _contentFormat.underline
-                                        ? TextDecoration.underline
-                                        : TextDecoration.none,
-                                    decorationColor: _contentFormat.underline
-                                        ? _contentFormat.underlineColor
-                                        : null,
-                                    decorationThickness:
-                                        _contentFormat.underline ? 2.5 : null,
-                                    backgroundColor: _contentFormat.highlight
-                                        ? _contentFormat.highlightColor
-                                        : Colors.transparent,
-                                  ),
-                                  textAlign: TextAlign.left,
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                  ),
-                                  onChanged: (_) => setHasUnsavedChanges(true),
-                                  onSubmitted: (value) {
-                                    setState(() {
-                                      _contentParts[i] = _TextPart(
-                                        value,
-                                        _contentFormat.bold,
-                                        _contentFormat.underline,
-                                        _contentFormat.underline
-                                            ? _contentFormat
-                                                .underlineColor.value
-                                            : null,
-                                        _contentFormat.highlight,
-                                        _contentFormat.highlight
-                                            ? _contentFormat
-                                                .highlightColor.value
-                                            : null,
-                                        false,
-                                      );
-                                      _editingPartIndex = null;
-                                      _partControllers.remove(i);
-                                    });
-                                    _saveNote();
+                                  keyboardType: TextInputType.multiline,
+                                  textInputAction: TextInputAction.done,
+                                  onChanged: (v) => _saveNote(pop: false),
+                                  onEditingComplete: () {
+                                    setState(() => _editingTitle = false);
+                                    _saveNote(pop: false);
                                   },
-                                ),
-                              );
-                            } else {
-                              return LongPressDraggable<int>(
-                                data: i,
-                                feedback: Material(
-                                  color: Colors.transparent,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 2.0, horizontal: 4.0),
-                                    child: RichText(
-                                      text: TextSpan(
-                                        children: [
-                                          TextSpan(
-                                            text: part.text,
-                                            style: TextStyle(
-                                              fontSize: _contentFontSize,
-                                              fontWeight: part.bold
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                              color: Colors.black54,
-                                              decoration: part.underline
-                                                  ? TextDecoration.underline
-                                                  : TextDecoration.none,
-                                              decorationColor: part.underline &&
-                                                      part.underlineColor !=
-                                                          null
-                                                  ? Color(part.underlineColor!)
-                                                  : null,
-                                              decorationThickness:
-                                                  part.underline ? 2.5 : null,
-                                              backgroundColor: part.highlight &&
-                                                      part.highlightColor !=
-                                                          null
-                                                  ? Color(part.highlightColor!)
-                                                  : Colors.transparent,
-                                            ),
-                                          ),
-                                        ],
+                                )
+                              : GestureDetector(
+                                  onTap: () =>
+                                      setState(() => _editingTitle = true),
+                                  child: Center(
+                                    child: AutoSizeText(
+                                      _titleController.text.isEmpty
+                                          ? 'Encabezado'
+                                          : _titleController.text,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: _titleFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
                                       ),
+                                      maxLines: 10,
+                                      minFontSize: 10,
+                                      overflow: TextOverflow.visible,
                                     ),
                                   ),
                                 ),
-                                childWhenDragging: const SizedBox.shrink(),
-                                onDragCompleted: () {},
-                                child: GestureDetector(
-                                  onTap: () => setState(() {
-                                    _editingPartIndex = i;
-                                  }),
-                                  onLongPress: () {
-                                    _showParagraphOptionsPanel(
-                                        context, i, part);
-                                  },
-                                  child: DragTarget<int>(
-                                    onWillAccept: (from) =>
-                                        from != null && from != i,
-                                    onAccept: (from) {
+                          const SizedBox(height: 6),
+
+                          // Slider para el título
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    trackHeight: 2,
+                                    thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 6),
+                                    overlayShape: const RoundSliderOverlayShape(
+                                        overlayRadius: 12),
+                                    thumbColor: Colors.black,
+                                    activeTrackColor: Colors.black54,
+                                    inactiveTrackColor: Colors.black26,
+                                  ),
+                                  child: Slider(
+                                    min: _minTitleFontSize,
+                                    max: _maxTitleFontSize,
+                                    value: _titleFontSize.clamp(
+                                        _minTitleFontSize, _maxTitleFontSize),
+                                    onChanged: (v) {
                                       setState(() {
-                                        final moved =
-                                            _contentParts.removeAt(from);
-                                        _contentParts.insert(
-                                            _dropInsertIndex ?? i, moved);
-                                        _dropInsertIndex = null;
-                                        _saveNote();
+                                        final oldSize = _titleFontSize;
+                                        final newSize = v.clamp(
+                                            _minTitleFontSize,
+                                            _maxTitleFontSize);
+                                        final scaleFactor = newSize / oldSize;
+
+                                        _titleFontSize = newSize;
+
+                                        for (int i = 0;
+                                            i < _floatingImages.length;
+                                            i++) {
+                                          _floatingImages[i].width *=
+                                              scaleFactor;
+                                          _floatingImages[i].height *=
+                                              scaleFactor;
+                                          _floatingImages[i].width =
+                                              _floatingImages[i]
+                                                  .width
+                                                  .clamp(60.0, 600.0);
+                                          _floatingImages[i].height =
+                                              _floatingImages[i]
+                                                  .height
+                                                  .clamp(60.0, 600.0);
+                                        }
                                       });
+                                      _saveNote();
+                                      _scheduleUpdateContentRect();
                                     },
-                                    onLeave: (_) => setState(() {
-                                      _dropInsertIndex = null;
-                                    }),
-                                    builder:
-                                        (context, candidateData, rejectedData) {
-                                      final isActive = candidateData.isNotEmpty;
-                                      return Column(
-                                        children: [
-                                          AnimatedOpacity(
-                                            opacity: isActive ? 1.0 : 0.0,
-                                            duration: const Duration(
-                                                milliseconds: 180),
-                                            child: Container(
-                                              height: 3,
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 12),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue
-                                                    .withOpacity(0.5),
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // Slider para el contenido
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    trackHeight: 2,
+                                    thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 6),
+                                    overlayShape: const RoundSliderOverlayShape(
+                                        overlayRadius: 12),
+                                    thumbColor: Colors.blue,
+                                    activeTrackColor: Colors.blueAccent,
+                                    inactiveTrackColor:
+                                        Colors.blueAccent.withOpacity(0.25),
+                                  ),
+                                  child: Slider(
+                                    min: _minContentFontSize,
+                                    max: _maxContentFontSize,
+                                    value: _contentFontSize.clamp(
+                                        _minContentFontSize,
+                                        _maxContentFontSize),
+                                    onChanged: (v) {
+                                      setState(() {
+                                        final oldSize = _contentFontSize;
+                                        final newSize = v.clamp(
+                                            _minContentFontSize,
+                                            _maxContentFontSize);
+                                        final scaleFactor = newSize / oldSize;
+
+                                        _contentFontSize = newSize;
+
+                                        for (int i = 0;
+                                            i < _floatingImages.length;
+                                            i++) {
+                                          _floatingImages[i].width *=
+                                              scaleFactor;
+                                          _floatingImages[i].height *=
+                                              scaleFactor;
+                                          _floatingImages[i].width =
+                                              _floatingImages[i]
+                                                  .width
+                                                  .clamp(60.0, 600.0);
+                                          _floatingImages[i].height =
+                                              _floatingImages[i]
+                                                  .height
+                                                  .clamp(60.0, 600.0);
+                                        }
+
+                                        for (int i = 0;
+                                            i < _floatingTexts.length;
+                                            i++) {
+                                          _floatingTexts[i].fontSize *=
+                                              scaleFactor;
+                                          _floatingTexts[i].fontSize =
+                                              _floatingTexts[i]
+                                                  .fontSize
+                                                  .clamp(8.0, 48.0);
+                                        }
+                                      });
+                                      _saveNote();
+                                      _scheduleUpdateContentRect();
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Contenido + LISTVIEW (llenará el resto)
+                    Expanded(
+                      child: Container(
+                        key:
+                            _contentAreaKey, // 📌 Medimos esta caja para el overlay
+                        child: ListView(
+                          controller: _scrollController,
+                          physics: const ClampingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            8,
+                            16,
+                            16,
+                            _bottomBarHeight +
+                                MediaQuery.of(context).padding.bottom +
+                                16,
+                          ),
+                          shrinkWrap: false,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children:
+                                  List.generate(_contentParts.length, (i) {
+                                final part = _contentParts[i];
+
+                                if (part.isImage) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                if (_editingPartIndex == i) {
+                                  _partControllers[i] ??=
+                                      TextEditingController(text: part.text);
+                                  return Focus(
+                                    onFocusChange: (hasFocus) {
+                                      if (!hasFocus) {
+                                        setState(() {
+                                          _contentParts[i] = _TextPart(
+                                            _partControllers[i]?.text ??
+                                                part.text,
+                                            _contentFormat.bold,
+                                            _contentFormat.underline,
+                                            _contentFormat.underline
+                                                ? _contentFormat
+                                                    .underlineColor.value
+                                                : null,
+                                            _contentFormat.highlight,
+                                            _contentFormat.highlight
+                                                ? _contentFormat
+                                                    .highlightColor.value
+                                                : null,
+                                            false,
+                                          );
+                                          _editingPartIndex = null;
+                                          _partControllers.remove(i);
+                                        });
+                                        _saveNote();
+                                      }
+                                    },
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      elevation: 0,
+                                      child: TextField(
+                                        controller: _partControllers[i],
+                                        autofocus: false,
+                                        maxLines: null,
+                                      style: TextStyle(
+                                        fontSize: _contentFontSize,
+                                        fontWeight: _contentParts[i].bold
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                        color: Colors.black87,
+                                        decoration: _contentParts[i].underline
+                                            ? TextDecoration.underline
+                                            : TextDecoration.none,
+                                        decorationColor:
+                                            _contentParts[i].underline
+                                                ? Color(_contentParts[i].underlineColor ?? 0xFF9333EA)
+                                                : null,
+                                        decorationThickness:
+                                            _contentParts[i].underline
+                                                ? 2.5
+                                                : null,
+                                        backgroundColor:
+                                            _contentParts[i].highlight
+                                                ? Color(_contentParts[i].highlightColor ?? 0xFFEAB308)
+                                                : Colors.transparent,
+                                      ),
+                                      textAlign: TextAlign.left,
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                      ),
+                                      onChanged: (_) =>
+                                          setHasUnsavedChanges(true),
+                                      onSubmitted: (value) {
+                                        setState(() {
+                                          _contentParts[i] = _TextPart(
+                                            value,
+                                            _contentParts[i].bold,
+                                            _contentParts[i].underline,
+                                            _contentParts[i].underlineColor,
+                                            _contentParts[i].highlight,
+                                            _contentParts[i].highlightColor,
+                                            false,
+                                          );
+                                          _editingPartIndex = null;
+                                          _partControllers.remove(i);
+                                        });
+                                        _saveNote();
+                                      },
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  return LongPressDraggable<int>(
+                                    data: i,
+                                    feedback: Material(
+                                      color: Colors.transparent,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 4.0, horizontal: 8.0),
+                                        child: RichText(
+                                          text: TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text: part.text,
+                                                style: TextStyle(
+                                                  fontSize: _contentFontSize,
+                                                  fontWeight: part.bold
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
+                                                  color: Colors.black54,
+                                                  decoration: part.underline
+                                                      ? TextDecoration.underline
+                                                      : TextDecoration.none,
+                                                  decorationColor: part
+                                                              .underline &&
+                                                          part.underlineColor !=
+                                                              null
+                                                      ? Color(
+                                                          part.underlineColor!)
+                                                      : null,
+                                                  decorationThickness:
+                                                      part.underline
+                                                          ? 2.5
+                                                          : null,
+                                                  backgroundColor: part
+                                                              .highlight &&
+                                                          part.highlightColor !=
+                                                              null
+                                                      ? Color(
+                                                          part.highlightColor!)
+                                                      : Colors.transparent,
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ),
-                                          GestureDetector(
-                                            onTap: () => setState(() {
-                                              _editingPartIndex = i;
-                                            }),
-                                            onLongPress: () {
-                                              _showParagraphOptionsPanel(
-                                                  context, i, part);
-                                            },
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 2.0,
-                                                      horizontal: 4.0),
-                                              child: Align(
-                                                alignment: Alignment.centerLeft,
-                                                child: RichText(
-                                                  text: TextSpan(
-                                                    children: [
-                                                      TextSpan(
-                                                        text: part.text,
-                                                        style: TextStyle(
-                                                          fontSize:
-                                                              _contentFontSize,
-                                                          fontWeight: part.bold
-                                                              ? FontWeight.bold
-                                                              : FontWeight
-                                                                  .normal,
-                                                          color: Colors.black87,
-                                                          decoration: part
-                                                                  .underline
-                                                              ? TextDecoration
-                                                                  .underline
-                                                              : TextDecoration
-                                                                  .none,
-                                                          decorationColor: part
-                                                                      .underline &&
-                                                                  part.underlineColor !=
-                                                                      null
-                                                              ? Color(part
-                                                                  .underlineColor!)
-                                                              : null,
-                                                          decorationThickness:
-                                                              part.underline
-                                                                  ? 2.5
-                                                                  : null,
-                                                          backgroundColor: part
-                                                                      .highlight &&
-                                                                  part.highlightColor !=
-                                                                      null
-                                                              ? Color(part
-                                                                  .highlightColor!)
-                                                              : Colors
-                                                                  .transparent,
-                                                        ),
-                                                      ),
-                                                    ],
+                                        ),
+                                      ),
+                                    ),
+                                    childWhenDragging: const SizedBox.shrink(),
+                                    onDragCompleted: () {},
+                                    child: GestureDetector(
+                                      onTap: () => setState(() {
+                                        _editingPartIndex = i;
+                                      }),
+                                      onLongPress: () {
+                                        _showParagraphOptionsPanel(
+                                            context, i, part);
+                                      },
+                                      child: DragTarget<int>(
+                                        onWillAccept: (from) =>
+                                            from != null && from != i,
+                                        onAccept: (from) {
+                                          setState(() {
+                                            final moved =
+                                                _contentParts.removeAt(from);
+                                            _contentParts.insert(
+                                                _dropInsertIndex ?? i, moved);
+                                            _dropInsertIndex = null;
+                                            _saveNote();
+                                          });
+                                        },
+                                        onLeave: (_) => setState(() {
+                                          _dropInsertIndex = null;
+                                        }),
+                                        builder: (context, candidateData,
+                                            rejectedData) {
+                                          final isActive =
+                                              candidateData.isNotEmpty;
+                                          return Column(
+                                            children: [
+                                              AnimatedOpacity(
+                                                opacity: isActive ? 1.0 : 0.0,
+                                                duration: const Duration(
+                                                    milliseconds: 180),
+                                                child: Container(
+                                                  height: 3,
+                                                  margin: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 12),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.blue
+                                                        .withOpacity(0.5),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            4),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              );
-                            }
-                          }),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Campo de escritura continua
-                        Container(
-                          width: double.infinity,
-                          decoration: const BoxDecoration(
-                            border: Border.fromBorderSide(BorderSide.none),
-                            color: Colors.transparent,
-                          ),
-                          child: TextField(
-                            controller: _hiddenController,
-                            focusNode: _hiddenFocus,
-                            maxLines: null,
-                            minLines: 3,
-                            keyboardType: TextInputType.multiline,
-                            textInputAction: TextInputAction.newline,
-                            cursorColor: Colors.amber,
-                            style: TextStyle(
-                              fontSize: _contentFontSize,
-                              fontWeight: _contentFormat.bold
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: Colors.black87,
-                              decoration: _contentFormat.underline
-                                  ? TextDecoration.underline
-                                  : TextDecoration.none,
-                              decorationColor: _contentFormat.underline
-                                  ? _contentFormat.underlineColor
-                                  : null,
-                              decorationThickness:
-                                  _contentFormat.underline ? 2.5 : null,
-                              backgroundColor: _contentFormat.highlight
-                                  ? _contentFormat.highlightColor
-                                  : Colors.transparent,
-                              height: 1.8,
+                                              GestureDetector(
+                                                onTap: () => setState(() {
+                                                  _editingPartIndex = i;
+                                                }),
+                                                onLongPress: () {
+                                                  _showParagraphOptionsPanel(
+                                                      context, i, part);
+                                                },
+                                                child: Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      vertical: 4.0,
+                                                      horizontal: 8.0),
+                                                  child: Align(
+                                                    alignment:
+                                                        Alignment.centerLeft,
+                                                    child: RichText(
+                                                      text: TextSpan(
+                                                        children: [
+                                                          TextSpan(
+                                                            text: part.text,
+                                                            style: TextStyle(
+                                                              fontSize:
+                                                                  _contentFontSize,
+                                                              fontWeight: part.bold
+                                                                  ? FontWeight
+                                                                      .bold
+                                                                  : FontWeight
+                                                                      .normal,
+                                                              color: Colors
+                                                                  .black87,
+                                                              decoration: part
+                                                                      .underline
+                                                                  ? TextDecoration
+                                                                      .underline
+                                                                  : TextDecoration
+                                                                      .none,
+                                                              decorationColor: part
+                                                                          .underline &&
+                                                                      part.underlineColor !=
+                                                                          null
+                                                                  ? Color(part
+                                                                      .underlineColor!)
+                                                                  : null,
+                                                              decorationThickness:
+                                                                  part.underline
+                                                                      ? 2.5
+                                                                      : null,
+                                                              backgroundColor: part
+                                                                          .highlight &&
+                                                                      part.highlightColor !=
+                                                                          null
+                                                                  ? Color(part
+                                                                      .highlightColor!)
+                                                                  : Colors
+                                                                      .transparent,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }),
                             ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              contentPadding: EdgeInsets.only(
-                                  left: 0, right: 8, top: 10, bottom: 10),
-                              hintText: 'Construye...',
-                              fillColor: Colors.transparent,
-                              filled: true,
-                            ),
-                            textAlign: TextAlign.left,
-                            onChanged: (_) {
-                              _saveNote(pop: false);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                            const SizedBox(height: 8),
 
-            // ---- Área clipeada para imágenes y textos flotantes (limitadas al contenido) ----
-            if (_contentRectInStack != null)
-              Positioned.fromRect(
-                rect: _contentRectInStack!,
-                child: ClipRect(
-                  child: Stack(
-                    children: [
-                      // Imágenes flotantes
-                      ..._floatingImages.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final img = entry.value;
-
-                        final scrollOffset = _scrollController.hasClients
-                            ? _scrollController.offset
-                            : 0.0;
-                        final adjustedY = img.y - scrollOffset;
-
-                        return Positioned(
-                          key: ValueKey('floating_${idx}_${img.filePath}'),
-                          left: img.x,
-                          top: adjustedY,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.deferToChild,
-                            onTap: () {
-                              setState(() {
-                                _activeImageIndex =
-                                    _activeImageIndex == idx ? null : idx;
-                              });
-                              _saveNote(pop: false);
-                            },
-                            onPanStart: (details) {
-                              if (img.isLocked) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        '🔒 Imagen bloqueada. Toca el candado para desbloquear.'),
-                                    duration: Duration(seconds: 2),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                              }
-                            },
-                            onPanUpdate: (details) {
-                              if (!img.isLocked) {
-                                setState(() {
-                                  _floatingImages[idx].x += details.delta.dx;
-                                  _floatingImages[idx].y += details.delta.dy;
-                                });
-                              }
-                            },
-                            onPanEnd: (_) {
-                              if (!img.isLocked) {
-                                _saveNote(pop: false);
-                              }
-                            },
-                            child: _ResizableImage(
-                              filePath: img.filePath,
-                              width: img.width,
-                              height: img.height,
-                              selected: _activeImageIndex == idx,
-                              isLocked: img.isLocked,
-                              onSelect: () {
-                                setState(() {
-                                  _activeImageIndex =
-                                      _activeImageIndex == idx ? null : idx;
-                                });
-                                _saveNote(pop: false);
-                              },
-                              onResize: (w, h) {
-                                setState(() {
-                                  _floatingImages[idx].width = w;
-                                  _floatingImages[idx].height = h;
-                                });
-                                _saveNote(pop: false);
-                              },
-                              onToggleLock: () {
-                                setState(() {
-                                  _floatingImages[idx].isLocked =
-                                      !_floatingImages[idx].isLocked;
-                                });
-                                _saveNote(pop: false);
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(_floatingImages[idx].isLocked
-                                        ? '🔒 Imagen bloqueada'
-                                        : '🔓 Imagen desbloqueada'),
-                                    duration: const Duration(seconds: 2),
-                                    backgroundColor:
-                                        _floatingImages[idx].isLocked
-                                            ? Colors.red.shade400
-                                            : Colors.green.shade400,
-                                  ),
-                                );
-                              },
-                              onDelete: () {
-                                setState(() {
-                                  _floatingImages.removeAt(idx);
-                                  _activeImageIndex = null;
-                                });
-                                _saveNote(pop: false);
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('✅ Imagen eliminada'),
-                                    duration: Duration(seconds: 2),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        );
-                      }),
-
-                      // Textos flotantes
-                      ..._floatingTexts.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final text = entry.value;
-
-                        final scrollOffset = _scrollController.hasClients
-                            ? _scrollController.offset
-                            : 0.0;
-                        final adjustedY = text.y - scrollOffset;
-
-                        return Positioned(
-                          key: ValueKey('floating_text_${idx}_${text.text}'),
-                          left: text.x,
-                          top: adjustedY,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onDoubleTap: () {
-                              _editFloatingText(idx, text);
-                            },
-                            onLongPress: () {
-                              _showFloatingTextOptionsPanel(context, idx, text);
-                            },
-                            onPanUpdate: (details) {
-                              setState(() {
-                                _floatingTexts[idx].x += details.delta.dx;
-                                _floatingTexts[idx].y += details.delta.dy;
-                              });
-                            },
-                            onPanEnd: (_) {
-                              _saveNote(pop: false);
-                            },
-                            child: Container(
-                              width: text.width,
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
+                            // Campo de escritura continua
+                            Container(
+                              width: double.infinity,
+                              decoration: const BoxDecoration(
+                                border: Border.fromBorderSide(BorderSide.none),
                                 color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Text(
-                                text.text,
+                              child: TextField(
+                                controller: _hiddenController,
+                                focusNode: _hiddenFocus,
+                                maxLines: null,
+                                minLines: 3,
+                                keyboardType: TextInputType.multiline,
+                                textInputAction: TextInputAction.newline,
+                                cursorColor: Colors.amber,
                                 style: TextStyle(
-                                  fontSize: text.fontSize,
-                                  fontWeight: text.bold
+                                  fontSize: _contentFontSize,
+                                  fontWeight: _contentFormat.bold
                                       ? FontWeight.bold
                                       : FontWeight.normal,
-                                  decoration: text.underline
+                                  color: Colors.black87,
+                                  decoration: _contentFormat.underline
                                       ? TextDecoration.underline
                                       : TextDecoration.none,
-                                  decorationColor: text.underlineColor != null
-                                      ? Color(text.underlineColor!)
+                                  decorationColor: _contentFormat.underline
+                                      ? _contentFormat.underlineColor
                                       : null,
-                                  backgroundColor: text.highlight &&
-                                          text.highlightColor != null
-                                      ? Color(text.highlightColor!)
-                                      : null,
+                                  decorationThickness:
+                                      _contentFormat.underline ? 2.5 : null,
+                                  backgroundColor: _contentFormat.highlight
+                                      ? _contentFormat.highlightColor
+                                      : Colors.transparent,
+                                  height: 1.8,
                                 ),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  contentPadding: EdgeInsets.only(
+                                      left: 0, right: 8, top: 10, bottom: 10),
+                                  hintText: 'Construye...',
+                                  fillColor: Colors.transparent,
+                                  filled: true,
+                                ),
+                                textAlign: TextAlign.left,
+                                onChanged: (_) {
+                                  _saveNote(pop: false);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // ---- Área clipeada para imágenes y textos flotantes (limitadas al contenido) ----
+                if (_contentRectInStack != null)
+                  Positioned.fromRect(
+                    rect: _contentRectInStack!,
+                    child: ClipRect(
+                      child: Stack(
+                        children: [
+                          // Imágenes flotantes
+                          ..._floatingImages.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final img = entry.value;
+
+                            final scrollOffset = _scrollController.hasClients
+                                ? _scrollController.offset
+                                : 0.0;
+                            final adjustedY = img.y - scrollOffset;
+
+                            return Positioned(
+                              key: ValueKey('floating_${idx}_${img.filePath}'),
+                              left: img.x,
+                              top: adjustedY,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.deferToChild,
+                                onTap: () {
+                                  setState(() {
+                                    _activeImageIndex =
+                                        _activeImageIndex == idx ? null : idx;
+                                  });
+                                  _saveNote(pop: false);
+                                },
+                                onPanStart: (details) {
+                                  if (img.isLocked) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            '🔒 Imagen bloqueada. Toca el candado para desbloquear.'),
+                                        duration: Duration(seconds: 2),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                  }
+                                },
+                                onPanUpdate: (details) {
+                                  if (!img.isLocked) {
+                                    setState(() {
+                                      _floatingImages[idx].x +=
+                                          details.delta.dx;
+                                      _floatingImages[idx].y +=
+                                          details.delta.dy;
+                                    });
+                                  }
+                                },
+                                onPanEnd: (_) {
+                                  if (!img.isLocked) {
+                                    _saveNote(pop: false);
+                                  }
+                                },
+                                child: _ResizableImage(
+                                  filePath: img.filePath,
+                                  width: img.width,
+                                  height: img.height,
+                                  selected: _activeImageIndex == idx,
+                                  isLocked: img.isLocked,
+                                  onSelect: () {
+                                    setState(() {
+                                      _activeImageIndex =
+                                          _activeImageIndex == idx ? null : idx;
+                                    });
+                                    _saveNote(pop: false);
+                                  },
+                                  onResize: (w, h) {
+                                    setState(() {
+                                      _floatingImages[idx].width = w;
+                                      _floatingImages[idx].height = h;
+                                    });
+                                    _saveNote(pop: false);
+                                  },
+                                  onToggleLock: () {
+                                    setState(() {
+                                      _floatingImages[idx].isLocked =
+                                          !_floatingImages[idx].isLocked;
+                                    });
+                                    _saveNote(pop: false);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            _floatingImages[idx].isLocked
+                                                ? '🔒 Imagen bloqueada'
+                                                : '🔓 Imagen desbloqueada'),
+                                        duration: const Duration(seconds: 2),
+                                        backgroundColor:
+                                            _floatingImages[idx].isLocked
+                                                ? Colors.red.shade400
+                                                : Colors.green.shade400,
+                                      ),
+                                    );
+                                  },
+                                  onDelete: () {
+                                    setState(() {
+                                      _floatingImages.removeAt(idx);
+                                      _activeImageIndex = null;
+                                    });
+                                    _saveNote(pop: false);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('✅ Imagen eliminada'),
+                                        duration: Duration(seconds: 2),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          }),
+
+                          // Textos flotantes
+                          ..._floatingTexts.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final text = entry.value;
+
+                            final scrollOffset = _scrollController.hasClients
+                                ? _scrollController.offset
+                                : 0.0;
+                            final adjustedY = text.y - scrollOffset;
+
+                            return Positioned(
+                              key:
+                                  ValueKey('floating_text_${idx}_${text.text}'),
+                              left: text.x,
+                              top: adjustedY,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onDoubleTap: () {
+                                  _editFloatingText(idx, text);
+                                },
+                                onLongPress: () {
+                                  _showFloatingTextOptionsPanel(
+                                      context, idx, text);
+                                },
+                                onPanUpdate: (details) {
+                                  setState(() {
+                                    _floatingTexts[idx].x += details.delta.dx;
+                                    _floatingTexts[idx].y += details.delta.dy;
+                                  });
+                                },
+                                onPanEnd: (_) {
+                                  _saveNote(pop: false);
+                                },
+                                child: Container(
+                                  width: text.width,
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    text.text,
+                                    style: TextStyle(
+                                      fontSize: text.fontSize,
+                                      fontWeight: text.bold
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      decoration: text.underline
+                                          ? TextDecoration.underline
+                                          : TextDecoration.none,
+                                      decorationColor:
+                                          text.underlineColor != null
+                                              ? Color(text.underlineColor!)
+                                              : null,
+                                      backgroundColor: text.highlight &&
+                                              text.highlightColor != null
+                                          ? Color(text.highlightColor!)
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // ===== Capa de dibujo libre - SOLO en área de contenido =====
+                if (_contentRectInStack != null &&
+                    (_drawingStrokes.isNotEmpty || _isDrawingMode))
+                  Positioned.fromRect(
+                    rect: _contentRectInStack!,
+                    child: _isDrawingMode
+                        ? GestureDetector(
+                            onPanStart: _onDrawStart,
+                            onPanUpdate: _onDrawUpdate,
+                            onPanEnd: _onDrawEnd,
+                            behavior: HitTestBehavior.opaque,
+                            child: CustomPaint(
+                              painter: DrawingPainter(
+                                strokes: _drawingStrokes,
+                                currentStroke: _currentStroke,
+                                scrollOffset: currentScroll,
+                              ),
+                            ),
+                          )
+                        : IgnorePointer(
+                            child: CustomPaint(
+                              painter: DrawingPainter(
+                                strokes: _drawingStrokes,
+                                currentStroke: null,
+                                scrollOffset: currentScroll,
                               ),
                             ),
                           ),
-                        );
-                      }),
-                    ],
                   ),
+              ],
+            ),
+          ),
+
+          // ======= BARRA INFERIOR =======
+          bottomNavigationBar: AnimatedPadding(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.fastOutSlowIn,
+            padding: EdgeInsets.only(
+                left: 10,
+                right: 10,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 8),
+            child: SafeArea(
+              top: false,
+              minimum: EdgeInsets.zero,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.fastOutSlowIn,
+                height: 90, // Altura fija para 2 filas
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 6,
+                        offset: Offset(0, 2)),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // PRIMERA FILA - 4 botones de formato
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Botón A - Texto Normal
+                          _buildIconBox(
+                            isActive: (!_contentFormat.bold && !_contentFormat.underline && !_contentFormat.highlight),
+                            icon: Container(
+                              width: 24,
+                              height: 24,
+                              alignment: Alignment.center,
+                              child: Text(
+                                'A',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.normal,
+                                  color: (!_contentFormat.bold && !_contentFormat.underline && !_contentFormat.highlight)
+                                      ? Colors.white
+                                      : const Color(0xFF4F46E5),
+                                ),
+                              ),
+                            ),
+                            onTap: () {
+                              // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                              final String currentText = _hiddenController.text.trim();
+                              if (currentText.isNotEmpty) {
+                                // Guardar texto actual con formato anterior
+                                setState(() {
+                                  _contentParts.add(_TextPart(
+                                    currentText,
+                                    _contentFormat.bold,
+                                    _contentFormat.underline,
+                                    _contentFormat.underline
+                                        ? _contentFormat.underlineColor.value
+                                        : null,
+                                    _contentFormat.highlight,
+                                    _contentFormat.highlight
+                                        ? _contentFormat.highlightColor.value
+                                        : null,
+                                    false,
+                                  ));
+                                });
+                                _hiddenController.clear();
+                              }
+
+                              // Cambiar a formato normal
+                              setState(() {
+                                _contentFormat = _contentFormat.copyWith(
+                                  bold: false,
+                                  underline: false,
+                                  highlight: false,
+                                );
+                              });
+                              _saveNote(pop: false);
+                              // Mantener foco en el texto
+                              FocusScope.of(context).requestFocus(_hiddenFocus);
+                            },
+                          ),
+                    _buildIconBox(
+                      isActive: _contentFormat.bold,
+                      icon: Icon(
+                        Icons.format_bold_rounded,
+                        size: 24,
+                        color: _contentFormat.bold
+                            ? Colors.white
+                            : const Color(0xFF4F46E5),
+                      ),
+                      onTap: () {
+                        // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                        final String currentText =
+                            _hiddenController.text.trim();
+                        if (currentText.isNotEmpty) {
+                          // Guardar texto actual con formato anterior
+                          setState(() {
+                            _contentParts.add(_TextPart(
+                              currentText,
+                              _contentFormat.bold,
+                              _contentFormat.underline,
+                              _contentFormat.underline
+                                  ? _contentFormat.underlineColor.value
+                                  : null,
+                              _contentFormat.highlight,
+                              _contentFormat.highlight
+                                  ? _contentFormat.highlightColor.value
+                                  : null,
+                              false,
+                            ));
+                          });
+                          _hiddenController.clear();
+                        }
+
+                        // Cambiar formato para texto nuevo
+                        setState(() {
+                          _contentFormat = _contentFormat.copyWith(
+                            bold: !_contentFormat.bold,
+                          );
+                        });
+                        _saveNote(pop: false);
+                        // Mantener foco en el texto
+                        FocusScope.of(context).requestFocus(_hiddenFocus);
+                      },
+                    ),
+                    _buildIconBox(
+                      isActive: _contentFormat.underline,
+                      icon: Icon(
+                        Icons.format_underlined_rounded,
+                        size: 24,
+                        color: _contentFormat.underline
+                            ? Colors.white
+                            : const Color(0xFF9333EA),
+                      ),
+                      onTap: () {
+                        // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                        final String currentText =
+                            _hiddenController.text.trim();
+                        if (currentText.isNotEmpty) {
+                          // Guardar texto actual con formato anterior
+                          setState(() {
+                            _contentParts.add(_TextPart(
+                              currentText,
+                              _contentFormat.bold,
+                              _contentFormat.underline,
+                              _contentFormat.underline
+                                  ? _contentFormat.underlineColor.value
+                                  : null,
+                              _contentFormat.highlight,
+                              _contentFormat.highlight
+                                  ? _contentFormat.highlightColor.value
+                                  : null,
+                              false,
+                            ));
+                          });
+                          _hiddenController.clear();
+                        }
+
+                        // Cambiar formato para texto nuevo
+                        setState(() {
+                          _contentFormat = _contentFormat.copyWith(
+                            underline: !_contentFormat.underline,
+                          );
+                        });
+                        _saveNote(pop: false);
+                        // Mantener foco en el texto
+                        FocusScope.of(context).requestFocus(_hiddenFocus);
+                      },
+                    ),
+
+                    _buildIconBox(
+                      icon: const Icon(
+                        Icons.psychology_rounded,
+                        size: 24,
+                        color: Color(0xFFDC2626),
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                MindMapFromNoteScreen(note: widget.note),
+                          ),
+                        );
+                      },
+                    ),
+                        ],
+                      ),
+                    ),
+                    // SEGUNDA FILA - 3 botones funcionales
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildIconBox(
+                            isActive: _contentFormat.highlight,
+                            icon: Icon(
+                              Icons.highlight_rounded,
+                              size: 24,
+                              color: _contentFormat.highlight
+                                  ? Colors.white
+                                  : const Color(0xFFEAB308),
+                            ),
+                            onTap: () {
+                              // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                              final String currentText = _hiddenController.text.trim();
+                              if (currentText.isNotEmpty) {
+                                // Guardar texto actual con formato anterior
+                                setState(() {
+                                  _contentParts.add(_TextPart(
+                                    currentText,
+                                    _contentFormat.bold,
+                                    _contentFormat.underline,
+                                    _contentFormat.underline
+                                        ? _contentFormat.underlineColor.value
+                                        : null,
+                                    _contentFormat.highlight,
+                                    _contentFormat.highlight
+                                        ? _contentFormat.highlightColor.value
+                                        : null,
+                                    false,
+                                  ));
+                                });
+                                _hiddenController.clear();
+                              }
+
+                              // Cambiar formato para texto nuevo
+                              setState(() {
+                                _contentFormat = _contentFormat.copyWith(
+                                  highlight: !_contentFormat.highlight,
+                                );
+                              });
+                              _saveNote(pop: false);
+                              // Mantener foco en el texto
+                              FocusScope.of(context).requestFocus(_hiddenFocus);
+                            },
+                          ),
+                          _buildIconBox(
+                            icon: const Icon(
+                              Icons.camera_alt_rounded,
+                              size: 24,
+                              color: Color(0xFF059669),
+                            ),
+                            onTap: () {
+                              showModalBottomSheet<File?>(
+                                context: context,
+                                isScrollControlled: true,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                                ),
+                                builder: (ctx) => const CameraGalleryWidget(),
+                              ).then((selectedImage) {
+                                if (selectedImage != null) {
+                                  final defaultW = 240.0;
+                                  final defaultH = 160.0;
+                                  final size = MediaQuery.of(context).size;
+                                  final startX = (size.width - defaultW) / 2 + 16;
+                                  final startY = 220.0 + 16;
+
+                                  setState(() {
+                                    _floatingImages.add(
+                                      FloatingImage(
+                                        filePath: selectedImage.path,
+                                        x: startX,
+                                        y: startY,
+                                        width: defaultW,
+                                        height: defaultH,
+                                      ),
+                                    );
+                                    _activeImageIndex = _floatingImages.length - 1;
+                                  });
+                                  _saveNote();
+                                  _scheduleUpdateContentRect();
+                                }
+                              });
+                            },
+                          ),
+                          _buildIconBox(
+                            icon: const Icon(
+                              Icons.menu_book_rounded,
+                              size: 24,
+                              color: Color(0xFFB45309), // Color dorado/marrón bíblico
+                            ),
+                            onTap: () {
+                              _addBibleVerse();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ),
+          ),
 
-            // ===== Capa de dibujo libre - SOLO en área de contenido =====
-            if (_contentRectInStack != null &&
-                (_drawingStrokes.isNotEmpty || _isDrawingMode))
-              Positioned.fromRect(
-                rect: _contentRectInStack!,
-                child: _isDrawingMode
-                    ? GestureDetector(
-                        onPanStart: _onDrawStart,
-                        onPanUpdate: _onDrawUpdate,
-                        onPanEnd: _onDrawEnd,
-                        behavior: HitTestBehavior.opaque,
-                        child: CustomPaint(
-                          painter: DrawingPainter(
-                            strokes: _drawingStrokes,
-                            currentStroke: _currentStroke,
-                            scrollOffset: currentScroll,
-                          ),
-                        ),
-                      )
-                    : IgnorePointer(
-                        child: CustomPaint(
-                          painter: DrawingPainter(
-                            strokes: _drawingStrokes,
-                            currentStroke: null,
-                            scrollOffset: currentScroll,
+          // ======= BOTONES FLOTANTES COLAPSIBLES =======
+          floatingActionButton: AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOutCubic,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              transitionBuilder: (child, animation) {
+                return ScaleTransition(
+                  scale: animation,
+                  child: FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  ),
+                );
+              },
+              child: _isFloatingButtonsCollapsed
+                  ? _buildMiniFloatingButtons()
+                  : _buildExpandedFloatingButtons(),
+            ),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        ),
+
+        // ========= Bible Autocomplete Overlay =========
+        if (_showBibleAutocomplete)
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _bibleAnimationController,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _bibleScaleAnimation.value,
+                  child: SlideTransition(
+                    position: _bibleSlideAnimation,
+                    child: FadeTransition(
+                      opacity: _bibleOpacityAnimation,
+                      child: Material(
+                        color: Colors.black
+                            .withOpacity(0.5 * _bibleOpacityAnimation.value),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 80),
+                          child: Center(
+                            child: Container(
+                              margin: const EdgeInsets.all(20),
+                              child: BibleAutoCompleteWidget(
+                                controller: _bibleController,
+                                onVerseSelected: _onVerseSelected,
+                                onCancel: _cancelBibleAutocomplete,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-              ),
-          ],
-        ),
-      ),
-
-      // ======= BARRA INFERIOR =======
-      bottomNavigationBar: AnimatedPadding(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.fastOutSlowIn,
-        padding: EdgeInsets.only(
-          left: 10, 
-          right: 10, 
-          bottom: MediaQuery.of(context).viewInsets.bottom + 8
-        ),
-        child: SafeArea(
-          top: false,
-          minimum: EdgeInsets.zero,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.fastOutSlowIn,
-          height: _bottomBarHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
-              BoxShadow(
-                  color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildIconBox(
-                icon: Icon(
-                  Icons.format_bold_rounded,
-                  size: 24,
-                  color: _contentFormat.bold 
-                      ? const Color(0xFF059669) 
-                      : const Color(0xFF4F46E5),
-                ),
-                onTap: () {
-                  // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                  final String currentText = _hiddenController.text.trim();
-                  if (currentText.isNotEmpty) {
-                    // Guardar texto actual con formato anterior
-                    setState(() {
-                      _contentParts.add(_TextPart(
-                        currentText,
-                        _contentFormat.bold,
-                        _contentFormat.underline,
-                        _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-                        _contentFormat.highlight,
-                        _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
-                        false,
-                      ));
-                    });
-                    _hiddenController.clear();
-                  }
-                  
-                  // Cambiar formato para texto nuevo
-                  setState(() {
-                    _contentFormat = _contentFormat.copyWith(
-                      bold: !_contentFormat.bold,
-                    );
-                  });
-                  _saveNote(pop: false);
-                  // Mantener foco en el texto
-                  FocusScope.of(context).requestFocus(_hiddenFocus);
-                },
-              ),
-              _buildIconBox(
-                icon: Icon(
-                  Icons.format_underlined_rounded,
-                  size: 24,
-                  color: _contentFormat.underline 
-                      ? const Color(0xFF059669) 
-                      : const Color(0xFF9333EA),
-                ),
-                onTap: () {
-                  // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                  final String currentText = _hiddenController.text.trim();
-                  if (currentText.isNotEmpty) {
-                    // Guardar texto actual con formato anterior
-                    setState(() {
-                      _contentParts.add(_TextPart(
-                        currentText,
-                        _contentFormat.bold,
-                        _contentFormat.underline,
-                        _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-                        _contentFormat.highlight,
-                        _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
-                        false,
-                      ));
-                    });
-                    _hiddenController.clear();
-                  }
-                  
-                  // Cambiar formato para texto nuevo
-                  setState(() {
-                    _contentFormat = _contentFormat.copyWith(
-                      underline: !_contentFormat.underline,
-                    );
-                  });
-                  _saveNote(pop: false);
-                  // Mantener foco en el texto
-                  FocusScope.of(context).requestFocus(_hiddenFocus);
-                },
-              ),
-              _buildIconBox(
-                icon: Icon(
-                  Icons.highlight_rounded,
-                  size: 24,
-                  color: _contentFormat.highlight 
-                      ? const Color(0xFF059669) 
-                      : const Color(0xFFEAB308),
-                ),
-                onTap: () {
-                  // ��� FORMATO CONTINUO: Separar texto antes de cambiar formato
-                  final String currentText = _hiddenController.text.trim();
-                  if (currentText.isNotEmpty) {
-                    // Guardar texto actual con formato anterior
-                    setState(() {
-                      _contentParts.add(_TextPart(
-                        currentText,
-                        _contentFormat.bold,
-                        _contentFormat.underline,
-                        _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-                        _contentFormat.highlight,
-                        _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
-                        false,
-                      ));
-                    });
-                    _hiddenController.clear();
-                  }
-                  
-                  // Cambiar formato para texto nuevo
-                  setState(() {
-                    _contentFormat = _contentFormat.copyWith(
-                      highlight: !_contentFormat.highlight,
-                    );
-                  });
-                  _saveNote(pop: false);
-                  // Mantener foco en el texto
-                  FocusScope.of(context).requestFocus(_hiddenFocus);
-                },
-              ),
-              _buildIconBox(
-                icon: const Icon(
-                  Icons.camera_alt_rounded,
-                  size: 24,
-                  color: Color(0xFF059669),
-                ),
-                onTap: () {
-                  showModalBottomSheet<File?>(
-                    context: context,
-                    isScrollControlled: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
-                    ),
-                    builder: (ctx) => const CameraGalleryWidget(),
-                  ).then((selectedImage) {
-                    if (selectedImage != null) {
-                      final defaultW = 240.0;
-                      final defaultH = 160.0;
-                      final size = MediaQuery.of(context).size;
-                      final startX = (size.width - defaultW) / 2 + 16;
-                      final startY = 220.0 + 16;
-
-                      setState(() {
-                        _floatingImages.add(
-                          FloatingImage(
-                            filePath: selectedImage.path,
-                            x: startX,
-                            y: startY,
-                            width: defaultW,
-                            height: defaultH,
-                          ),
-                        );
-                        _activeImageIndex = _floatingImages.length - 1;
-                      });
-                      _saveNote();
-                      _scheduleUpdateContentRect();
-                    }
-                  });
-                },
-              ),
-              _buildIconBox(
-                icon: const Icon(
-                  Icons.psychology_rounded,
-                  size: 24,
-                  color: Color(0xFFDC2626),
-                ),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => MindMapFromNoteScreen(note: widget.note),
-                    ),
-                  );
-                },
-              ),
-              _buildIconBox(
-                icon: const Icon(
-                  Icons.menu_book_rounded,
-                  size: 24,
-                  color: Color(0xFFB45309), // Color dorado/marrón bíblico
-                ),
-                onTap: () {
-                  _addBibleVerse();
-                },
-              ),
-            ],
-          ),
-        ),
-        ),
-      ),
-
-      // ======= BOTONES FLOTANTES COLAPSIBLES =======
-      floatingActionButton: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOutCubic,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          transitionBuilder: (child, animation) {
-            return ScaleTransition(
-              scale: animation,
-              child: FadeTransition(
-                opacity: animation,
-                child: child,
-              ),
-            );
-          },
-          child: _isFloatingButtonsCollapsed
-              ? _buildMiniFloatingButtons()
-              : _buildExpandedFloatingButtons(),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    ),
-
-    // ========= Bible Autocomplete Overlay =========
-    if (_showBibleAutocomplete)
-      Positioned.fill(
-        child: AnimatedBuilder(
-          animation: _bibleAnimationController,
-          builder: (context, child) {
-            return Transform.scale(
-              scale: _bibleScaleAnimation.value,
-              child: SlideTransition(
-                position: _bibleSlideAnimation,
-                child: FadeTransition(
-                  opacity: _bibleOpacityAnimation,
-                  child: Material(
-                    color: Colors.black.withOpacity(0.5 * _bibleOpacityAnimation.value),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 80),
-                      child: Center(
-                        child: Container(
-                          margin: const EdgeInsets.all(20),
-                          child: BibleAutoCompleteWidget(
-                            controller: _bibleController,
-                            onVerseSelected: _onVerseSelected,
-                            onCancel: _cancelBibleAutocomplete,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    ],
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }

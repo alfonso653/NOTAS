@@ -158,6 +158,50 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Botón Letra Normal (A)
+                    GestureDetector(
+                      onTap: () => _set(v.copyWith(
+                        bold: false,
+                        underline: false,
+                        highlight: false,
+                      )),
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: (!v.bold && !v.underline && !v.highlight)
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFFF6F7F9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: (!v.bold && !v.underline && !v.highlight)
+                                ? Colors.green.shade700
+                                : Colors.grey.shade300,
+                            width: 2,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'A',
+                          style: TextStyle(
+                            fontWeight: FontWeight.normal,
+                            fontSize: 22,
+                            color: (!v.bold && !v.underline && !v.highlight) 
+                                ? Colors.white 
+                                : Colors.black87,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ),
+                    ),
                     // Botón Negrilla (B)
                     GestureDetector(
                       onTap: () => _set(v.copyWith(

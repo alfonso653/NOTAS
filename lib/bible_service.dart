@@ -39,7 +39,8 @@ class BibleService {
     if (_isLoaded) return;
 
     try {
-      final String jsonString = await rootBundle.loadString('assets/data/biblia.json');
+      final String jsonString =
+          await rootBundle.loadString('assets/data/biblia.json');
       final Map<String, dynamic> jsonData = json.decode(jsonString);
       final List<dynamic> versesJson = jsonData['verses'];
 
@@ -65,8 +66,8 @@ class BibleService {
     // Buscar versículo exacto
     final foundVerse = _verses.where((v) {
       return _normalizeBookName(v.bookName.toLowerCase()) == bookName &&
-             v.chapter == chapter &&
-             v.verse == verse;
+          v.chapter == chapter &&
+          v.verse == verse;
     }).firstOrNull;
 
     return foundVerse;
@@ -77,18 +78,18 @@ class BibleService {
     if (!_isLoaded || query.trim().isEmpty) return [];
 
     final cleanQuery = query.trim().toLowerCase();
-    
+
     // Caso 1: Solo libro ("j", "juan", etc.)
     if (!cleanQuery.contains(' ')) {
       return _searchBooks(cleanQuery, maxResults);
     }
-    
+
     // Caso 2: Libro + espacio pero sin capítulo específico ("juan ", "juan 3", etc.)
     final parts = cleanQuery.split(' ');
     if (parts.length >= 2) {
       final book = parts[0];
       final chapterPart = parts[1];
-      
+
       // Si no tiene : significa que quiere ver capítulos o versículos de un capítulo
       if (!cleanQuery.contains(':')) {
         // Si chapterPart está vacío, mostrar capítulos disponibles
@@ -103,7 +104,7 @@ class BibleService {
         return verse != null ? [verse] : [];
       }
     }
-    
+
     return [];
   }
 
@@ -114,14 +115,15 @@ class BibleService {
 
     for (final verse in _verses) {
       if (results.length >= maxResults) break;
-      
+
       final bookName = _normalizeBookName(verse.bookName.toLowerCase());
-      if (bookName.startsWith(normalizedQuery) && !seenBooks.contains(bookName)) {
+      if (bookName.startsWith(normalizedQuery) &&
+          !seenBooks.contains(bookName)) {
         seenBooks.add(bookName);
         results.add(verse); // Primer versículo del libro
       }
     }
-    
+
     return results;
   }
 
@@ -132,7 +134,7 @@ class BibleService {
 
     for (final verse in _verses) {
       if (results.length >= maxResults) break;
-      
+
       final bookName = _normalizeBookName(verse.bookName.toLowerCase());
       if (bookName == normalizedBook) {
         final chapterKey = '${verse.bookName}_${verse.chapter}';
@@ -142,24 +144,28 @@ class BibleService {
         }
       }
     }
-    
+
     return results;
   }
 
-  List<BibleVerse> _searchChapterVerses(String book, String chapter, int maxResults) {
+  List<BibleVerse> _searchChapterVerses(
+      String book, String chapter, int maxResults) {
     final normalizedBook = _normalizeBookName(book);
-    
-    return _verses.where((verse) {
-      final bookName = _normalizeBookName(verse.bookName.toLowerCase());
-      return bookName == normalizedBook && verse.chapter == chapter;
-    }).take(maxResults).toList();
+
+    return _verses
+        .where((verse) {
+          final bookName = _normalizeBookName(verse.bookName.toLowerCase());
+          return bookName == normalizedBook && verse.chapter == chapter;
+        })
+        .take(maxResults)
+        .toList();
   }
 
   Map<String, String>? _normalizeQuery(String query) {
     // Patrones: "juan 3:16", "1 juan 2:5", "genesis 1:1"
     final regex = RegExp(r'^(\d*\s*\w+)\s+(\d+):(\d+)$');
     final match = regex.firstMatch(query);
-    
+
     if (match == null) return null;
 
     final bookPart = match.group(1)?.trim() ?? '';
@@ -167,7 +173,7 @@ class BibleService {
     final verse = match.group(3) ?? '';
 
     final normalizedBook = _normalizeBookName(bookPart);
-    
+
     return {
       'book': normalizedBook,
       'chapter': chapter,

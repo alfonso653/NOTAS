@@ -24,16 +24,31 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
 
   String _formatMonth(DateTime date) {
     const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre'
     ];
     return '${months[date.month - 1]} ${date.year}';
   }
 
   String _formatDate(DateTime date) {
     const days = [
-      'Domingo', 'Lunes', 'Martes', 'Miércoles', 
-      'Jueves', 'Viernes', 'Sábado'
+      'Domingo',
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado'
     ];
     final dayName = days[date.weekday % 7];
     return '$dayName, ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
@@ -41,11 +56,11 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
 
   List<PendingTask> _getTasksForMonth(List<PendingTask> allTasks) {
     return allTasks.where((task) {
-      final isSameMonth = task.dateTime.year == _currentMonth.year && 
-                         task.dateTime.month == _currentMonth.month;
-      
+      final isSameMonth = task.dateTime.year == _currentMonth.year &&
+          task.dateTime.month == _currentMonth.month;
+
       if (!isSameMonth) return false;
-      
+
       switch (_filterStatus) {
         case 'pending':
           return !task.completed;
@@ -59,7 +74,7 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
 
   Map<String, List<PendingTask>> _groupTasksByDate(List<PendingTask> tasks) {
     final Map<String, List<PendingTask>> grouped = {};
-    
+
     for (final task in tasks) {
       final dateKey = DateFormat('yyyy-MM-dd').format(task.dateTime);
       if (!grouped.containsKey(dateKey)) {
@@ -67,12 +82,12 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
       }
       grouped[dateKey]!.add(task);
     }
-    
+
     // Ordenar tareas por hora dentro de cada día
     grouped.forEach((key, taskList) {
       taskList.sort((a, b) => a.dateTime.compareTo(b.dateTime));
     });
-    
+
     return grouped;
   }
 
@@ -201,7 +216,7 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
           ),
           const SizedBox(height: 8),
           Text(
-            _filterStatus == 'pending' 
+            _filterStatus == 'pending'
                 ? 'No hay tareas pendientes'
                 : _filterStatus == 'completed'
                     ? 'No hay tareas completadas'
@@ -216,7 +231,8 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
     );
   }
 
-  Widget _buildTasksList(List<String> sortedDates, Map<String, List<PendingTask>> groupedTasks, PendingProvider provider) {
+  Widget _buildTasksList(List<String> sortedDates,
+      Map<String, List<PendingTask>> groupedTasks, PendingProvider provider) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: sortedDates.length,
@@ -229,8 +245,11 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          color: isToday ? const Color(0xFF374151).withOpacity(0.05) : Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: isToday
+              ? const Color(0xFF374151).withOpacity(0.05)
+              : Colors.white,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -238,7 +257,7 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isToday 
+                  color: isToday
                       ? const Color(0xFF374151).withOpacity(0.1)
                       : Colors.grey[50],
                   borderRadius: const BorderRadius.only(
@@ -251,7 +270,8 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
                     Icon(
                       Icons.calendar_today,
                       size: 20,
-                      color: isToday ? const Color(0xFF2E3A59) : Colors.grey[600],
+                      color:
+                          isToday ? const Color(0xFF2E3A59) : Colors.grey[600],
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -260,13 +280,16 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isToday ? const Color(0xFF2E3A59) : const Color(0xFF374151),
+                          color: isToday
+                              ? const Color(0xFF2E3A59)
+                              : const Color(0xFF374151),
                         ),
                       ),
                     ),
                     if (isToday)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: const Color(0xFF2E3A59),
                           borderRadius: BorderRadius.circular(12),
@@ -297,7 +320,7 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
                 final taskIndex = entry.key;
                 final task = entry.value;
                 final isLast = taskIndex == tasks.length - 1;
-                
+
                 return _buildTaskItem(task, isLast, provider, date);
               }).toList(),
             ],
@@ -307,13 +330,14 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
     );
   }
 
-  Widget _buildTaskItem(PendingTask task, bool isLast, PendingProvider provider, DateTime date) {
+  Widget _buildTaskItem(
+      PendingTask task, bool isLast, PendingProvider provider, DateTime date) {
     final timeFormat = DateFormat('HH:mm');
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        border: !isLast 
+        border: !isLast
             ? Border(bottom: BorderSide(color: Colors.grey[200]!, width: 0.5))
             : null,
       ),
@@ -333,29 +357,27 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: task.completed 
-                      ? Colors.green 
-                      : Colors.grey[400]!,
+                  color: task.completed ? Colors.green : Colors.grey[400]!,
                   width: 2,
                 ),
                 color: task.completed ? Colors.green : Colors.transparent,
               ),
               child: task.completed
                   ? const Icon(
-                        Icons.check,
-                        size: 18, // Ícono también más grande
-                        color: Colors.white,
-                      )
-                    : null,
+                      Icons.check,
+                      size: 18, // Ícono también más grande
+                      color: Colors.white,
+                    )
+                  : null,
             ),
           ),
-          
+
           // Hora (SIN navegación)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: task.completed 
-                  ? Colors.grey[200] 
+              color: task.completed
+                  ? Colors.grey[200]
                   : const Color(0xFF374151).withOpacity(0.1),
               borderRadius: BorderRadius.circular(6),
             ),
@@ -364,14 +386,13 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: task.completed 
-                    ? Colors.grey[600] 
-                    : const Color(0xFF374151),
+                color:
+                    task.completed ? Colors.grey[600] : const Color(0xFF374151),
               ),
             ),
           ),
           const SizedBox(width: 12),
-          
+
           // Título de la tarea (SIN navegación)
           Expanded(
             child: Text(
@@ -379,18 +400,15 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: task.completed 
-                    ? Colors.grey[500] 
-                    : const Color(0xFF2E3A59),
-                decoration: task.completed 
-                    ? TextDecoration.lineThrough 
-                    : null,
+                color:
+                    task.completed ? Colors.grey[500] : const Color(0xFF2E3A59),
+                decoration: task.completed ? TextDecoration.lineThrough : null,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          
+
           // Indicadores y flechita para navegar
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -407,7 +425,7 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
                   size: 16,
                   color: Colors.red[400],
                 ),
-              
+
               // 🎯 FLECHITA GRANDE Y VISIBLE PARA IR AL DÍA
               GestureDetector(
                 onTap: () {
@@ -421,12 +439,13 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(8), // Área más grande para tocar
+                  padding:
+                      const EdgeInsets.all(8), // Área más grande para tocar
                   child: Icon(
                     Icons.arrow_forward_ios,
                     size: 18, // Flechita más grande y visible
-                    color: task.completed 
-                        ? Colors.grey[400] 
+                    color: task.completed
+                        ? Colors.grey[400]
                         : const Color(0xFF374151),
                   ),
                 ),
@@ -441,7 +460,7 @@ class _MonthlyTasksViewState extends State<MonthlyTasksView> {
   bool _isToday(DateTime date) {
     final today = DateTime.now();
     return date.year == today.year &&
-           date.month == today.month &&
-           date.day == today.day;
+        date.month == today.month &&
+        date.day == today.day;
   }
 }

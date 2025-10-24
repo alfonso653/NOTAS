@@ -57,22 +57,23 @@ class _DayViewScreenState extends State<DayViewScreen> {
 
   void _scrollToTargetTask() {
     if (widget.targetTaskId == null) return;
-    
+
     final provider = Provider.of<PendingProvider>(context, listen: false);
     final tasks = _getTasksForDay(provider.tasks);
-    
+
     // Buscar la tarea específica
-    final targetTask = tasks.where((task) => task.id == widget.targetTaskId).firstOrNull;
+    final targetTask =
+        tasks.where((task) => task.id == widget.targetTaskId).firstOrNull;
     if (targetTask == null) return;
-    
+
     // Calcular la hora de la tarea
     final taskHour = targetTask.dateTime.hour;
-    
+
     // Expandir la hora donde está la tarea
     setState(() {
       _expandedHours.add(taskHour);
     });
-    
+
     // Hacer scroll hacia esa hora (cada hora son aproximadamente 60px)
     final scrollOffset = taskHour * 60.0;
     _scrollController.animateTo(
