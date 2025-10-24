@@ -1424,108 +1424,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     );
   }
 
-  // ========= Convert Drawing Strokes to Floating Image =========
-
-  Future<void> _convertStrokesToFloatingImage() async {
-    if (_drawingStrokes.isEmpty) return;
-
-    try {
-      // Calcular los bounds de todos los trazos
-      double minX = double.infinity;
-      double maxX = double.negativeInfinity;
-      double minY = double.infinity;
-      double maxY = double.negativeInfinity;
-
-      for (final stroke in _drawingStrokes) {
-        for (final point in stroke.points) {
-          minX = min(minX, point.dx);
-          maxX = max(maxX, point.dx);
-          minY = min(minY, point.dy);
-          maxY = max(maxY, point.dy);
-        }
-      }
-
-      // Añadir padding alrededor del dibujo
-      const padding = 20.0;
-      minX -= padding;
-      maxX += padding;
-      minY -= padding;
-      maxY += padding;
-
-      final width = maxX - minX;
-      final height = maxY - minY;
-
-      // Crear un CustomPainter para los trazos
-      final recorder = ui.PictureRecorder();
-      final canvas = Canvas(recorder);
-
-      // Fondo transparente
-      canvas.drawRect(
-        Rect.fromLTWH(0, 0, width, height),
-        Paint()..color = Colors.transparent,
-      );
-
-      // Dibujar todos los trazos ajustados a la nueva posición
-      for (final stroke in _drawingStrokes) {
-        final paint = Paint()
-          ..color = stroke.color
-          ..strokeWidth = stroke.strokeWidth
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round
-          ..style = PaintingStyle.stroke;
-
-        final path = Path();
-        for (int i = 0; i < stroke.points.length; i++) {
-          final adjustedPoint = Offset(
-            stroke.points[i].dx - minX,
-            stroke.points[i].dy - minY,
-          );
-
-          if (i == 0) {
-            path.moveTo(adjustedPoint.dx, adjustedPoint.dy);
-          } else {
-            path.lineTo(adjustedPoint.dx, adjustedPoint.dy);
-          }
-        }
-        canvas.drawPath(path, paint);
-      }
-
-      // Convertir a imagen
-      final picture = recorder.endRecording();
-      final img = await picture.toImage(width.toInt(), height.toInt());
-      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-
-      if (byteData != null) {
-        // Guardar la imagen en un archivo temporal
-        final directory = await getTemporaryDirectory();
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final file = File('${directory.path}/drawing_$timestamp.png');
-        await file.writeAsBytes(byteData.buffer.asUint8List());
-
-        // Crear FloatingImage
-        setState(() {
-          _floatingImages.add(
-            FloatingImage(
-              filePath: file.path,
-              x: minX,
-              y: minY,
-              width: width,
-              height: height,
-            ),
-          );
-          _activeImageIndex = _floatingImages.length - 1;
-
-          // Limpiar los trazos originales
-          _drawingStrokes.clear();
-        });
-
-        _saveNote();
-        _scheduleUpdateContentRect();
-      }
-    } catch (e) {
-      print('Error converting strokes to image: $e');
-    }
-  }
+  // ========= Save Note =========
 
   void _saveNote({bool pop = false}) {
     // OPTIMIZACIÓN: Cancelar timer anterior y programar nuevo guardado
@@ -1724,7 +1623,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   @override
   Widget build(BuildContext context) {
-    const double _bottomBarHeight = 72.0;
+    const double _bottomBarHeight = 50.0;
 
     final currentScroll =
         _scrollController.hasClients ? _scrollController.offset : 0.0;
@@ -1732,12 +1631,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: _noteColor,
+      // Configuración nativa de Android para animaciones fluidas
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
         backgroundColor: _noteColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Text('⬅️',
-              style: TextStyle(fontSize: 24, color: Colors.black)),
+          icon: const Icon(
+            Icons.arrow_back_ios_rounded,
+            size: 22,
+            color: Color(0xFF374151),
+          ),
           onPressed: () => Navigator.pop(context),
           tooltip: 'Volver',
         ),
@@ -1754,7 +1658,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 return IconButton(
                   icon: Opacity(
                     opacity: _hasUnsavedChanges ? _blinkAnimation.value : 1.0,
-                    child: const Text('💾', style: TextStyle(fontSize: 26)),
+                    child: Icon(
+                      Icons.save_rounded,
+                      size: 24,
+                      color: _hasUnsavedChanges 
+                          ? const Color(0xFF059669) 
+                          : const Color(0xFF6B7280),
+                    ),
                   ),
                   tooltip: 'Guardar',
                   onPressed: () {
@@ -1767,7 +1677,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ),
           ),
           IconButton(
-            icon: Image.asset('assets/compartir.png', width: 28, height: 28),
+            icon: const Icon(
+              Icons.share_rounded,
+              size: 22,
+              color: Color(0xFF374151),
+            ),
             tooltip: 'Compartir',
             onPressed: () {
               showModalBottomSheet(
@@ -1808,8 +1722,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             },
           ),
           PopupMenuButton<String>(
-            icon: const Text('⚙️',
-                style: TextStyle(fontSize: 22, color: Colors.black)),
+            icon: const Icon(
+              Icons.more_vert_rounded,
+              size: 22,
+              color: Color(0xFF374151),
+            ),
             tooltip: 'Opciones',
             onSelected: (value) {
               switch (value) {
@@ -2654,14 +2571,24 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       ),
 
       // ======= BARRA INFERIOR =======
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.only(left: 10, right: 10, bottom: 8),
-        child: Container(
+      bottomNavigationBar: AnimatedPadding(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.fastOutSlowIn,
+        padding: EdgeInsets.only(
+          left: 10, 
+          right: 10, 
+          bottom: MediaQuery.of(context).viewInsets.bottom + 8
+        ),
+        child: SafeArea(
+          top: false,
+          minimum: EdgeInsets.zero,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.fastOutSlowIn,
           height: _bottomBarHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(12),
             boxShadow: const [
               BoxShadow(
@@ -2672,163 +2599,125 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildIconBox(
-                icon: Image.asset('assets/abc.png', width: 32, height: 32),
-                onTap: () async {
-                  // NUEVA LÓGICA DE TOGGLE SOLO PARA LAS 4 HERRAMIENTAS DE DIBUJO:
-                  // Si estás en modo dibujo -> convertir trazos a imagen flotante y salir del modo dibujo
-                  if (_isDrawingMode) {
-                    // ¡MAGIA! Convertir trazos a imagen flotante manejable
-                    await _convertStrokesToFloatingImage();
-
+                icon: Icon(
+                  Icons.format_bold_rounded,
+                  size: 24,
+                  color: _contentFormat.bold 
+                      ? const Color(0xFF059669) 
+                      : const Color(0xFF4F46E5),
+                ),
+                onTap: () {
+                  // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                  final String currentText = _hiddenController.text.trim();
+                  if (currentText.isNotEmpty) {
+                    // Guardar texto actual con formato anterior
                     setState(() {
-                      _isDrawingMode = false; // 😌 Vuelves a escribir texto
-                      // Resetear todas las herramientas de dibujo pero mantener formato de texto
-                      _contentFormat = _contentFormat.copyWith(
-                        pencil: false,
-                        pen: false,
-                        crayon: false,
-                        brush: false,
-                        eraser: false,
-                      );
+                      _contentParts.add(_TextPart(
+                        currentText,
+                        _contentFormat.bold,
+                        _contentFormat.underline,
+                        _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                        _contentFormat.highlight,
+                        _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+                        false,
+                      ));
                     });
-                    FocusScope.of(context).requestFocus(_hiddenFocus);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content:
-                            Text('🎨✨ ¡Dibujo convertido a imagen manejable!'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                    return; // No abrimos el panel en este toque
+                    _hiddenController.clear();
                   }
-
-                  // Si NO estás en modo dibujo -> abrir panel normal
-                  await showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (ctx) => Padding(
-                      padding: MediaQuery.of(ctx).viewInsets,
-                      child: TextFormatPanel(
-                        value: _contentFormat,
-                        onChanged: (val) {
-                          // Comportamiento DIFERENTE para los 3 primeros vs los 4 nuevos
-
-                          // CORREGIDO: Detectar CUALQUIER cambio en formatos de texto (activar, desactivar o cambiar)
-                          bool textFormatChanged =
-                              (val.bold != _contentFormat.bold) ||
-                                  (val.underline != _contentFormat.underline) ||
-                                  (val.highlight != _contentFormat.highlight);
-
-                          if (textFormatChanged) {
-                            // Guardar texto actual si existe
-                            final String currentText =
-                                _hiddenController.text.trim();
-                            if (currentText.isNotEmpty) {
-                              setState(() {
-                                _contentParts.add(_TextPart(
-                                  currentText,
-                                  _contentFormat.bold,
-                                  _contentFormat.underline,
-                                  _contentFormat.underline
-                                      ? _contentFormat.underlineColor.value
-                                      : null,
-                                  _contentFormat.highlight,
-                                  _contentFormat.highlight
-                                      ? _contentFormat.highlightColor.value
-                                      : null,
-                                  false,
-                                ));
-                              });
-                              _hiddenController.clear();
-                            }
-
-                            // Aplicar el formato COMPLETO nuevo (sin arrastrar efectos anteriores)
-                            setState(() {
-                              _contentFormat = _contentFormat.copyWith(
-                                // Aplicar exactamente lo que viene del panel
-                                bold: val.bold,
-                                underline: val.underline,
-                                underlineColor: val.underlineColor,
-                                highlight: val.highlight,
-                                highlightColor: val.highlightColor,
-                                // Mantener herramientas de dibujo sin cambios
-                                pencil: _contentFormat.pencil,
-                                pencilColor: _contentFormat.pencilColor,
-                                pen: _contentFormat.pen,
-                                penColor: _contentFormat.penColor,
-                                crayon: _contentFormat.crayon,
-                                crayonColor: _contentFormat.crayonColor,
-                                brush: _contentFormat.brush,
-                                brushColor: _contentFormat.brushColor,
-                                eraser: _contentFormat.eraser,
-                              );
-                            });
-
-                            _saveNote(pop: false);
-
-                            // ✨ NUEVO: No cerrar panel automáticamente - permitir preview en tiempo real
-                            // El usuario puede ver el efecto inmediatamente y cerrar manualmente
-                            return;
-                          }
-
-                          // SIMPLIFICADO: Detectar cambio de color (sin cerrar panel)
-                          bool colorChanged = (val.underline &&
-                                  val.underlineColor !=
-                                      _contentFormat.underlineColor) ||
-                              (val.highlight &&
-                                  val.highlightColor !=
-                                      _contentFormat.highlightColor);
-
-                          if (colorChanged && !textFormatChanged) {
-                            // Solo cambio de color, sin cambio de formato
-                            setState(() {
-                              _contentFormat = _contentFormat.copyWith(
-                                underlineColor: val.underlineColor,
-                                highlightColor: val.highlightColor,
-                              );
-                            });
-                            _saveNote(pop: false);
-                            return;
-                          }
-
-                          // ✨ PREVIEW EN TIEMPO REAL: Para cualquier cambio de formato
-                          setState(() {
-                            _contentFormat = val;
-                          });
-
-                          // Activar/desactivar modo dibujo: SOLO por las 4 herramientas (y borrador)
-                          final drawingActive = val.pencil ||
-                              val.pen ||
-                              val.crayon ||
-                              val.brush ||
-                              val.eraser;
-
-                          if (drawingActive != _isDrawingMode) {
-                            setState(() {
-                              _isDrawingMode = drawingActive;
-                            });
-                          }
-
-                          _saveNote(pop: false);
-                        },
-                        onClose: () {
-                          Navigator.pop(ctx);
-                          // Si sigue desactivado, enfocamos texto
-                          if (!_isDrawingMode && mounted) {
-                            FocusScope.of(context).requestFocus(_hiddenFocus);
-                          }
-                        },
-                      ),
-                    ),
-                  );
-
-                  // CORREGIDO: No hacer focus automático para evitar scroll no deseado
-                  // El usuario puede estar en cualquier parte de la nota
+                  
+                  // Cambiar formato para texto nuevo
+                  setState(() {
+                    _contentFormat = _contentFormat.copyWith(
+                      bold: !_contentFormat.bold,
+                    );
+                  });
+                  _saveNote(pop: false);
+                  // Mantener foco en el texto
+                  FocusScope.of(context).requestFocus(_hiddenFocus);
                 },
               ),
               _buildIconBox(
-                icon: Image.asset('assets/camara.png', width: 32, height: 32),
+                icon: Icon(
+                  Icons.format_underlined_rounded,
+                  size: 24,
+                  color: _contentFormat.underline 
+                      ? const Color(0xFF059669) 
+                      : const Color(0xFF9333EA),
+                ),
+                onTap: () {
+                  // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                  final String currentText = _hiddenController.text.trim();
+                  if (currentText.isNotEmpty) {
+                    // Guardar texto actual con formato anterior
+                    setState(() {
+                      _contentParts.add(_TextPart(
+                        currentText,
+                        _contentFormat.bold,
+                        _contentFormat.underline,
+                        _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                        _contentFormat.highlight,
+                        _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+                        false,
+                      ));
+                    });
+                    _hiddenController.clear();
+                  }
+                  
+                  // Cambiar formato para texto nuevo
+                  setState(() {
+                    _contentFormat = _contentFormat.copyWith(
+                      underline: !_contentFormat.underline,
+                    );
+                  });
+                  _saveNote(pop: false);
+                  // Mantener foco en el texto
+                  FocusScope.of(context).requestFocus(_hiddenFocus);
+                },
+              ),
+              _buildIconBox(
+                icon: Icon(
+                  Icons.highlight_rounded,
+                  size: 24,
+                  color: _contentFormat.highlight 
+                      ? const Color(0xFF059669) 
+                      : const Color(0xFFEAB308),
+                ),
+                onTap: () {
+                  // ��� FORMATO CONTINUO: Separar texto antes de cambiar formato
+                  final String currentText = _hiddenController.text.trim();
+                  if (currentText.isNotEmpty) {
+                    // Guardar texto actual con formato anterior
+                    setState(() {
+                      _contentParts.add(_TextPart(
+                        currentText,
+                        _contentFormat.bold,
+                        _contentFormat.underline,
+                        _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+                        _contentFormat.highlight,
+                        _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+                        false,
+                      ));
+                    });
+                    _hiddenController.clear();
+                  }
+                  
+                  // Cambiar formato para texto nuevo
+                  setState(() {
+                    _contentFormat = _contentFormat.copyWith(
+                      highlight: !_contentFormat.highlight,
+                    );
+                  });
+                  _saveNote(pop: false);
+                  // Mantener foco en el texto
+                  FocusScope.of(context).requestFocus(_hiddenFocus);
+                },
+              ),
+              _buildIconBox(
+                icon: const Icon(
+                  Icons.camera_alt_rounded,
+                  size: 24,
+                  color: Color(0xFF059669),
+                ),
                 onTap: () {
                   showModalBottomSheet<File?>(
                     context: context,
@@ -2865,7 +2754,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 },
               ),
               _buildIconBox(
-                icon: Image.asset('assets/IA.png', width: 32, height: 32),
+                icon: const Icon(
+                  Icons.psychology_rounded,
+                  size: 24,
+                  color: Color(0xFFDC2626),
+                ),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -2876,6 +2769,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               ),
             ],
           ),
+        ),
         ),
       ),
 

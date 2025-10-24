@@ -45,9 +45,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/abc.png
-    - assets/camara.png
-    - assets/IA.png
     - assets/agenda_icon.png
     - assets/agenda.png
     - assets/splash/
@@ -59,7 +56,6 @@ flutter:
     - assets/nota.gif
     - assets/pendientes.gif
     - assets/audio.gif
-    - assets/compartir.png
     - assets/cuaderno.jpg
     - assets/hojap.png
     - assets/fonts/Nunito-Bold.ttf

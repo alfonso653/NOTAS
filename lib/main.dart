@@ -71,6 +71,15 @@ class NotesApp extends StatelessWidget {
           highlightColor: const Color(0xFFFFFFFF).withOpacity(0),
           // Configuración para splash screen
           scaffoldBackgroundColor: const Color(0xFFFEF7F0),
+          // 🚀 Optimización nativa de Android para máxima fluidez
+          pageTransitionsTheme: const PageTransitionsTheme(
+            builders: {
+              TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+              TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            },
+          ),
+          // Configuración de animaciones nativas
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         home: const AppInitializer(),
       ),
@@ -563,84 +572,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // 🚨 Función para probar alarmas rápidamente
-  void _testAlarm() async {
-    try {
-      final testTime = DateTime.now().add(const Duration(seconds: 5));
 
-      // Programar alarma de prueba
-      final success = await RealAlarmService.scheduleRealAlarm(
-        taskId: 'test_${DateTime.now().millisecondsSinceEpoch}',
-        taskTitle: '🧪 Prueba de Alarma',
-        scheduledTime: testTime,
-      );
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '🚨 Alarma de prueba programada para ${testTime.hour}:${testTime.minute.toString().padLeft(2, '0')}'),
-            duration: const Duration(seconds: 3),
-            backgroundColor: Colors.green[600],
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Error al programar alarma de prueba'),
-            duration: Duration(seconds: 3),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error: $e'),
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  // 📱 NUEVA FUNCIÓN: Probar notificaciones de la barra superior
-  void _testNotification() async {
-    try {
-      // Probar notificación inmediata en la barra
-      await NotificationService.showNotificationBar(
-        title: '🔔 EMETH AGENDA - Prueba',
-        body:
-            '✅ Esta notificación debería aparecer en la barra superior de tu OPPO',
-        payload: 'test_notification_bar',
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-              '📱 Notificación enviada a la barra superior - Revisa arriba'),
-          duration: const Duration(seconds: 4),
-          backgroundColor: Colors.blue[600],
-        ),
-      );
-
-      // También probar un recordatorio
-      await Future.delayed(const Duration(seconds: 2));
-      await NotificationService.showReminderNotification(
-        taskTitle: 'Prueba de Recordatorio',
-        reminderText:
-            'Este es un recordatorio de prueba para verificar que funciona',
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error al enviar notificación: $e'),
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -873,17 +805,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      // � Botón flotante de prueba de NOTIFICACIONES (solo en Agenda)
-      floatingActionButton: _selectedIndex == 1
-          ? FloatingActionButton(
-              mini: true,
-              backgroundColor: Colors.blue[600],
-              foregroundColor: Colors.white,
-              onPressed: _testNotification,
-              tooltip: 'Probar Notificación Barra',
-              child: const Icon(Icons.notifications, size: 20),
-            )
-          : null,
     );
   }
 }
