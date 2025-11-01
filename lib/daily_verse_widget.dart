@@ -196,6 +196,13 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         _showingVerse = true; // Empezar mostrando el versículo
       });
 
+      // 🔍 Debug logging para diagnosticar problemas futuros
+      if (_quoteData == null) {
+        print('⚠️ ADVERTENCIA: No se pudo cargar cita para ${widget.selectedDate.day}/${widget.selectedDate.month}/${widget.selectedDate.year}');
+      } else {
+        print('✅ Cita cargada exitosamente para ${widget.selectedDate.day}/${widget.selectedDate.month}: "${_quoteData?['quote']?.substring(0, 30)}..."');
+      }
+
       // Iniciar el ciclo de animación si hay datos
       if ((_verseData != null || _quoteData != null)) {
         _startAnimationCycle();
@@ -479,6 +486,32 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
   }
 
   Widget _buildQuoteContent(bool isCompactMode) {
+    // 🛡️ Protección adicional: si no hay cita, mostrar mensaje por defecto
+    if (_quoteData == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.auto_awesome_outlined,
+              size: isCompactMode ? 20 : 24,
+              color: const Color(0xFF8B5CF6).withOpacity(0.5),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Cita inspiracional\nno disponible',
+              style: TextStyle(
+                fontSize: isCompactMode ? 10 : 12,
+                fontStyle: FontStyle.italic,
+                color: const Color(0xFF8B5CF6).withOpacity(0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    
     return Stack(
       children: [
         Column(
@@ -518,12 +551,12 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                   child: GestureDetector(
                     onTap: () => _showFullScreenText(
                       context,
-                      '"${_quoteData!['quote']}"',
-                      '— ${_quoteData!['author'] ?? 'Anónimo'}',
+                      '"${_quoteData?['quote'] ?? 'Cita no disponible'}"',
+                      '— ${_quoteData?['author'] ?? 'Anónimo'}',
                       false, // isVerse = false
                     ),
                     child: Text(
-                      '"${_quoteData!['quote']}"',
+                      '"${_quoteData?['quote'] ?? 'Cita inspiracional no disponible para este día'}"',
                       style: TextStyle(
                         fontSize: isCompactMode ? 11 : 13,
                         fontWeight: FontWeight.w600,
@@ -550,7 +583,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                 borderRadius: BorderRadius.circular(isCompactMode ? 12 : 15),
               ),
               child: Text(
-                '— ${_quoteData!['author'] ?? 'Anónimo'}',
+                '— ${_quoteData?['author'] ?? 'Anónimo'}',
                 style: TextStyle(
                   fontSize: isCompactMode ? 9 : 11,
                   fontWeight: FontWeight.w600,
@@ -760,20 +793,25 @@ class _FullScreenTextDialog extends StatelessWidget {
                 final screenSize = mediaQuery.size;
                 final textScaleFactor = mediaQuery.textScaleFactor;
                 final isLargeText = textScaleFactor > 1.2;
-                final isSmallScreen = screenSize.width < 400 || screenSize.height < 700;
-                
+                final isSmallScreen =
+                    screenSize.width < 400 || screenSize.height < 700;
+
                 // 📏 Calcular tamaños adaptativos
-                final responsivePadding = screenSize.width * 0.04; // 4% del ancho de pantalla
+                final responsivePadding =
+                    screenSize.width * 0.04; // 4% del ancho de pantalla
                 final maxContentWidth = screenSize.width * 0.9; // 90% del ancho
                 final baseTextSize = isSmallScreen ? 18.0 : 22.0;
-                final adaptiveTextSize = (baseTextSize / textScaleFactor).clamp(16.0, 28.0);
-                final subtitleSize = (adaptiveTextSize * 0.73).clamp(12.0, 20.0);
-                
+                final adaptiveTextSize =
+                    (baseTextSize / textScaleFactor).clamp(16.0, 28.0);
+                final subtitleSize =
+                    (adaptiveTextSize * 0.73).clamp(12.0, 20.0);
+
                 return SingleChildScrollView(
                   padding: EdgeInsets.all(responsivePadding),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - (responsivePadding * 2),
+                      minHeight:
+                          constraints.maxHeight - (responsivePadding * 2),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -784,7 +822,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                           children: [
                             // 📱 Botón de compartir - tamaño adaptativo
                             IconButton(
-                              onPressed: () => _shareContent(text, subtitle, isVerse),
+                              onPressed: () =>
+                                  _shareContent(text, subtitle, isVerse),
                               icon: Container(
                                 padding: EdgeInsets.all(isLargeText ? 20 : 16),
                                 decoration: BoxDecoration(
@@ -799,14 +838,14 @@ class _FullScreenTextDialog extends StatelessWidget {
                               ),
                               tooltip: 'Compartir',
                             ),
-                            
+
                             // 📖 Ícono central adaptativo
                             Icon(
                               isVerse ? Icons.menu_book : Icons.auto_awesome,
                               color: Colors.white.withOpacity(0.8),
                               size: isLargeText ? 28 : 24,
                             ),
-                            
+
                             // ❌ Botón de cerrar adaptativo
                             IconButton(
                               onPressed: () => Navigator.of(context).pop(),
@@ -820,7 +859,9 @@ class _FullScreenTextDialog extends StatelessWidget {
                           ],
                         ),
 
-                        SizedBox(height: screenSize.height * 0.05), // 5% de la altura
+                        SizedBox(
+                            height:
+                                screenSize.height * 0.05), // 5% de la altura
 
                         // 📝 Texto principal con diseño responsivo
                         GestureDetector(
@@ -830,7 +871,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                             child: Container(
                               width: maxContentWidth,
                               padding: EdgeInsets.all(isLargeText ? 40 : 32),
-                              margin: EdgeInsets.symmetric(horizontal: responsivePadding),
+                              margin: EdgeInsets.symmetric(
+                                  horizontal: responsivePadding),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.95),
                                 borderRadius: BorderRadius.circular(24),
@@ -860,7 +902,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                                           : FontStyle.italic,
                                     ),
                                     textAlign: TextAlign.center,
-                                    textScaleFactor: 1.0, // Controlar el escalado manualmente
+                                    textScaleFactor:
+                                        1.0, // Controlar el escalado manualmente
                                   ),
 
                                   SizedBox(height: isLargeText ? 32 : 24),
@@ -890,7 +933,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                                         height: isLargeText ? 1.5 : 1.3,
                                       ),
                                       textAlign: TextAlign.center,
-                                      textScaleFactor: 1.0, // Controlar el escalado manualmente
+                                      textScaleFactor:
+                                          1.0, // Controlar el escalado manualmente
                                     ),
                                   ),
                                 ],
@@ -899,7 +943,9 @@ class _FullScreenTextDialog extends StatelessWidget {
                           ),
                         ),
 
-                        SizedBox(height: screenSize.height * 0.06), // 6% de la altura
+                        SizedBox(
+                            height:
+                                screenSize.height * 0.06), // 6% de la altura
 
                         // 💡 Indicación adaptativa para cerrar
                         Opacity(
@@ -907,7 +953,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                           child: Text(
                             'Toca fuera del texto para cerrar',
                             style: TextStyle(
-                              fontSize: (14 * textScaleFactor).clamp(12.0, 18.0),
+                              fontSize:
+                                  (14 * textScaleFactor).clamp(12.0, 18.0),
                               color: Colors.white.withOpacity(0.8),
                               fontWeight: FontWeight.w400,
                             ),
@@ -915,7 +962,9 @@ class _FullScreenTextDialog extends StatelessWidget {
                           ),
                         ),
 
-                        SizedBox(height: screenSize.height * 0.02), // 2% de la altura
+                        SizedBox(
+                            height:
+                                screenSize.height * 0.02), // 2% de la altura
                       ],
                     ),
                   ),

@@ -160,6 +160,35 @@ class DrawingPainter extends CustomPainter {
     if (stroke.points.isEmpty) return;
 
     switch (stroke.toolType) {
+      // ✨ NUEVOS EFECTOS ÚNICOS
+      case 'calligraphy_ink':
+        _drawCalligraphyInkStroke(canvas, stroke);
+        break;
+      case 'watercolor':
+        _drawWatercolorStroke(canvas, stroke);
+        break;
+      case 'crystal':
+        _drawCrystalStroke(canvas, stroke);
+        break;
+      case 'spray':
+        _drawSprayStroke(canvas, stroke);
+        break;
+      case 'neon':
+        _drawNeonStroke(canvas, stroke);
+        break;
+      case 'brush_normal':
+        _drawBrushStroke(canvas, stroke);
+        break;
+      case 'brush_thick':
+        _drawBrushThickStroke(canvas, stroke);
+        break;
+      case 'marker':
+        _drawMarkerStroke(canvas, stroke);
+        break;
+      case 'blur':
+        _drawBlurStroke(canvas, stroke);
+        break;
+      // 🔧 HERRAMIENTAS ORIGINALES (compatibilidad)
       case 'pencil':
         _drawPencilStroke(canvas, stroke);
         break;
@@ -287,6 +316,140 @@ class DrawingPainter extends CustomPainter {
 
       canvas.drawPath(path, paint);
     }
+  }
+
+  // 🖋️ ===== NUEVO: Efecto de Tinta Caligráfica =====
+  void _drawCalligraphyInkStroke(Canvas canvas, DrawingStroke stroke) {
+    if (stroke.points.length < 2) return;
+
+    // 1. Trazo principal con grosor variable
+    final mainPaint = CalligraphyInkEffect.createPaint(
+      stroke.color, 
+      stroke.strokeWidth
+    );
+
+    final path = Path();
+    path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
+    
+    for (int i = 1; i < stroke.points.length; i++) {
+      final current = stroke.points[i];
+      
+      // Usar curvas suaves para el trazo principal
+      if (i == stroke.points.length - 1) {
+        path.lineTo(current.dx, current.dy);
+      } else {
+        final next = stroke.points[min(i + 1, stroke.points.length - 1)];
+        final controlPoint = Offset(
+          (current.dx + next.dx) / 2,
+          (current.dy + next.dy) / 2,
+        );
+        path.quadraticBezierTo(
+          current.dx, current.dy, 
+          controlPoint.dx, controlPoint.dy
+        );
+      }
+    }
+    
+    // Dibujar trazo principal
+    canvas.drawPath(path, mainPaint);
+    
+    // 2. Efectos adicionales: goteo y textura
+    final random = Random();
+    
+    for (int i = 0; i < stroke.points.length; i += 8) {
+      final point = stroke.points[i];
+      
+      // Goteo sutil
+      if (random.nextDouble() < 0.3) {
+        final dropPaint = Paint()
+          ..color = stroke.color.withOpacity(0.4)
+          ..style = PaintingStyle.fill;
+        
+        final dropY = point.dy + random.nextDouble() * 6 + 2;
+        final dropSize = random.nextDouble() * 1.5 + 0.5;
+        
+        canvas.drawCircle(
+          Offset(point.dx, dropY), 
+          dropSize, 
+          dropPaint
+        );
+      }
+      
+      // Textura orgánica
+      if (random.nextDouble() < 0.4) {
+        final texturePaint = Paint()
+          ..color = stroke.color.withOpacity(0.2)
+          ..style = PaintingStyle.fill;
+        
+        final offsetX = (random.nextDouble() - 0.5) * 2;
+        final offsetY = (random.nextDouble() - 0.5) * 2;
+        final texturePoint = Offset(point.dx + offsetX, point.dy + offsetY);
+        
+        canvas.drawCircle(texturePoint, 0.8, texturePaint);
+      }
+    }
+  }
+
+  // 🎨 ===== PLACEHOLDERS para otros efectos =====
+  void _drawWatercolorStroke(Canvas canvas, DrawingStroke stroke) {
+    // TODO: Implementar acuarela artística
+    _drawBrushStroke(canvas, stroke); // Temporal
+  }
+  
+  void _drawCrystalStroke(Canvas canvas, DrawingStroke stroke) {
+    // TODO: Implementar efecto cristal
+    _drawPenStroke(canvas, stroke); // Temporal
+  }
+  
+  void _drawSprayStroke(Canvas canvas, DrawingStroke stroke) {
+    // TODO: Implementar spray urbano
+    _drawCrayonStroke(canvas, stroke); // Temporal
+  }
+  
+  void _drawNeonStroke(Canvas canvas, DrawingStroke stroke) {
+    // TODO: Implementar neón brillante
+    _drawPenStroke(canvas, stroke); // Temporal
+  }
+  
+  void _drawBrushThickStroke(Canvas canvas, DrawingStroke stroke) {
+    final thickStroke = DrawingStroke(
+      points: stroke.points,
+      color: stroke.color,
+      strokeWidth: stroke.strokeWidth * 1.5,
+      toolType: stroke.toolType,
+    );
+    _drawBrushStroke(canvas, thickStroke);
+  }
+  
+  void _drawMarkerStroke(Canvas canvas, DrawingStroke stroke) {
+    final markerPaint = Paint()
+      ..color = stroke.color.withOpacity(0.7)
+      ..strokeWidth = stroke.strokeWidth
+      ..strokeCap = StrokeCap.square
+      ..style = PaintingStyle.stroke;
+    
+    final path = Path();
+    path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
+    for (int i = 1; i < stroke.points.length; i++) {
+      path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
+    }
+    canvas.drawPath(path, markerPaint);
+  }
+  
+  void _drawBlurStroke(Canvas canvas, DrawingStroke stroke) {
+    final blurPaint = Paint()
+      ..color = stroke.color.withOpacity(0.5)
+      ..strokeWidth = stroke.strokeWidth * 2
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+    
+    final path = Path();
+    path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
+    for (int i = 1; i < stroke.points.length; i++) {
+      path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
+    }
+    canvas.drawPath(path, blurPaint);
   }
 
   @override
@@ -464,6 +627,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // Formato actual de escritura continua
   TextFormatValue _contentFormat = const TextFormatValue();
+
+  // 🎨 MENÚ DE LÁPICES
+  bool _showDrawingToolsMenu = false;
+  bool _showColorPalette = false;
+  Color _selectedDrawingColor = Colors.black;
+  double _selectedBrushSize = 3.0;
+  int _selectedBrushType = 0; // 0-4 para diferentes tipos de pincel
 
   // RepaintBoundary para compartir imagen
   final GlobalKey _noteKey = GlobalKey();
@@ -1010,12 +1180,43 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   void _onDrawStart(DragStartDetails details) {
     if (!_isDrawingMode) return;
 
-    // Determinar herramienta
+    // Determinar herramienta - Sistema NUEVO de menú flotante de lápices
     String toolType = '';
     Color color = Colors.black;
     double strokeWidth = 2.0;
 
-    if (_contentFormat.pencil) {
+    // 🎨 NUEVO: Usar herramientas del menú flotante si está activo
+    if (_showDrawingToolsMenu) {
+      switch (_selectedBrushType) {
+        case 0: // Pincel Normal
+          toolType = 'brush_normal';
+          color = _selectedDrawingColor;
+          strokeWidth = _selectedBrushSize;
+          break;
+        case 1: // Lápiz Fino - TINTA CALIGRÁFICA ✨
+          toolType = 'calligraphy_ink';
+          color = _selectedDrawingColor;
+          strokeWidth = _selectedBrushSize;
+          break;
+        case 2: // Pincel Grueso
+          toolType = 'brush_thick';
+          color = _selectedDrawingColor;
+          strokeWidth = _selectedBrushSize;
+          break;
+        case 3: // Difuminado
+          toolType = 'blur';
+          color = _selectedDrawingColor;
+          strokeWidth = _selectedBrushSize;
+          break;
+        case 4: // Marcador
+          toolType = 'marker';
+          color = _selectedDrawingColor;
+          strokeWidth = _selectedBrushSize;
+          break;
+      }
+    } 
+    // Sistema ANTIGUO de botones (mantener compatibilidad)
+    else if (_contentFormat.pencil) {
       toolType = 'pencil';
       color = _contentFormat.pencilColor;
       strokeWidth = 2.0;
@@ -1077,7 +1278,27 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     if (_currentStroke == null) return;
 
     setState(() {
-      _drawingStrokes.add(_currentStroke!);
+      DrawingStroke finalStroke = _currentStroke!;
+      
+      // 🎨 Aplicar efectos únicos según el tipo de herramienta
+      if (finalStroke.toolType == 'calligraphy_ink') {
+        // Aplicar efecto de tinta caligráfica
+        final enhancedPoints = CalligraphyInkEffect.applyEffect(
+          finalStroke.points,
+          color: finalStroke.color,
+          baseSize: finalStroke.strokeWidth,
+          canvasSize: Size(800, 1200), // Tamaño aproximado del canvas
+        );
+        
+        finalStroke = DrawingStroke(
+          points: enhancedPoints,
+          color: finalStroke.color,
+          strokeWidth: finalStroke.strokeWidth,
+          toolType: finalStroke.toolType,
+        );
+      }
+      
+      _drawingStrokes.add(finalStroke);
       _currentStroke = null;
     });
 
@@ -1624,8 +1845,286 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     if (pop) Navigator.pop(context);
   }
 
+  /// 🎨 Menú flotante de herramientas de dibujo (estilo de la imagen)
+  Widget _buildDrawingToolsMenu() {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Selector de color (círculo multicolor)
+            _buildColorPicker(),
+            
+            // Separador
+            Container(width: 1, height: 30, color: Colors.white24),
+            
+            // 5 tipos de lápices/pinceles
+            ..._buildBrushTools(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 🎨 Paletas de colores temáticas
+  static const Map<String, List<Color>> _colorThemes = {
+    'Básicos': [
+      Colors.black, Colors.red, Colors.blue, Colors.green,
+      Color(0xFF9C27B0), Color(0xFFFF9800), Color(0xFF795548), Color(0xFF607D8B),
+    ],
+    'Pasteles': [
+      Color(0xFFFFCDD2), Color(0xFFF8BBD9), Color(0xFFE1BEE7), Color(0xFFD1C4E9),
+      Color(0xFFC5CAE9), Color(0xFFBBDEFB), Color(0xFFB2EBF2), Color(0xFFB2DFDB),
+    ],
+    'Vibrantes': [
+      Color(0xFFE91E63), Color(0xFF9C27B0), Color(0xFF673AB7), Color(0xFF3F51B5),
+      Color(0xFF2196F3), Color(0xFF00BCD4), Color(0xFF009688), Color(0xFF4CAF50),
+    ],
+    'Neón': [
+      Color(0xFF00FFFF), Color(0xFF00FF00), Color(0xFFFFFF00), Color(0xFFFF00FF),
+      Color(0xFFFF0080), Color(0xFF8000FF), Color(0xFF0080FF), Color(0xFF80FF00),
+    ],
+  };
+
+  /// 🎨 Selector de color circular
+  Widget _buildColorPicker() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _showColorPalette = !_showColorPalette;
+        });
+      },
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const SweepGradient(
+            colors: [
+              Colors.red,
+              Colors.orange,
+              Colors.yellow,
+              Colors.green,
+              Colors.blue,
+              Colors.indigo,
+              Colors.purple,
+              Colors.red,
+            ],
+          ),
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _selectedDrawingColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 🌈 Paleta de colores temática completa
+  Widget _buildColorPalette() {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E).withOpacity(0.95),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFF8B5CF6).withOpacity(0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header con título
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '🎨 Paleta de Colores',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _showColorPalette = false;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Temas de colores
+            ..._colorThemes.entries.map((themeEntry) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Título del tema
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 8),
+                    child: Text(
+                      themeEntry.key,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  
+                  // Colores del tema
+                  Container(
+                    height: 45,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: themeEntry.value.length,
+                      itemBuilder: (context, index) {
+                        final color = themeEntry.value[index];
+                        final isSelected = _selectedDrawingColor == color;
+                        
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedDrawingColor = color;
+                              // Cerrar la paleta después de seleccionar
+                              _showColorPalette = false;
+                            });
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            margin: const EdgeInsets.only(right: 12),
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected 
+                                    ? Colors.white 
+                                    : Colors.white.withOpacity(0.3),
+                                width: isSelected ? 3 : 1,
+                              ),
+                              boxShadow: [
+                                if (isSelected)
+                                  BoxShadow(
+                                    color: color.withOpacity(0.5),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                              ],
+                            ),
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 20,
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 12),
+                ],
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 🖌️ Herramientas de pincel
+  List<Widget> _buildBrushTools() {
+    final brushIcons = [
+      Icons.brush_rounded,           // Pincel normal
+      Icons.edit_rounded,            // Lápiz fino
+      Icons.format_paint_rounded,    // Pincel grueso  
+      Icons.blur_on_rounded,         // Difuminado
+      Icons.highlight_rounded,       // Marcador
+    ];
+
+    return List.generate(5, (index) {
+      final isSelected = _selectedBrushType == index;
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedBrushType = index;
+            // Ajustar tamaño según tipo de pincel
+            switch (index) {
+              case 0: _selectedBrushSize = 3.0; break;  // Normal
+              case 1: _selectedBrushSize = 1.5; break; // Fino
+              case 2: _selectedBrushSize = 6.0; break; // Grueso
+              case 3: _selectedBrushSize = 8.0; break; // Difuminado
+              case 4: _selectedBrushSize = 12.0; break; // Marcador
+            }
+          });
+        },
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            brushIcons[index],
+            color: isSelected ? Colors.white : Colors.white70,
+            size: 20,
+          ),
+        ),
+      );
+    });
+  }
+
   Widget _buildIconBox({
-    required Widget icon, 
+    required Widget icon,
     required VoidCallback onTap,
     bool isActive = false,
   }) {
@@ -1815,15 +2314,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   Widget build(BuildContext context) {
     const double _bottomBarHeight = 50.0;
 
+
+
     final currentScroll =
         _scrollController.hasClients ? _scrollController.offset : 0.0;
 
     return Stack(
       children: [
         Scaffold(
-          resizeToAvoidBottomInset: true,
+          resizeToAvoidBottomInset: false, // 🎯 Desactivar resize automático
           backgroundColor: _noteColor,
-          // Configuración nativa de Android para animaciones fluidas
+          // Configuración optimizada para respuesta inmediata
           extendBodyBehindAppBar: false,
           appBar: AppBar(
             backgroundColor: _noteColor,
@@ -2301,52 +2802,56 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         controller: _partControllers[i],
                                         autofocus: false,
                                         maxLines: null,
-                                      style: TextStyle(
-                                        fontSize: _contentFontSize,
-                                        fontWeight: _contentParts[i].bold
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: Colors.black87,
-                                        decoration: _contentParts[i].underline
-                                            ? TextDecoration.underline
-                                            : TextDecoration.none,
-                                        decorationColor:
-                                            _contentParts[i].underline
-                                                ? Color(_contentParts[i].underlineColor ?? 0xFF9333EA)
-                                                : null,
-                                        decorationThickness:
-                                            _contentParts[i].underline
-                                                ? 2.5
-                                                : null,
-                                        backgroundColor:
-                                            _contentParts[i].highlight
-                                                ? Color(_contentParts[i].highlightColor ?? 0xFFEAB308)
-                                                : Colors.transparent,
-                                      ),
-                                      textAlign: TextAlign.left,
-                                      decoration: const InputDecoration(
-                                        border: InputBorder.none,
-                                        contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                      ),
-                                      onChanged: (_) =>
-                                          setHasUnsavedChanges(true),
-                                      onSubmitted: (value) {
-                                        setState(() {
-                                          _contentParts[i] = _TextPart(
-                                            value,
-                                            _contentParts[i].bold,
-                                            _contentParts[i].underline,
-                                            _contentParts[i].underlineColor,
-                                            _contentParts[i].highlight,
-                                            _contentParts[i].highlightColor,
-                                            false,
-                                          );
-                                          _editingPartIndex = null;
-                                          _partControllers.remove(i);
-                                        });
-                                        _saveNote();
-                                      },
+                                        style: TextStyle(
+                                          fontSize: _contentFontSize,
+                                          fontWeight: _contentParts[i].bold
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: Colors.black87,
+                                          decoration: _contentParts[i].underline
+                                              ? TextDecoration.underline
+                                              : TextDecoration.none,
+                                          decorationColor:
+                                              _contentParts[i].underline
+                                                  ? Color(_contentParts[i]
+                                                          .underlineColor ??
+                                                      0xFF9333EA)
+                                                  : null,
+                                          decorationThickness:
+                                              _contentParts[i].underline
+                                                  ? 2.5
+                                                  : null,
+                                          backgroundColor:
+                                              _contentParts[i].highlight
+                                                  ? Color(_contentParts[i]
+                                                          .highlightColor ??
+                                                      0xFFEAB308)
+                                                  : Colors.transparent,
+                                        ),
+                                        textAlign: TextAlign.left,
+                                        decoration: const InputDecoration(
+                                          border: InputBorder.none,
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                        ),
+                                        onChanged: (_) =>
+                                            setHasUnsavedChanges(true),
+                                        onSubmitted: (value) {
+                                          setState(() {
+                                            _contentParts[i] = _TextPart(
+                                              value,
+                                              _contentParts[i].bold,
+                                              _contentParts[i].underline,
+                                              _contentParts[i].underlineColor,
+                                              _contentParts[i].highlight,
+                                              _contentParts[i].highlightColor,
+                                              false,
+                                            );
+                                            _editingPartIndex = null;
+                                            _partControllers.remove(i);
+                                          });
+                                          _saveNote();
+                                        },
                                       ),
                                     ),
                                   );
@@ -2800,21 +3305,24 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ),
 
           // ======= BARRA INFERIOR =======
-          bottomNavigationBar: AnimatedPadding(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.fastOutSlowIn,
+          bottomNavigationBar: Container(
             padding: EdgeInsets.only(
-                left: 10,
-                right: 10,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 8),
+              left: 10,
+              right: 10,
+              bottom: MediaQuery.of(context).viewInsets.bottom > 0 
+                ? MediaQuery.of(context).viewInsets.bottom // 🎯 Pegado al teclado cuando está visible
+                : 20, // 🎯 Espacio base cuando no hay teclado
+            ),
             child: SafeArea(
               top: false,
+              bottom: false, // 🎯 No agregar padding inferior
               minimum: EdgeInsets.zero,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.fastOutSlowIn,
-                height: 90, // Altura fija para 2 filas
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Container( // 🎯 SIN animación para respuesta instantánea
+                height: MediaQuery.of(context).viewInsets.bottom > 0 ? 95 : 140, // 🎯 Altura óptima sin teclado
+                padding: EdgeInsets.symmetric(
+                  horizontal: 12, 
+                  vertical: MediaQuery.of(context).viewInsets.bottom > 0 ? 4 : 16, // 🎯 Espaciado cómodo sin teclado
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.95),
                   borderRadius: BorderRadius.circular(12),
@@ -2835,7 +3343,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         children: [
                           // Botón A - Texto Normal
                           _buildIconBox(
-                            isActive: (!_contentFormat.bold && !_contentFormat.underline && !_contentFormat.highlight),
+                            isActive: (!_contentFormat.bold &&
+                                !_contentFormat.underline &&
+                                !_contentFormat.highlight),
                             icon: Container(
                               width: 24,
                               height: 24,
@@ -2845,7 +3355,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.normal,
-                                  color: (!_contentFormat.bold && !_contentFormat.underline && !_contentFormat.highlight)
+                                  color: (!_contentFormat.bold &&
+                                          !_contentFormat.underline &&
+                                          !_contentFormat.highlight)
                                       ? Colors.white
                                       : const Color(0xFF4F46E5),
                                 ),
@@ -2853,7 +3365,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             ),
                             onTap: () {
                               // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                              final String currentText = _hiddenController.text.trim();
+                              final String currentText =
+                                  _hiddenController.text.trim();
                               if (currentText.isNotEmpty) {
                                 // Guardar texto actual con formato anterior
                                 setState(() {
@@ -2887,113 +3400,114 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               FocusScope.of(context).requestFocus(_hiddenFocus);
                             },
                           ),
-                    _buildIconBox(
-                      isActive: _contentFormat.bold,
-                      icon: Icon(
-                        Icons.format_bold_rounded,
-                        size: 24,
-                        color: _contentFormat.bold
-                            ? Colors.white
-                            : const Color(0xFF4F46E5),
-                      ),
-                      onTap: () {
-                        // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                        final String currentText =
-                            _hiddenController.text.trim();
-                        if (currentText.isNotEmpty) {
-                          // Guardar texto actual con formato anterior
-                          setState(() {
-                            _contentParts.add(_TextPart(
-                              currentText,
-                              _contentFormat.bold,
-                              _contentFormat.underline,
-                              _contentFormat.underline
-                                  ? _contentFormat.underlineColor.value
-                                  : null,
-                              _contentFormat.highlight,
-                              _contentFormat.highlight
-                                  ? _contentFormat.highlightColor.value
-                                  : null,
-                              false,
-                            ));
-                          });
-                          _hiddenController.clear();
-                        }
+                          _buildIconBox(
+                            isActive: _contentFormat.bold,
+                            icon: Icon(
+                              Icons.format_bold_rounded,
+                              size: 24,
+                              color: _contentFormat.bold
+                                  ? Colors.white
+                                  : const Color(0xFF4F46E5),
+                            ),
+                            onTap: () {
+                              // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                              final String currentText =
+                                  _hiddenController.text.trim();
+                              if (currentText.isNotEmpty) {
+                                // Guardar texto actual con formato anterior
+                                setState(() {
+                                  _contentParts.add(_TextPart(
+                                    currentText,
+                                    _contentFormat.bold,
+                                    _contentFormat.underline,
+                                    _contentFormat.underline
+                                        ? _contentFormat.underlineColor.value
+                                        : null,
+                                    _contentFormat.highlight,
+                                    _contentFormat.highlight
+                                        ? _contentFormat.highlightColor.value
+                                        : null,
+                                    false,
+                                  ));
+                                });
+                                _hiddenController.clear();
+                              }
 
-                        // Cambiar formato para texto nuevo
-                        setState(() {
-                          _contentFormat = _contentFormat.copyWith(
-                            bold: !_contentFormat.bold,
-                          );
-                        });
-                        _saveNote(pop: false);
-                        // Mantener foco en el texto
-                        FocusScope.of(context).requestFocus(_hiddenFocus);
-                      },
-                    ),
-                    _buildIconBox(
-                      isActive: _contentFormat.underline,
-                      icon: Icon(
-                        Icons.format_underlined_rounded,
-                        size: 24,
-                        color: _contentFormat.underline
-                            ? Colors.white
-                            : const Color(0xFF9333EA),
-                      ),
-                      onTap: () {
-                        // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                        final String currentText =
-                            _hiddenController.text.trim();
-                        if (currentText.isNotEmpty) {
-                          // Guardar texto actual con formato anterior
-                          setState(() {
-                            _contentParts.add(_TextPart(
-                              currentText,
-                              _contentFormat.bold,
-                              _contentFormat.underline,
-                              _contentFormat.underline
-                                  ? _contentFormat.underlineColor.value
-                                  : null,
-                              _contentFormat.highlight,
-                              _contentFormat.highlight
-                                  ? _contentFormat.highlightColor.value
-                                  : null,
-                              false,
-                            ));
-                          });
-                          _hiddenController.clear();
-                        }
-
-                        // Cambiar formato para texto nuevo
-                        setState(() {
-                          _contentFormat = _contentFormat.copyWith(
-                            underline: !_contentFormat.underline,
-                          );
-                        });
-                        _saveNote(pop: false);
-                        // Mantener foco en el texto
-                        FocusScope.of(context).requestFocus(_hiddenFocus);
-                      },
-                    ),
-
-                    _buildIconBox(
-                      icon: const Icon(
-                        Icons.psychology_rounded,
-                        size: 24,
-                        color: Color(0xFFDC2626),
-                      ),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                MindMapFromNoteScreen(note: widget.note),
+                              // Cambiar formato para texto nuevo
+                              setState(() {
+                                _contentFormat = _contentFormat.copyWith(
+                                  bold: !_contentFormat.bold,
+                                );
+                              });
+                              _saveNote(pop: false);
+                              // Mantener foco en el texto
+                              FocusScope.of(context).requestFocus(_hiddenFocus);
+                            },
                           ),
-                        );
-                      },
-                    ),
+                          _buildIconBox(
+                            isActive: _contentFormat.underline,
+                            icon: Icon(
+                              Icons.format_underlined_rounded,
+                              size: 24,
+                              color: _contentFormat.underline
+                                  ? Colors.white
+                                  : const Color(0xFF9333EA),
+                            ),
+                            onTap: () {
+                              // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                              final String currentText =
+                                  _hiddenController.text.trim();
+                              if (currentText.isNotEmpty) {
+                                // Guardar texto actual con formato anterior
+                                setState(() {
+                                  _contentParts.add(_TextPart(
+                                    currentText,
+                                    _contentFormat.bold,
+                                    _contentFormat.underline,
+                                    _contentFormat.underline
+                                        ? _contentFormat.underlineColor.value
+                                        : null,
+                                    _contentFormat.highlight,
+                                    _contentFormat.highlight
+                                        ? _contentFormat.highlightColor.value
+                                        : null,
+                                    false,
+                                  ));
+                                });
+                                _hiddenController.clear();
+                              }
+
+                              // Cambiar formato para texto nuevo
+                              setState(() {
+                                _contentFormat = _contentFormat.copyWith(
+                                  underline: !_contentFormat.underline,
+                                );
+                              });
+                              _saveNote(pop: false);
+                              // Mantener foco en el texto
+                              FocusScope.of(context).requestFocus(_hiddenFocus);
+                            },
+                          ),
+
+                          _buildIconBox(
+                            icon: const Icon(
+                              Icons.psychology_rounded,
+                              size: 24,
+                              color: Color(0xFFDC2626),
+                            ),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      MindMapFromNoteScreen(note: widget.note),
+                                ),
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
+                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom > 0 ? 2 : 6), // 🎯 Separación dinámica entre filas
                     // SEGUNDA FILA - 3 botones funcionales
                     Expanded(
                       child: Row(
@@ -3010,7 +3524,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             ),
                             onTap: () {
                               // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                              final String currentText = _hiddenController.text.trim();
+                              final String currentText =
+                                  _hiddenController.text.trim();
                               if (currentText.isNotEmpty) {
                                 // Guardar texto actual con formato anterior
                                 setState(() {
@@ -3042,6 +3557,27 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               FocusScope.of(context).requestFocus(_hiddenFocus);
                             },
                           ),
+                          // 🎨 NUEVO BOTÓN LÁPIZ
+                          _buildIconBox(
+                            isActive: _isDrawingMode, // Activo cuando está en modo dibujo
+                            icon: Icon(
+                              Icons.brush_rounded,
+                              size: 24,
+                              color: _isDrawingMode
+                                  ? Colors.white
+                                  : const Color(0xFF8B5CF6), // Morado para lápiz
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _showDrawingToolsMenu = !_showDrawingToolsMenu;
+                                if (_showDrawingToolsMenu) {
+                                  _isDrawingMode = true; // Activar modo dibujo al abrir menú
+                                } else {
+                                  _isDrawingMode = false; // Desactivar al cerrar
+                                }
+                              });
+                            },
+                          ),
                           _buildIconBox(
                             icon: const Icon(
                               Icons.camera_alt_rounded,
@@ -3053,7 +3589,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 context: context,
                                 isScrollControlled: true,
                                 shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                                  borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(16)),
                                 ),
                                 builder: (ctx) => const CameraGalleryWidget(),
                               ).then((selectedImage) {
@@ -3061,7 +3598,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   final defaultW = 240.0;
                                   final defaultH = 160.0;
                                   final size = MediaQuery.of(context).size;
-                                  final startX = (size.width - defaultW) / 2 + 16;
+                                  final startX =
+                                      (size.width - defaultW) / 2 + 16;
                                   final startY = 220.0 + 16;
 
                                   setState(() {
@@ -3074,7 +3612,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         height: defaultH,
                                       ),
                                     );
-                                    _activeImageIndex = _floatingImages.length - 1;
+                                    _activeImageIndex =
+                                        _floatingImages.length - 1;
                                   });
                                   _saveNote();
                                   _scheduleUpdateContentRect();
@@ -3086,7 +3625,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             icon: const Icon(
                               Icons.menu_book_rounded,
                               size: 24,
-                              color: Color(0xFFB45309), // Color dorado/marrón bíblico
+                              color: Color(
+                                  0xFFB45309), // Color dorado/marrón bíblico
                             ),
                             onTap: () {
                               _addBibleVerse();
@@ -3159,6 +3699,24 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               },
             ),
           ),
+
+          // ======= MENÚ FLOTANTE DE LÁPICES =======
+          if (_showDrawingToolsMenu)
+            Positioned(
+              bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 110 : 160,
+              left: 20,
+              right: 20,
+              child: _buildDrawingToolsMenu(),
+            ),
+
+          // 🌈 ======= PALETA DE COLORES TEMÁTICA =======
+          if (_showColorPalette)
+            Positioned(
+              bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 200 : 250,
+              left: 20,
+              right: 20,
+              child: _buildColorPalette(),
+            ),
       ],
     );
   }
@@ -3860,4 +4418,89 @@ class SkinPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// ===================
+/// 🎨 EFECTOS DE DIBUJO ÚNICOS
+/// ===================
+
+/// 🖋️ Efecto de Tinta Caligráfica
+class CalligraphyInkEffect {
+  static List<Offset> applyEffect(List<Offset> points, {
+    required Color color,
+    required double baseSize,
+    required Size canvasSize,
+  }) {
+    if (points.length < 2) return points;
+    
+    List<Offset> enhancedPoints = [];
+    
+    for (int i = 0; i < points.length; i++) {
+      final point = points[i];
+      
+      // Agregar punto principal
+      enhancedPoints.add(point);
+      
+      // Agregar goteo sutil cada ciertos puntos
+      if (i % 15 == 0 && i > 0) {
+        final random = Random();
+        final dropOffset = Offset(
+          point.dx + (random.nextDouble() - 0.5) * 2,
+          point.dy + random.nextDouble() * 4 + 2,
+        );
+        if (_isWithinBounds(dropOffset, canvasSize)) {
+          enhancedPoints.add(dropOffset);
+        }
+      }
+      
+      // Textura orgánica - pequeñas variaciones
+      if (i % 3 == 0) {
+        final random = Random();
+        final textureOffset = Offset(
+          point.dx + (random.nextDouble() - 0.5) * 1.5,
+          point.dy + (random.nextDouble() - 0.5) * 1.5,
+        );
+        if (_isWithinBounds(textureOffset, canvasSize)) {
+          enhancedPoints.add(textureOffset);
+        }
+      }
+    }
+    
+    return enhancedPoints;
+  }
+  
+  static bool _isWithinBounds(Offset point, Size canvasSize) {
+    return point.dx >= 0 && point.dx <= canvasSize.width &&
+           point.dy >= 0 && point.dy <= canvasSize.height;
+  }
+  
+  static Paint createPaint(Color color, double size) {
+    return Paint()
+      ..color = color
+      ..strokeWidth = size
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+  }
+}
+
+/// 🎨 Efecto de Acuarela (para implementar después)
+class WatercolorEffect {
+  // TODO: Implementar en el siguiente paso
+}
+
+/// 💎 Efecto de Cristal (para implementar después)  
+class CrystalEffect {
+  // TODO: Implementar en el siguiente paso
+}
+
+/// 🎯 Efecto de Spray (para implementar después)
+class SprayEffect {
+  // TODO: Implementar en el siguiente paso
+}
+
+/// ✨ Efecto de Neón (para implementar después)
+class NeonEffect {
+  // TODO: Implementar en el siguiente paso
 }

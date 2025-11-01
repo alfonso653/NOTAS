@@ -194,8 +194,8 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                           style: TextStyle(
                             fontWeight: FontWeight.normal,
                             fontSize: 22,
-                            color: (!v.bold && !v.underline && !v.highlight) 
-                                ? Colors.white 
+                            color: (!v.bold && !v.underline && !v.highlight)
+                                ? Colors.white
                                 : Colors.black87,
                             letterSpacing: 2,
                           ),
