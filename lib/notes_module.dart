@@ -21,7 +21,7 @@ import 'text_format_panel.dart';
 import 'note.dart';
 import 'note_provider.dart';
 import 'audio_mic_fab.dart';
-import 'camera_gallery_widget.dart';
+import 'image_gallery_fab.dart';
 
 import 'mindmap_from_note_screen.dart';
 
@@ -323,17 +323,15 @@ class DrawingPainter extends CustomPainter {
     if (stroke.points.length < 2) return;
 
     // 1. Trazo principal con grosor variable
-    final mainPaint = CalligraphyInkEffect.createPaint(
-      stroke.color, 
-      stroke.strokeWidth
-    );
+    final mainPaint =
+        CalligraphyInkEffect.createPaint(stroke.color, stroke.strokeWidth);
 
     final path = Path();
     path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
-    
+
     for (int i = 1; i < stroke.points.length; i++) {
       final current = stroke.points[i];
-      
+
       // Usar curvas suaves para el trazo principal
       if (i == stroke.points.length - 1) {
         path.lineTo(current.dx, current.dy);
@@ -344,47 +342,41 @@ class DrawingPainter extends CustomPainter {
           (current.dy + next.dy) / 2,
         );
         path.quadraticBezierTo(
-          current.dx, current.dy, 
-          controlPoint.dx, controlPoint.dy
-        );
+            current.dx, current.dy, controlPoint.dx, controlPoint.dy);
       }
     }
-    
+
     // Dibujar trazo principal
     canvas.drawPath(path, mainPaint);
-    
+
     // 2. Efectos adicionales: goteo y textura
     final random = Random();
-    
+
     for (int i = 0; i < stroke.points.length; i += 8) {
       final point = stroke.points[i];
-      
+
       // Goteo sutil
       if (random.nextDouble() < 0.3) {
         final dropPaint = Paint()
           ..color = stroke.color.withOpacity(0.4)
           ..style = PaintingStyle.fill;
-        
+
         final dropY = point.dy + random.nextDouble() * 6 + 2;
         final dropSize = random.nextDouble() * 1.5 + 0.5;
-        
-        canvas.drawCircle(
-          Offset(point.dx, dropY), 
-          dropSize, 
-          dropPaint
-        );
+
+        canvas.drawCircle(Offset(point.dx, dropY), dropSize, dropPaint);
       }
-      
+
       // Textura orgánica
       if (random.nextDouble() < 0.4) {
         final texturePaint = Paint()
           ..color = stroke.color.withOpacity(0.2)
           ..style = PaintingStyle.fill;
-        
+
         final offsetX = (random.nextDouble() - 0.5) * 2;
         final offsetY = (random.nextDouble() - 0.5) * 2;
         final texturePoint = Offset(point.dx + offsetX, point.dy + offsetY);
-        
+
         canvas.drawCircle(texturePoint, 0.8, texturePaint);
       }
     }
@@ -395,22 +387,22 @@ class DrawingPainter extends CustomPainter {
     // TODO: Implementar acuarela artística
     _drawBrushStroke(canvas, stroke); // Temporal
   }
-  
+
   void _drawCrystalStroke(Canvas canvas, DrawingStroke stroke) {
     // TODO: Implementar efecto cristal
     _drawPenStroke(canvas, stroke); // Temporal
   }
-  
+
   void _drawSprayStroke(Canvas canvas, DrawingStroke stroke) {
     // TODO: Implementar spray urbano
     _drawCrayonStroke(canvas, stroke); // Temporal
   }
-  
+
   void _drawNeonStroke(Canvas canvas, DrawingStroke stroke) {
     // TODO: Implementar neón brillante
     _drawPenStroke(canvas, stroke); // Temporal
   }
-  
+
   void _drawBrushThickStroke(Canvas canvas, DrawingStroke stroke) {
     final thickStroke = DrawingStroke(
       points: stroke.points,
@@ -420,14 +412,14 @@ class DrawingPainter extends CustomPainter {
     );
     _drawBrushStroke(canvas, thickStroke);
   }
-  
+
   void _drawMarkerStroke(Canvas canvas, DrawingStroke stroke) {
     final markerPaint = Paint()
       ..color = stroke.color.withOpacity(0.7)
       ..strokeWidth = stroke.strokeWidth
       ..strokeCap = StrokeCap.square
       ..style = PaintingStyle.stroke;
-    
+
     final path = Path();
     path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
     for (int i = 1; i < stroke.points.length; i++) {
@@ -435,7 +427,7 @@ class DrawingPainter extends CustomPainter {
     }
     canvas.drawPath(path, markerPaint);
   }
-  
+
   void _drawBlurStroke(Canvas canvas, DrawingStroke stroke) {
     final blurPaint = Paint()
       ..color = stroke.color.withOpacity(0.5)
@@ -443,7 +435,7 @@ class DrawingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
-    
+
     final path = Path();
     path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
     for (int i = 1; i < stroke.points.length; i++) {
@@ -460,43 +452,6 @@ class DrawingPainter extends CustomPainter {
     if (old.strokes.length != strokes.length) return true;
     return false;
   }
-}
-
-/// Imágenes flotantes (superpuestas al contenido)
-class FloatingImage {
-  String filePath;
-  double x;
-  double y;
-  double width;
-  double height;
-  bool isLocked; // 🔒 Nueva propiedad para bloquear movimiento
-
-  FloatingImage({
-    required this.filePath,
-    required this.x,
-    required this.y,
-    required this.width,
-    required this.height,
-    this.isLocked = false, // Por defecto desbloqueado
-  });
-
-  Map<String, dynamic> toJson() => {
-        'filePath': filePath,
-        'x': x,
-        'y': y,
-        'width': width,
-        'height': height,
-        'isLocked': isLocked,
-      };
-
-  factory FloatingImage.fromJson(Map<String, dynamic> json) => FloatingImage(
-        filePath: (json['filePath'] ?? '') as String,
-        x: (json['x'] as num).toDouble(),
-        y: (json['y'] as num).toDouble(),
-        width: (json['width'] as num).toDouble(),
-        height: (json['height'] as num).toDouble(),
-        isLocked: (json['isLocked'] ?? false) as bool,
-      );
 }
 
 /// Texto flotante (párrafos que se pueden mover libremente)
@@ -610,17 +565,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   final Map<int, TextEditingController> _partControllers = {};
   int? _editingPartIndex;
 
-  // Selección (se usará para imágenes flotantes)
-  int? _activeImageIndex;
-
   // Controller para el scroll del contenido
   late ScrollController _scrollController;
 
   // Control de inserciones por drag de texto
   int? _dropInsertIndex;
-
-  // Imágenes flotantes superpuestas
-  final List<FloatingImage> _floatingImages = <FloatingImage>[];
 
   // Textos flotantes superpuestos
   final List<FloatingText> _floatingTexts = <FloatingText>[];
@@ -1214,7 +1163,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           strokeWidth = _selectedBrushSize;
           break;
       }
-    } 
+    }
     // Sistema ANTIGUO de botones (mantener compatibilidad)
     else if (_contentFormat.pencil) {
       toolType = 'pencil';
@@ -1279,7 +1228,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     setState(() {
       DrawingStroke finalStroke = _currentStroke!;
-      
+
       // 🎨 Aplicar efectos únicos según el tipo de herramienta
       if (finalStroke.toolType == 'calligraphy_ink') {
         // Aplicar efecto de tinta caligráfica
@@ -1289,7 +1238,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           baseSize: finalStroke.strokeWidth,
           canvasSize: Size(800, 1200), // Tamaño aproximado del canvas
         );
-        
+
         finalStroke = DrawingStroke(
           points: enhancedPoints,
           color: finalStroke.color,
@@ -1297,7 +1246,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           toolType: finalStroke.toolType,
         );
       }
-      
+
       _drawingStrokes.add(finalStroke);
       _currentStroke = null;
     });
@@ -1651,6 +1600,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ),
         ),
 
+        // Botón de imágenes (nuevo - arriba del audio)
+        ImageButton(noteId: widget.note.id.toString()),
+
+        const SizedBox(height: 12),
+
         // Botón de audio (el original)
         AudioButton(noteId: widget.note.id.toString()),
       ],
@@ -1826,7 +1780,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
 
     note.contentParts = partsToSave.map((e) => e.toJson()).toList();
-    note.floatingImages = _floatingImages.map((img) => img.toJson()).toList();
     note.floatingTexts = _floatingTexts.map((text) => text.toJson()).toList();
     note.drawingStrokes = _drawingStrokes.map((s) => s.toJson()).toList();
 
@@ -1868,10 +1821,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           children: [
             // Selector de color (círculo multicolor)
             _buildColorPicker(),
-            
+
             // Separador
             Container(width: 1, height: 30, color: Colors.white24),
-            
+
             // 5 tipos de lápices/pinceles
             ..._buildBrushTools(),
           ],
@@ -1883,20 +1836,44 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   /// 🎨 Paletas de colores temáticas
   static const Map<String, List<Color>> _colorThemes = {
     'Básicos': [
-      Colors.black, Colors.red, Colors.blue, Colors.green,
-      Color(0xFF9C27B0), Color(0xFFFF9800), Color(0xFF795548), Color(0xFF607D8B),
+      Colors.black,
+      Colors.red,
+      Colors.blue,
+      Colors.green,
+      Color(0xFF9C27B0),
+      Color(0xFFFF9800),
+      Color(0xFF795548),
+      Color(0xFF607D8B),
     ],
     'Pasteles': [
-      Color(0xFFFFCDD2), Color(0xFFF8BBD9), Color(0xFFE1BEE7), Color(0xFFD1C4E9),
-      Color(0xFFC5CAE9), Color(0xFFBBDEFB), Color(0xFFB2EBF2), Color(0xFFB2DFDB),
+      Color(0xFFFFCDD2),
+      Color(0xFFF8BBD9),
+      Color(0xFFE1BEE7),
+      Color(0xFFD1C4E9),
+      Color(0xFFC5CAE9),
+      Color(0xFFBBDEFB),
+      Color(0xFFB2EBF2),
+      Color(0xFFB2DFDB),
     ],
     'Vibrantes': [
-      Color(0xFFE91E63), Color(0xFF9C27B0), Color(0xFF673AB7), Color(0xFF3F51B5),
-      Color(0xFF2196F3), Color(0xFF00BCD4), Color(0xFF009688), Color(0xFF4CAF50),
+      Color(0xFFE91E63),
+      Color(0xFF9C27B0),
+      Color(0xFF673AB7),
+      Color(0xFF3F51B5),
+      Color(0xFF2196F3),
+      Color(0xFF00BCD4),
+      Color(0xFF009688),
+      Color(0xFF4CAF50),
     ],
     'Neón': [
-      Color(0xFF00FFFF), Color(0xFF00FF00), Color(0xFFFFFF00), Color(0xFFFF00FF),
-      Color(0xFFFF0080), Color(0xFF8000FF), Color(0xFF0080FF), Color(0xFF80FF00),
+      Color(0xFF00FFFF),
+      Color(0xFF00FF00),
+      Color(0xFFFFFF00),
+      Color(0xFFFF00FF),
+      Color(0xFFFF0080),
+      Color(0xFF8000FF),
+      Color(0xFF0080FF),
+      Color(0xFF80FF00),
     ],
   };
 
@@ -1996,9 +1973,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Temas de colores
             ..._colorThemes.entries.map((themeEntry) {
               return Column(
@@ -2016,7 +1993,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       ),
                     ),
                   ),
-                  
+
                   // Colores del tema
                   Container(
                     height: 45,
@@ -2026,7 +2003,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       itemBuilder: (context, index) {
                         final color = themeEntry.value[index];
                         final isSelected = _selectedDrawingColor == color;
-                        
+
                         return GestureDetector(
                           onTap: () {
                             setState(() {
@@ -2043,8 +2020,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               color: color,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: isSelected 
-                                    ? Colors.white 
+                                color: isSelected
+                                    ? Colors.white
                                     : Colors.white.withOpacity(0.3),
                                 width: isSelected ? 3 : 1,
                               ),
@@ -2069,7 +2046,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       },
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
                 ],
               );
@@ -2083,11 +2060,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   /// 🖌️ Herramientas de pincel
   List<Widget> _buildBrushTools() {
     final brushIcons = [
-      Icons.brush_rounded,           // Pincel normal
-      Icons.edit_rounded,            // Lápiz fino
-      Icons.format_paint_rounded,    // Pincel grueso  
-      Icons.blur_on_rounded,         // Difuminado
-      Icons.highlight_rounded,       // Marcador
+      Icons.brush_rounded, // Pincel normal
+      Icons.edit_rounded, // Lápiz fino
+      Icons.format_paint_rounded, // Pincel grueso
+      Icons.blur_on_rounded, // Difuminado
+      Icons.highlight_rounded, // Marcador
     ];
 
     return List.generate(5, (index) {
@@ -2098,11 +2075,21 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             _selectedBrushType = index;
             // Ajustar tamaño según tipo de pincel
             switch (index) {
-              case 0: _selectedBrushSize = 3.0; break;  // Normal
-              case 1: _selectedBrushSize = 1.5; break; // Fino
-              case 2: _selectedBrushSize = 6.0; break; // Grueso
-              case 3: _selectedBrushSize = 8.0; break; // Difuminado
-              case 4: _selectedBrushSize = 12.0; break; // Marcador
+              case 0:
+                _selectedBrushSize = 3.0;
+                break; // Normal
+              case 1:
+                _selectedBrushSize = 1.5;
+                break; // Fino
+              case 2:
+                _selectedBrushSize = 6.0;
+                break; // Grueso
+              case 3:
+                _selectedBrushSize = 8.0;
+                break; // Difuminado
+              case 4:
+                _selectedBrushSize = 12.0;
+                break; // Marcador
             }
           });
         },
@@ -2110,7 +2097,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
+            color:
+                isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
@@ -2155,10 +2143,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       if (mounted) {
         _scheduleUpdateContentRect();
 
-        // CORREGIDO: Actualizar trazos de dibujo, imágenes flotantes y textos flotantes cuando hay scroll
+        // CORREGIDO: Actualizar trazos de dibujo y textos flotantes cuando hay scroll
         if (_drawingStrokes.isNotEmpty ||
             _currentStroke != null ||
-            _floatingImages.isNotEmpty ||
             _floatingTexts.isNotEmpty) {
           setState(() {});
         }
@@ -2234,14 +2221,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _loadHeaderCollapseState();
     _loadFloatingButtonsCollapseState();
 
-    // Restaurar imágenes y textos flotantes
-    _floatingImages.clear();
-    for (final img in widget.note.floatingImages) {
-      final restoredImg =
-          FloatingImage.fromJson((img as Map).cast<String, dynamic>());
-      _floatingImages.add(restoredImg);
-    }
-
+    // Restaurar textos flotantes
     _floatingTexts.clear();
     for (final text in widget.note.floatingTexts) {
       final restoredText =
@@ -2313,8 +2293,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   @override
   Widget build(BuildContext context) {
     const double _bottomBarHeight = 50.0;
-
-
 
     final currentScroll =
         _scrollController.hasClients ? _scrollController.offset : 0.0;
@@ -2639,23 +2617,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         final scaleFactor = newSize / oldSize;
 
                                         _titleFontSize = newSize;
-
-                                        for (int i = 0;
-                                            i < _floatingImages.length;
-                                            i++) {
-                                          _floatingImages[i].width *=
-                                              scaleFactor;
-                                          _floatingImages[i].height *=
-                                              scaleFactor;
-                                          _floatingImages[i].width =
-                                              _floatingImages[i]
-                                                  .width
-                                                  .clamp(60.0, 600.0);
-                                          _floatingImages[i].height =
-                                              _floatingImages[i]
-                                                  .height
-                                                  .clamp(60.0, 600.0);
-                                        }
                                       });
                                       _saveNote();
                                       _scheduleUpdateContentRect();
@@ -2697,23 +2658,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         final scaleFactor = newSize / oldSize;
 
                                         _contentFontSize = newSize;
-
-                                        for (int i = 0;
-                                            i < _floatingImages.length;
-                                            i++) {
-                                          _floatingImages[i].width *=
-                                              scaleFactor;
-                                          _floatingImages[i].height *=
-                                              scaleFactor;
-                                          _floatingImages[i].width =
-                                              _floatingImages[i]
-                                                  .width
-                                                  .clamp(60.0, 600.0);
-                                          _floatingImages[i].height =
-                                              _floatingImages[i]
-                                                  .height
-                                                  .clamp(60.0, 600.0);
-                                        }
 
                                         for (int i = 0;
                                             i < _floatingTexts.length;
@@ -3091,117 +3035,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     child: ClipRect(
                       child: Stack(
                         children: [
-                          // Imágenes flotantes
-                          ..._floatingImages.asMap().entries.map((entry) {
-                            final idx = entry.key;
-                            final img = entry.value;
-
-                            final scrollOffset = _scrollController.hasClients
-                                ? _scrollController.offset
-                                : 0.0;
-                            final adjustedY = img.y - scrollOffset;
-
-                            return Positioned(
-                              key: ValueKey('floating_${idx}_${img.filePath}'),
-                              left: img.x,
-                              top: adjustedY,
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.deferToChild,
-                                onTap: () {
-                                  setState(() {
-                                    _activeImageIndex =
-                                        _activeImageIndex == idx ? null : idx;
-                                  });
-                                  _saveNote(pop: false);
-                                },
-                                onPanStart: (details) {
-                                  if (img.isLocked) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            '🔒 Imagen bloqueada. Toca el candado para desbloquear.'),
-                                        duration: Duration(seconds: 2),
-                                        backgroundColor: Colors.orange,
-                                      ),
-                                    );
-                                  }
-                                },
-                                onPanUpdate: (details) {
-                                  if (!img.isLocked) {
-                                    setState(() {
-                                      _floatingImages[idx].x +=
-                                          details.delta.dx;
-                                      _floatingImages[idx].y +=
-                                          details.delta.dy;
-                                    });
-                                  }
-                                },
-                                onPanEnd: (_) {
-                                  if (!img.isLocked) {
-                                    _saveNote(pop: false);
-                                  }
-                                },
-                                child: _ResizableImage(
-                                  filePath: img.filePath,
-                                  width: img.width,
-                                  height: img.height,
-                                  selected: _activeImageIndex == idx,
-                                  isLocked: img.isLocked,
-                                  onSelect: () {
-                                    setState(() {
-                                      _activeImageIndex =
-                                          _activeImageIndex == idx ? null : idx;
-                                    });
-                                    _saveNote(pop: false);
-                                  },
-                                  onResize: (w, h) {
-                                    setState(() {
-                                      _floatingImages[idx].width = w;
-                                      _floatingImages[idx].height = h;
-                                    });
-                                    _saveNote(pop: false);
-                                  },
-                                  onToggleLock: () {
-                                    setState(() {
-                                      _floatingImages[idx].isLocked =
-                                          !_floatingImages[idx].isLocked;
-                                    });
-                                    _saveNote(pop: false);
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                            _floatingImages[idx].isLocked
-                                                ? '🔒 Imagen bloqueada'
-                                                : '🔓 Imagen desbloqueada'),
-                                        duration: const Duration(seconds: 2),
-                                        backgroundColor:
-                                            _floatingImages[idx].isLocked
-                                                ? Colors.red.shade400
-                                                : Colors.green.shade400,
-                                      ),
-                                    );
-                                  },
-                                  onDelete: () {
-                                    setState(() {
-                                      _floatingImages.removeAt(idx);
-                                      _activeImageIndex = null;
-                                    });
-                                    _saveNote(pop: false);
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('✅ Imagen eliminada'),
-                                        duration: Duration(seconds: 2),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          }),
-
                           // Textos flotantes
                           ..._floatingTexts.asMap().entries.map((entry) {
                             final idx = entry.key;
@@ -3309,19 +3142,26 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             padding: EdgeInsets.only(
               left: 10,
               right: 10,
-              bottom: MediaQuery.of(context).viewInsets.bottom > 0 
-                ? MediaQuery.of(context).viewInsets.bottom // 🎯 Pegado al teclado cuando está visible
-                : 20, // 🎯 Espacio base cuando no hay teclado
+              bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                  ? MediaQuery.of(context)
+                      .viewInsets
+                      .bottom // 🎯 Pegado al teclado cuando está visible
+                  : 20, // 🎯 Espacio base cuando no hay teclado
             ),
             child: SafeArea(
               top: false,
               bottom: false, // 🎯 No agregar padding inferior
               minimum: EdgeInsets.zero,
-              child: Container( // 🎯 SIN animación para respuesta instantánea
-                height: MediaQuery.of(context).viewInsets.bottom > 0 ? 95 : 140, // 🎯 Altura óptima sin teclado
+              child: Container(
+                // 🎯 SIN animación para respuesta instantánea
+                height: MediaQuery.of(context).viewInsets.bottom > 0
+                    ? 95
+                    : 140, // 🎯 Altura óptima sin teclado
                 padding: EdgeInsets.symmetric(
-                  horizontal: 12, 
-                  vertical: MediaQuery.of(context).viewInsets.bottom > 0 ? 4 : 16, // 🎯 Espaciado cómodo sin teclado
+                  horizontal: 12,
+                  vertical: MediaQuery.of(context).viewInsets.bottom > 0
+                      ? 4
+                      : 16, // 🎯 Espaciado cómodo sin teclado
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.95),
@@ -3507,7 +3347,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         ],
                       ),
                     ),
-                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom > 0 ? 2 : 6), // 🎯 Separación dinámica entre filas
+                    SizedBox(
+                        height: MediaQuery.of(context).viewInsets.bottom > 0
+                            ? 2
+                            : 6), // 🎯 Separación dinámica entre filas
                     // SEGUNDA FILA - 3 botones funcionales
                     Expanded(
                       child: Row(
@@ -3559,64 +3402,25 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           ),
                           // 🎨 NUEVO BOTÓN LÁPIZ
                           _buildIconBox(
-                            isActive: _isDrawingMode, // Activo cuando está en modo dibujo
+                            isActive:
+                                _isDrawingMode, // Activo cuando está en modo dibujo
                             icon: Icon(
                               Icons.brush_rounded,
                               size: 24,
                               color: _isDrawingMode
                                   ? Colors.white
-                                  : const Color(0xFF8B5CF6), // Morado para lápiz
+                                  : const Color(
+                                      0xFF8B5CF6), // Morado para lápiz
                             ),
                             onTap: () {
                               setState(() {
                                 _showDrawingToolsMenu = !_showDrawingToolsMenu;
                                 if (_showDrawingToolsMenu) {
-                                  _isDrawingMode = true; // Activar modo dibujo al abrir menú
+                                  _isDrawingMode =
+                                      true; // Activar modo dibujo al abrir menú
                                 } else {
-                                  _isDrawingMode = false; // Desactivar al cerrar
-                                }
-                              });
-                            },
-                          ),
-                          _buildIconBox(
-                            icon: const Icon(
-                              Icons.camera_alt_rounded,
-                              size: 24,
-                              color: Color(0xFF059669),
-                            ),
-                            onTap: () {
-                              showModalBottomSheet<File?>(
-                                context: context,
-                                isScrollControlled: true,
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(16)),
-                                ),
-                                builder: (ctx) => const CameraGalleryWidget(),
-                              ).then((selectedImage) {
-                                if (selectedImage != null) {
-                                  final defaultW = 240.0;
-                                  final defaultH = 160.0;
-                                  final size = MediaQuery.of(context).size;
-                                  final startX =
-                                      (size.width - defaultW) / 2 + 16;
-                                  final startY = 220.0 + 16;
-
-                                  setState(() {
-                                    _floatingImages.add(
-                                      FloatingImage(
-                                        filePath: selectedImage.path,
-                                        x: startX,
-                                        y: startY,
-                                        width: defaultW,
-                                        height: defaultH,
-                                      ),
-                                    );
-                                    _activeImageIndex =
-                                        _floatingImages.length - 1;
-                                  });
-                                  _saveNote();
-                                  _scheduleUpdateContentRect();
+                                  _isDrawingMode =
+                                      false; // Desactivar al cerrar
                                 }
                               });
                             },
@@ -3700,312 +3504,31 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ),
           ),
 
-          // ======= MENÚ FLOTANTE DE LÁPICES =======
-          if (_showDrawingToolsMenu)
-            Positioned(
-              bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 110 : 160,
-              left: 20,
-              right: 20,
-              child: _buildDrawingToolsMenu(),
-            ),
+        // ======= MENÚ FLOTANTE DE LÁPICES =======
+        if (_showDrawingToolsMenu)
+          Positioned(
+            bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 110 : 160,
+            left: 20,
+            right: 20,
+            child: _buildDrawingToolsMenu(),
+          ),
 
-          // 🌈 ======= PALETA DE COLORES TEMÁTICA =======
-          if (_showColorPalette)
-            Positioned(
-              bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 200 : 250,
-              left: 20,
-              right: 20,
-              child: _buildColorPalette(),
-            ),
+        // 🌈 ======= PALETA DE COLORES TEMÁTICA =======
+        if (_showColorPalette)
+          Positioned(
+            bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 200 : 250,
+            left: 20,
+            right: 20,
+            child: _buildColorPalette(),
+          ),
       ],
     );
   }
 }
 
 /// ===================
-/// Imagen con handles (afuera del picker)
+/// MENÚ EN ABANICO CIRCULAR
 /// ===================
-class _ResizableImage extends StatefulWidget {
-  final String filePath;
-  final double width;
-  final double height;
-  final bool selected;
-  final bool isLocked; // 🔒 Estado del candado
-  final VoidCallback onSelect;
-  final void Function(double w, double h) onResize;
-  final VoidCallback? onDelete; // 🔴 Callback para eliminar
-  final VoidCallback? onToggleLock; // 🔒 Callback para alternar candado
-
-  const _ResizableImage({
-    Key? key,
-    required this.filePath,
-    required this.width,
-    required this.height,
-    required this.selected,
-    required this.isLocked,
-    required this.onSelect,
-    required this.onResize,
-    this.onDelete,
-    this.onToggleLock,
-  }) : super(key: key);
-
-  @override
-  State<_ResizableImage> createState() => _ResizableImageState();
-}
-
-class _ResizableImageState extends State<_ResizableImage> {
-  late double _w;
-  late double _h;
-  final double _handle = 24;
-  Offset? _start;
-  late double _startW;
-  late double _startH;
-
-  @override
-  void initState() {
-    super.initState();
-    _w = widget.width;
-    _h = widget.height;
-  }
-
-  @override
-  void didUpdateWidget(covariant _ResizableImage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.width != widget.width || oldWidget.height != widget.height) {
-      _w = widget.width;
-      _h = widget.height;
-    }
-  }
-
-  Widget _handleAt(int idx) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onPanStart: (d) {
-        if (widget.isLocked) {
-          return;
-        }
-        _start = d.localPosition;
-        _startW = _w;
-        _startH = _h;
-      },
-      onPanUpdate: (d) {
-        if (widget.isLocked) {
-          return;
-        }
-        final delta = d.localPosition - (_start ?? d.localPosition);
-        setState(() {
-          switch (idx) {
-            case 0: // top-left
-              _w = (_startW - delta.dx).clamp(60, 600);
-              _h = (_startH - delta.dy).clamp(60, 600);
-              break;
-            case 1: // top-right
-              _w = (_startW + delta.dx).clamp(60, 600);
-              _h = (_startH - delta.dy).clamp(60, 600);
-              break;
-            case 2: // bottom-left
-              _w = (_startW - delta.dx).clamp(60, 600);
-              _h = (_startH + delta.dy).clamp(60, 600);
-              break;
-            case 3: // bottom-right
-              _w = (_startW + delta.dx).clamp(60, 600);
-              _h = (_startH + delta.dy).clamp(60, 600);
-              break;
-          }
-        });
-        widget.onResize(_w, _h);
-      },
-      child: Container(
-        width: _handle,
-        height: _handle,
-        decoration: BoxDecoration(
-          color: widget.isLocked ? Colors.grey.shade300 : Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(
-              color: widget.isLocked ? Colors.grey.shade500 : Colors.blueAccent,
-              width: 2),
-          boxShadow: [
-            BoxShadow(
-                color: widget.isLocked ? Colors.black12 : Colors.black26,
-                blurRadius: 4)
-          ],
-        ),
-        child: widget.isLocked
-            ? const Icon(
-                Icons.lock,
-                size: 12,
-                color: Colors.grey,
-              )
-            : null,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: SizedBox(
-        width: _w + _handle,
-        height: _h + _handle,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              left: _handle / 2,
-              top: _handle / 2,
-              child: GestureDetector(
-                onTap: widget.onSelect,
-                child: Container(
-                  width: _w,
-                  height: _h,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: widget.selected
-                        ? Border.all(color: Colors.blueAccent, width: 2)
-                        : null,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      File(widget.filePath),
-                      width: _w,
-                      height: _h,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            if (widget.selected) ...[
-              Positioned(left: 0, top: 0, child: _handleAt(0)),
-              Positioned(right: 0, top: 0, child: _handleAt(1)),
-              Positioned(left: 0, bottom: 0, child: _handleAt(2)),
-              Positioned(right: 0, bottom: 0, child: _handleAt(3)),
-              if (widget.onDelete != null)
-                Positioned(
-                  top: (_handle / 2) + -22,
-                  left: (_handle / 2) + -22,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(22),
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('¿Eliminar imagen?'),
-                            content:
-                                const Text('Esta acción no se puede deshacer.'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(),
-                                child: const Text('Cancelar'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.of(ctx).pop();
-                                  widget.onDelete!();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Text('Eliminar'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: const BoxDecoration(
-                          color: Colors.transparent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 30,
-                            height: 30,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black38,
-                                  blurRadius: 6,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (widget.onToggleLock != null)
-                Positioned(
-                  top: (_handle / 2) + -22,
-                  right: (_handle / 2) + -22,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(22),
-                      onTap: () {
-                        widget.onToggleLock!();
-                      },
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: const BoxDecoration(
-                          color: Colors.transparent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: widget.isLocked
-                                  ? Colors.red.shade400
-                                  : Colors.green.shade400,
-                              shape: BoxShape.circle,
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black38,
-                                  blurRadius: 6,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Text(
-                                widget.isLocked ? '🔒' : '🔓',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// ===================
 /// MENÚ EN ABANICO CIRCULAR
@@ -4426,21 +3949,22 @@ class SkinPanel extends StatelessWidget {
 
 /// 🖋️ Efecto de Tinta Caligráfica
 class CalligraphyInkEffect {
-  static List<Offset> applyEffect(List<Offset> points, {
+  static List<Offset> applyEffect(
+    List<Offset> points, {
     required Color color,
     required double baseSize,
     required Size canvasSize,
   }) {
     if (points.length < 2) return points;
-    
+
     List<Offset> enhancedPoints = [];
-    
+
     for (int i = 0; i < points.length; i++) {
       final point = points[i];
-      
+
       // Agregar punto principal
       enhancedPoints.add(point);
-      
+
       // Agregar goteo sutil cada ciertos puntos
       if (i % 15 == 0 && i > 0) {
         final random = Random();
@@ -4452,7 +3976,7 @@ class CalligraphyInkEffect {
           enhancedPoints.add(dropOffset);
         }
       }
-      
+
       // Textura orgánica - pequeñas variaciones
       if (i % 3 == 0) {
         final random = Random();
@@ -4465,15 +3989,17 @@ class CalligraphyInkEffect {
         }
       }
     }
-    
+
     return enhancedPoints;
   }
-  
+
   static bool _isWithinBounds(Offset point, Size canvasSize) {
-    return point.dx >= 0 && point.dx <= canvasSize.width &&
-           point.dy >= 0 && point.dy <= canvasSize.height;
+    return point.dx >= 0 &&
+        point.dx <= canvasSize.width &&
+        point.dy >= 0 &&
+        point.dy <= canvasSize.height;
   }
-  
+
   static Paint createPaint(Color color, double size) {
     return Paint()
       ..color = color
@@ -4490,7 +4016,7 @@ class WatercolorEffect {
   // TODO: Implementar en el siguiente paso
 }
 
-/// 💎 Efecto de Cristal (para implementar después)  
+/// 💎 Efecto de Cristal (para implementar después)
 class CrystalEffect {
   // TODO: Implementar en el siguiente paso
 }

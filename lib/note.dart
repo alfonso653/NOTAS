@@ -13,7 +13,6 @@ class Note {
   double titleFontSize;
   double contentFontSize;
   List<Map<String, dynamic>> contentParts; // [{text:..., bold:...}, ...]
-  List<Map<String, dynamic>> floatingImages;
   List<Map<String, dynamic>> floatingTexts;
   List<Map<String, dynamic>> drawingStrokes; // Trazos de dibujo libre
   bool? isHeaderCollapsed; // Estado de cabecera colapsada
@@ -29,15 +28,13 @@ class Note {
     required this.titleFontSize,
     required this.contentFontSize,
     required this.contentParts,
-    List<Map<String, dynamic>>? floatingImages,
     List<Map<String, dynamic>>? floatingTexts,
     List<Map<String, dynamic>>? drawingStrokes,
     this.mindMapNodes,
     this.mindMapConnections,
     this.isHeaderCollapsed,
     this.isFloatingButtonsCollapsed,
-  })  : floatingImages = floatingImages ?? [],
-        floatingTexts = floatingTexts ?? [],
+  })  : floatingTexts = floatingTexts ?? [],
         drawingStrokes = drawingStrokes ?? [];
 
   factory Note.fromJson(Map<String, dynamic> json) {
@@ -52,11 +49,6 @@ class Note {
       contentFontSize: (json['contentFontSize'] ?? 18).toDouble(),
       contentParts: (json['contentParts'] is List)
           ? (json['contentParts'] as List)
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList()
-          : [],
-      floatingImages: (json['floatingImages'] is List)
-          ? (json['floatingImages'] as List)
               .map((e) => Map<String, dynamic>.from(e))
               .toList()
           : [],
@@ -96,7 +88,6 @@ class Note {
       'titleFontSize': titleFontSize,
       'contentFontSize': contentFontSize,
       'contentParts': contentParts,
-      'floatingImages': floatingImages,
       'floatingTexts': floatingTexts,
       'drawingStrokes': drawingStrokes,
       if (mindMapNodes != null) 'mindMapNodes': mindMapNodes,
