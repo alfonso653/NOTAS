@@ -1,5 +1,7 @@
 import 'dart:async'; // Para Timer
+import 'dart:convert'; // Para JSON
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Para rootBundle
 import 'package:provider/provider.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,8 +16,7 @@ import 'package:flutter/rendering.dart'; // Para RenderRepaintBoundary
 import 'dart:ui' as ui; // Para ui.Image y ImageByteFormat
 import 'dart:typed_data';
 import 'dart:io';
-import 'dart:math'; // Para cos y sin del menú en abanico
-// import 'dart:convert';
+import 'dart:math' as math; // Para cos y sin del menú en abanico
 
 import 'text_format_panel.dart';
 import 'note.dart';
@@ -253,7 +254,7 @@ class DrawingPainter extends CustomPainter {
 
   // 🖍️ Crayola - Efecto punteado/granulado
   void _drawCrayonStroke(Canvas canvas, DrawingStroke stroke) {
-    final random = Random(42); // Seed fijo para consistencia
+    final random = math.Random(42); // Seed fijo para consistencia
 
     for (int i = 0; i < stroke.points.length - 1; i++) {
       final start = stroke.points[i];
@@ -336,7 +337,7 @@ class DrawingPainter extends CustomPainter {
       if (i == stroke.points.length - 1) {
         path.lineTo(current.dx, current.dy);
       } else {
-        final next = stroke.points[min(i + 1, stroke.points.length - 1)];
+        final next = stroke.points[math.min(i + 1, stroke.points.length - 1)];
         final controlPoint = Offset(
           (current.dx + next.dx) / 2,
           (current.dy + next.dy) / 2,
@@ -350,7 +351,7 @@ class DrawingPainter extends CustomPainter {
     canvas.drawPath(path, mainPaint);
 
     // 2. Efectos adicionales: goteo y textura
-    final random = Random();
+    final random = math.Random();
 
     for (int i = 0; i < stroke.points.length; i += 8) {
       final point = stroke.points[i];
@@ -583,6 +584,95 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   Color _selectedDrawingColor = Colors.black;
   double _selectedBrushSize = 3.0;
   int _selectedBrushType = 0; // 0-4 para diferentes tipos de pincel
+
+  // 📝 MENÚ DE VIÑETAS Y NUMERACIÓN
+  bool _showBulletsMenu = false;
+
+  // 📚 MENÚ DE VERSÍCULOS BÍBLICOS
+  bool _showBibleMenu = false;
+  String _currentBibleStep = 'testament'; // testament, books, chapters, verses
+  String _selectedTestament = ''; // NT o AT
+  String _selectedBook = '';
+  String _selectedChapter = '';
+  Map<String, dynamic>? _bibleData;
+  List<Map<String, dynamic>> _bibleVerses = [];
+  Set<String> _selectedVerses = {}; // Versículos seleccionados para inserción múltiple
+  ScrollController _versesScrollController = ScrollController(); // Para mantener posición del scroll
+  ValueNotifier<int> _selectionCounter = ValueNotifier<int>(0); // Contador para el botón
+
+  // 📚 Libros del Nuevo Testamento
+  final List<String> _ntBooks = [
+    'Mateo',
+    'Marcos',
+    'Lucas',
+    'Juan',
+    'Hechos',
+    'Romanos',
+    '1 Corintios',
+    '2 Corintios',
+    'Gálatas',
+    'Efesios',
+    'Filipenses',
+    'Colosenses',
+    '1 Tesalonicenses',
+    '2 Tesalonicenses',
+    '1 Timoteo',
+    '2 Timoteo',
+    'Tito',
+    'Filemón',
+    'Hebreos',
+    'Santiago',
+    '1 Pedro',
+    '2 Pedro',
+    '1 Juan',
+    '2 Juan',
+    '3 Juan',
+    'Judas',
+    'Apocalipsis'
+  ];
+
+  // 📚 Libros del Antiguo Testamento (todos los 39 libros)
+  final List<String> _atBooks = [
+    'Génesis',
+    'Éxodo',
+    'Levítico',
+    'Números',
+    'Deuteronomio',
+    'Josué',
+    'Jueces',
+    'Rut',
+    '1 Samuel',
+    '2 Samuel',
+    '1 Reyes',
+    '2 Reyes',
+    '1 Crónicas',
+    '2 Crónicas',
+    'Esdras',
+    'Nehemías',
+    'Ester',
+    'Job',
+    'Salmos',
+    'Proverbios',
+    'Eclesiastés',
+    'Cantares',
+    'Isaías',
+    'Jeremías',
+    'Lamentaciones',
+    'Ezequiel',
+    'Daniel',
+    'Oseas',
+    'Joel',
+    'Amós',
+    'Abdías',
+    'Jonás',
+    'Miqueas',
+    'Nahúm',
+    'Habacuc',
+    'Sofonías',
+    'Hageo',
+    'Zacarías',
+    'Malaquías'
+  ];
 
   // RepaintBoundary para compartir imagen
   final GlobalKey _noteKey = GlobalKey();
@@ -912,6 +1002,102 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         ],
       ),
     );
+  }
+
+  /// 📝 Funciones para viñetas y numeración
+  void _addBulletPoint(String bulletType) {
+    setState(() {
+      // Agregar viñeta al texto actual del _hiddenController
+      final String currentText = _hiddenController.text;
+      final int cursorPosition = _hiddenController.selection.start;
+
+      // Insertar la viñeta en la posición actual del cursor
+      final String beforeCursor = currentText.substring(0, cursorPosition);
+      final String afterCursor = currentText.substring(cursorPosition);
+
+      final String newText = beforeCursor + '$bulletType ' + afterCursor;
+
+      _hiddenController.text = newText;
+
+      // Posicionar el cursor después de la viñeta y el espacio
+      _hiddenController.selection = TextSelection.collapsed(
+          offset: cursorPosition + bulletType.length + 1);
+
+      _showBulletsMenu = false; // Cerrar el menú
+    });
+  }
+
+  void _addNumberedList() {
+    int nextNumber = 1;
+    int maxFoundNumber = 0;
+
+    // Revisar todos los párrafos guardados en _contentParts
+    for (final part in _contentParts) {
+      final text = part.text;
+      // Buscar todos los números en formato "X. " en cualquier parte del texto
+      final numberMatches = RegExp(r'(\d+)\.\s').allMatches(text);
+      for (final match in numberMatches) {
+        final number = int.parse(match.group(1)!);
+        if (number > maxFoundNumber) {
+          maxFoundNumber = number;
+        }
+      }
+    }
+
+    // También revisar en el texto actual del _hiddenController
+    final currentText = _hiddenController.text;
+    final currentMatches = RegExp(r'(\d+)\.\s').allMatches(currentText);
+    for (final match in currentMatches) {
+      final number = int.parse(match.group(1)!);
+      if (number > maxFoundNumber) {
+        maxFoundNumber = number;
+      }
+    }
+
+    // El siguiente número es el máximo encontrado + 1
+    nextNumber = maxFoundNumber + 1;
+
+    setState(() {
+      // Agregar numeración al texto actual del _hiddenController
+      final int cursorPosition = _hiddenController.selection.start;
+
+      // Insertar el número en la posición actual del cursor
+      final String beforeCursor = currentText.substring(0, cursorPosition);
+      final String afterCursor = currentText.substring(cursorPosition);
+
+      final String newText = beforeCursor + '$nextNumber. ' + afterCursor;
+
+      _hiddenController.text = newText;
+
+      // Posicionar el cursor después del número y el espacio
+      _hiddenController.selection = TextSelection.collapsed(
+          offset: cursorPosition + '$nextNumber. '.length);
+
+      _showBulletsMenu = false; // Cerrar el menú
+    });
+  }
+
+  void _addIndentation() {
+    setState(() {
+      // Agregar sangría al texto actual del _hiddenController
+      final String currentText = _hiddenController.text;
+      final int cursorPosition = _hiddenController.selection.start;
+
+      // Insertar la sangría en la posición actual del cursor
+      final String beforeCursor = currentText.substring(0, cursorPosition);
+      final String afterCursor = currentText.substring(cursorPosition);
+
+      final String newText = beforeCursor + '    ➤ ' + afterCursor;
+
+      _hiddenController.text = newText;
+
+      // Posicionar el cursor después de la sangría y el espacio
+      _hiddenController.selection = TextSelection.collapsed(
+          offset: cursorPosition + 6 // '    ➤ ' tiene 6 caracteres
+          );
+
+      _showBulletsMenu = false; // Cerrar el menú
+    });
   }
 
   void setHasUnsavedChanges(bool v) {
@@ -2111,6 +2297,1160 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     });
   }
 
+  // � Botón estilo Glass Morphism con efectos translúcidos
+  /// � Menú flotante de versículos bíblicos (estilo uniforme)
+  Widget _buildBibleMenu() {
+    switch (_currentBibleStep) {
+      case 'testament':
+        return _buildTestamentMenu();
+      case 'books':
+        return _buildBooksMenu();
+      case 'chapters':
+        return _buildChaptersMenu();
+      case 'verses':
+        return _buildVersesMenu();
+      default:
+        return _buildTestamentMenu();
+    }
+  }
+
+  /// 📖 Menú inicial: NT vs AT (compacto)
+  /// 📖 Menú AT/NT simple e intuitivo (responsivo)
+  Widget _buildTestamentMenu() {
+    return Material(
+      color: Colors.transparent,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculamos tamaños responsivos basados en el ancho disponible
+          final screenWidth = MediaQuery.of(context).size.width;
+          final containerWidth = math.min(
+              screenWidth * 0.7, 300.0); // Máximo 70% del ancho o 300px
+          final buttonWidth = (containerWidth - 80) /
+              2; // Ancho disponible dividido por 2 botones
+
+          return Container(
+            width: containerWidth,
+            height: 75, // Aumentamos 5px para evitar overflow
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04, // 4% del ancho de pantalla
+              vertical: 6, // Reducimos padding vertical
+            ),
+            decoration: BoxDecoration(
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Título arriba
+                Text(
+                  'Agregar Cita Bíblica',
+                  style: TextStyle(
+                    fontSize: math.max(
+                        screenWidth * 0.03, 10.0), // Mínimo 10px, escalable
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 4), // Reducimos de 6 a 4px
+                // Botones abajo - responsivos
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildSimpleButton('AT', buttonWidth),
+                    _buildSimpleButton('NT', buttonWidth),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSimpleButton(String text, [double? width]) {
+    bool isSelected = _selectedTestament == text;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Ancho responsivo: usa el parámetro si se proporciona, sino calcula automáticamente
+    final buttonWidth = width ??
+        math.max(screenWidth * 0.15, 50.0); // Mínimo 50px, máximo 15% pantalla
+    final buttonHeight =
+        math.max(screenWidth * 0.08, 28.0); // Altura proporcional, mínimo 28px
+    final fontSize =
+        math.max(screenWidth * 0.035, 12.0); // Texto escalable, mínimo 12px
+
+    return GestureDetector(
+      onTap: () => _selectTestament(text),
+      child: Container(
+        width: buttonWidth,
+        height: buttonHeight,
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue : Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(
+              buttonHeight * 0.5), // Radio proporcional a la altura
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 📚 Seleccionar testamento y mostrar libros
+  void _selectTestament(String testament) {
+    setState(() {
+      _selectedTestament = testament;
+      _currentBibleStep = 'books';
+    });
+  }
+
+  /// 📚 Menú de libros bíblicos (claro y funcional)
+  Widget _buildBooksMenu() {
+    final books = _selectedTestament == 'NT' ? _ntBooks : _atBooks;
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: 350, // Más grande para ver mejor los libros
+          maxWidth: 320, // Más ancho
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 40),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          // Fondo más sólido y visible
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue.shade900.withOpacity(0.95), // Misma paleta azul
+              Colors.blue.shade800.withOpacity(0.9),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.4), // Borde más visible
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4), // Sombra más fuerte
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header con título y botón cerrar
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    _selectedTestament == 'NT'
+                        ? 'Nuevo Testamento'
+                        : 'Antiguo Testamento',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _currentBibleStep = 'testament';
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Grid de libros con scroll
+            Expanded(
+              child: GridView.builder(
+                physics: const BouncingScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3, // 3 columnas para mejor legibilidad
+                  childAspectRatio: 2.2, // Mejor proporción
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: books.length,
+                itemBuilder: (context, index) {
+                  return _buildBookOption(books[index]);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookOption(String book) {
+    return GestureDetector(
+      onTap: () => _selectBook(book),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          // Fondo más sólido y visible
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.9), // Mucho más sólido
+              Colors.white.withOpacity(0.7),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.8),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            book,
+            style: const TextStyle(
+              fontSize: 11, // Texto más grande
+              fontWeight: FontWeight.bold,
+              color: Colors.black87, // Texto oscuro sobre fondo blanco
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 📖 Seleccionar libro y mostrar capítulos
+  void _selectBook(String book) {
+    setState(() {
+      _selectedBook = book;
+      _currentBibleStep = 'chapters';
+    });
+  }
+
+  /// 📖 Seleccionar capítulo y mostrar versículos
+  void _selectChapter(String chapter) {
+    setState(() {
+      _selectedChapter = chapter;
+      _selectedVerses.clear(); // Limpiar selecciones anteriores
+      _selectionCounter.value = 0; // Resetear contador
+      _currentBibleStep = 'verses'; // Ir a la pantalla de versículos con checkboxes
+    });
+    
+    // Resetear scroll al inicio para nuevo capítulo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_versesScrollController.hasClients) {
+        _versesScrollController.jumpTo(0);
+      }
+    });
+  }
+
+  /// � Menú de capítulos del libro seleccionado
+  Widget _buildChaptersMenu() {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: 320, // Altura fija más compacta
+          maxWidth: 300, // Ancho fijo
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 50),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          // Fondo más sólido y visible
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue.shade900
+                  .withOpacity(0.95), // Misma paleta azul consistente
+              Colors.blue.shade800.withOpacity(0.9),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.4), // Borde más visible
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5), // Sombra más fuerte
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Header con título y botón cerrar
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Capítulos de $_selectedBook',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _currentBibleStep = 'books';
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // FutureBuilder para cargar capítulos dinámicamente
+            Expanded(
+              child: FutureBuilder<List<String>>(
+                future: _getBookChapters(_selectedBook),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error cargando capítulos',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    );
+                  }
+
+                  final bookChapters = snapshot.data ?? [];
+
+                  return GridView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 6,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 1.2,
+                    ),
+                    itemCount: bookChapters.length,
+                    itemBuilder: (context, index) {
+                      return _buildChapterOption(bookChapters[index]);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChapterOption(String chapter) {
+    return GestureDetector(
+      onTap: () => _selectChapter(chapter),
+      child: Container(
+        decoration: BoxDecoration(
+          // Fondo más sólido y visible
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.9), // Mucho más sólido
+              Colors.white.withOpacity(0.7),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.8),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            chapter,
+            style: const TextStyle(
+              fontSize: 16, // Texto más grande
+              fontWeight: FontWeight.bold,
+              color: Colors.black87, // Texto oscuro sobre fondo blanco
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingMenu(String message) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: 80,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Center(
+          child: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// �📝 Menú de versículos populares (pantalla completa)
+  Widget _buildVersesMenu() {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: 400, // Altura apropiada para ver versículos
+          maxWidth: 340,  // Ancho adecuado
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          // Fondo consistente con las otras tarjetas
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue.shade900.withOpacity(0.95), // Misma paleta azul
+              Colors.blue.shade800.withOpacity(0.9),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.4),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+            children: [
+              // Header con título y botón regresar
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$_selectedBook $_selectedChapter',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _currentBibleStep = 'chapters';
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // FutureBuilder para cargar versículos dinámicamente
+              Expanded(
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _getChapterVerses(_selectedBook, _selectedChapter),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error cargando versículos',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      );
+                    }
+
+                    final chapterVerses = snapshot.data ?? [];
+
+                    return Column(
+                      children: [
+                        // Lista de versículos
+                        Expanded(
+                          child: ListView.builder(
+                            controller: _versesScrollController,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: chapterVerses.length,
+                            itemBuilder: (context, index) {
+                              final verse = chapterVerses[index];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 3),
+                                child: _buildVerseOptionFromBible(verse),
+                              );
+                            },
+                          ),
+                        ),
+                        // Botón para insertar múltiples versículos (solo se reconstruye cuando cambia)
+                        ValueListenableBuilder<int>(
+                          valueListenable: _selectionCounter,
+                          builder: (context, count, child) {
+                            if (count == 0) return const SizedBox.shrink();
+                            
+                            return Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(top: 12),
+                              child: ElevatedButton.icon(
+                                onPressed: () => _insertSelectedVerses(),
+                                icon: const Icon(Icons.add, color: Colors.white),
+                                label: Text(
+                                  'Insertar $count versículo${count > 1 ? 's' : ''}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green.shade600,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+  }
+
+  Widget _buildVerseOptionFromBible(Map<String, dynamic> verse) {
+    final reference = '${verse['book_name']} ${verse['chapter']}:${verse['verse']}';
+    final text = verse['text'] as String;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            print('🔥 VERSÍCULO PRESIONADO: $reference');
+            
+            // Insertar como NUEVO PÁRRAFO independiente
+            final verseText = '📖 $reference\n"$text"';
+            print('🔥 Texto a insertar: $verseText');
+            
+            // SIEMPRE crear una nueva parte para el versículo
+            final newPartIndex = widget.note.contentParts.length;
+            print('🔥 ContentParts antes: ${widget.note.contentParts.length}');
+            
+            widget.note.contentParts.add({
+              'text': verseText,
+              'bold': false,
+              'italic': false,
+              'underline': false,
+              'fontSize': widget.note.contentFontSize,
+            });
+            
+            print('🔥 ContentParts después: ${widget.note.contentParts.length}');
+            print('🔥 Nueva parte creada en índice: $newPartIndex');
+            
+            // TAMBIÉN agregar a _contentParts para que se vea visualmente
+            final textPart = _TextPart(
+              verseText,  // text
+              false,      // bold
+              false,      // underline
+              null,       // underlineColor
+              false,      // highlight
+              null,       // highlightColor
+              false,      // isImage
+              null,       // imageWidth
+              null,       // imageHeight
+            );
+            _contentParts.add(textPart);
+            print('🔥 Agregado a _contentParts. Total visual: ${_contentParts.length}');
+            
+            // CREAR controller para la nueva parte
+            _partControllers[newPartIndex] = TextEditingController();
+            final controller = _partControllers[newPartIndex]!;
+            controller.text = verseText;
+            print('🔥 Controller creado y actualizado');
+          
+          // Mover cursor al final
+          controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: controller.text.length),
+          );
+          
+          // Forzar actualización COMPLETA de la UI
+          setState(() {
+            // Forzar rebuild completo del widget
+          });
+          
+          // Verificar que el widget se está actualizando
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            print('🔥 UI actualizada. Partes totales: ${widget.note.contentParts.length}');
+            print('🔥 Controllers totales: ${_partControllers.length}');
+          });
+          
+          // Cerrar menú bíblico después del repaint
+          Future.delayed(Duration(milliseconds: 300), () {
+            if (mounted) {
+              setState(() {
+                _showBibleMenu = false;
+                _currentBibleStep = 'testament';
+                _selectedTestament = '';
+                _selectedBook = '';
+                _selectedChapter = '';
+              });
+            }
+          });
+          
+          print('🔥 Guardando nota...');
+          // Guardar cambios
+          _saveNote(pop: false);
+          print('🔥 ¡Nota guardada! Total partes: ${widget.note.contentParts.length}');
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              reference,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              text,
+              style: const TextStyle(
+                fontSize: 10,
+                color: Colors.white70,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+          ),
+        ),
+      );
+  }
+
+  // Función para insertar todos los versículos seleccionados
+  void _insertSelectedVerses() async {
+    try {
+      final verses = await _getChapterVerses(_selectedBook, _selectedChapter);
+      final selectedVersesList = <Map<String, dynamic>>[];
+      
+      // Filtrar solo los versículos seleccionados
+      for (final verse in verses) {
+        final verseId = '${verse['book_name']}_${verse['chapter']}_${verse['verse']}';
+        if (_selectedVerses.contains(verseId)) {
+          selectedVersesList.add(verse);
+        }
+      }
+
+      if (selectedVersesList.isNotEmpty) {
+        // Formatear múltiples versículos
+        final StringBuffer fullText = StringBuffer();
+        
+        for (int i = 0; i < selectedVersesList.length; i++) {
+          final verse = selectedVersesList[i];
+          final verseText = verse['text'] ?? '';
+          final verseNumber = verse['verse'] ?? '';
+          final reference = '${verse['book_name']} ${verse['chapter']}:$verseNumber';
+          
+          fullText.write('"$verseText"');
+          fullText.write('\n— $reference');
+          
+          // Agregar separación entre versículos (excepto el último)
+          if (i < selectedVersesList.length - 1) {
+            fullText.write('\n\n');
+          }
+        }
+
+        // Insertar en el editor
+        final currentText = _hiddenController.text;
+        final cursorPosition = _hiddenController.selection.start;
+
+        final beforeCursor = currentText.substring(0, cursorPosition);
+        final afterCursor = currentText.substring(cursorPosition);
+
+        _hiddenController.text = beforeCursor + fullText.toString() + afterCursor;
+        _hiddenController.selection =
+            TextSelection.collapsed(offset: cursorPosition + fullText.length);
+
+        // Limpiar selección y cerrar menú
+        setState(() {
+          _selectedVerses.clear();
+          _selectionCounter.value = 0; // Resetear contador
+          _showBibleMenu = false;
+          _currentBibleStep = 'testament';
+        });
+      }
+    } catch (e) {
+      print('Error insertando versículos: $e');
+    }
+  }
+
+  Widget _buildVerseOption(Map<String, String> verse) {
+    return GestureDetector(
+      onTap: () => _insertVerse(verse),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              verse['reference']!,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            Text(
+              verse['text']!,
+              style: const TextStyle(
+                fontSize: 8,
+                color: Colors.white70,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 📖 Obtener versículos populares por libro
+  List<Map<String, String>> _getPopularVerses(String book) {
+    final popularVerses = {
+      'Juan': [
+        {
+          'reference': 'Juan 3:16',
+          'text': 'Porque de tal manera amó Dios al mundo...'
+        },
+        {
+          'reference': 'Juan 8:32',
+          'text': 'Y conoceréis la verdad, y la verdad os hará libres...'
+        },
+        {
+          'reference': 'Juan 14:6',
+          'text': 'Yo soy el camino, la verdad y la vida...'
+        },
+      ],
+      'Salmos': [
+        {
+          'reference': 'Salmos 23:1',
+          'text': 'Jehová es mi pastor, nada me faltará...'
+        },
+        {
+          'reference': 'Salmos 46:10',
+          'text': 'Estad quietos, y conoced que yo soy Dios...'
+        },
+        {
+          'reference': 'Salmos 118:24',
+          'text': 'Este es el día que hizo Jehová...'
+        },
+      ],
+      'Filipenses': [
+        {
+          'reference': 'Filipenses 4:13',
+          'text': 'Todo lo puedo en Cristo que me fortalece...'
+        },
+        {
+          'reference': 'Filipenses 4:19',
+          'text': 'Mi Dios, pues, suplirá todo lo que os falta...'
+        },
+      ],
+      'Romanos': [
+        {
+          'reference': 'Romanos 8:28',
+          'text': 'Y sabemos que a los que aman a Dios...'
+        },
+        {
+          'reference': 'Romanos 10:9',
+          'text': 'Si confesares con tu boca que Jesús es el Señor...'
+        },
+      ],
+      'Proverbios': [
+        {
+          'reference': 'Proverbios 3:5-6',
+          'text': 'Fíate de Jehová de todo tu corazón...'
+        },
+        {
+          'reference': 'Proverbios 16:9',
+          'text': 'El corazón del hombre piensa su camino...'
+        },
+      ],
+      'Mateo': [
+        {
+          'reference': 'Mateo 6:33',
+          'text': 'Mas buscad primeramente el reino de Dios...'
+        },
+        {
+          'reference': 'Mateo 11:28',
+          'text': 'Venid a mí todos los que estáis trabajados...'
+        },
+      ],
+      'Malaquías': [
+        {
+          'reference': 'Malaquías 1:11',
+          'text':
+              'Porque desde donde el sol nace hasta donde se pone, es grande mi nombre...'
+        },
+        {
+          'reference': 'Malaquías 2:10',
+          'text':
+              '¿No tenemos todos un mismo padre? ¿No nos ha creado un mismo Dios?'
+        },
+        {
+          'reference': 'Malaquías 3:6',
+          'text':
+              'Porque yo Jehová no cambio; por esto, hijos de Jacob, no habéis sido consumidos.'
+        },
+        {
+          'reference': 'Malaquías 3:7',
+          'text':
+              'Desde los días de vuestros padres os habéis apartado de mis leyes...'
+        },
+        {
+          'reference': 'Malaquías 3:10',
+          'text':
+              'Traed todos los diezmos al alfolí y haya alimento en mi casa...'
+        },
+        {
+          'reference': 'Malaquías 4:2',
+          'text':
+              'Mas a vosotros los que teméis mi nombre, nacerá el Sol de justicia...'
+        },
+      ],
+    };
+
+    return popularVerses[book] ??
+        [
+          {
+            'reference': '$book 1:1',
+            'text': 'Versículo de ejemplo para $book...'
+          },
+        ];
+  }
+
+  /// 📖 Insertar versículo seleccionado
+  void _insertVerse(Map<String, String> verse) {
+    final verseText = '📖 ${verse['reference']}: ${verse['text']}';
+
+    setState(() {
+      final currentText = _hiddenController.text;
+      final cursorPosition = _hiddenController.selection.start;
+
+      final beforeCursor = currentText.substring(0, cursorPosition);
+      final afterCursor = currentText.substring(cursorPosition);
+
+      _hiddenController.text = beforeCursor + verseText + afterCursor;
+      _hiddenController.selection =
+          TextSelection.collapsed(offset: cursorPosition + verseText.length);
+
+      _showBibleMenu = false;
+      _currentBibleStep = 'testament'; // Reset para próxima vez
+    });
+  }
+
+  /// 📖 Insertar versículo desde datos completos de la Biblia
+  void _insertVerseFromBible(Map<String, dynamic> verse) {
+    final reference =
+        '${verse['book_name']} ${verse['chapter']}:${verse['verse']}';
+    final text = verse['text'] as String;
+    final verseText = '📖 $reference: $text';
+
+    setState(() {
+      final currentText = _hiddenController.text;
+      final cursorPosition = _hiddenController.selection.start;
+
+      final beforeCursor = currentText.substring(0, cursorPosition);
+      final afterCursor = currentText.substring(cursorPosition);
+
+      _hiddenController.text = beforeCursor + verseText + afterCursor;
+      _hiddenController.selection =
+          TextSelection.collapsed(offset: cursorPosition + verseText.length);
+
+      _showBibleMenu = false;
+      _currentBibleStep = 'testament'; // Reset para próxima vez
+    });
+  }
+
+  /// �📝 Menú flotante de viñetas y numeración (estilo uniforme con lápices)
+  Widget _buildBulletsMenu() {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildBulletOption(
+                icon: '●', label: 'Viñetas', onTap: () => _addBulletPoint('•')),
+            _buildBulletOption(
+                icon: '■',
+                label: 'Cuadradas',
+                onTap: () => _addBulletPoint('▪')),
+            _buildBulletOption(
+                icon: '1.',
+                label: 'Numeración',
+                onTap: () => _addNumberedList()),
+            _buildBulletOption(
+                icon: '➤', label: 'Sangría', onTap: () => _addIndentation()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Optimiza el tamaño de cada símbolo para mejor visibilidad
+  double _getIconSize(String icon) {
+    switch (icon) {
+      case '●':
+        return 18.0; // Punto más grande y sólido
+      case '■':
+        return 16.0; // Cuadrado sólido
+      case '➤':
+        return 17.0; // Flecha triangular más visible
+      case '→':
+        return 16.0; // Flecha básica (fallback)
+      case '1.':
+        return 14.0; // Numeración estándar
+      default:
+        return 14.0;
+    }
+  }
+
+  Widget _buildBulletOption(
+      {required String icon,
+      required String label,
+      required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(icon,
+                style: TextStyle(
+                    fontSize:
+                        _getIconSize(icon), // Tamaño optimizado por símbolo
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
+            if (label.isNotEmpty)
+              Text(label,
+                  style: const TextStyle(fontSize: 6, color: Colors.white70)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingButton({
+    required Widget icon,
+    required VoidCallback onTap,
+    bool isActive = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOutCubic,
+        width: 52,
+        height: 42,
+        decoration: BoxDecoration(
+          // 🎭 Fondo activo: azul claro translúcido, inactivo: transparente
+          color: isActive
+              ? const Color(0xFF87CEEB)
+                  .withOpacity(0.3) // Azul claro como la imagen
+              : Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          // 💎 Bordes sutiles para efecto cristal
+          border: Border.all(
+            color: isActive
+                ? Colors.white.withOpacity(0.4)
+                : Colors.white.withOpacity(0.2),
+            width: 1,
+          ),
+          // 🌟 Sombras suaves glassmorphism
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                    spreadRadius: -2,
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: const Offset(0, -2),
+                    spreadRadius: -1,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Center(
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 200),
+            scale: isActive ? 1.05 : 1.0,
+            child: icon,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 🎯 Función legacy mantenida por compatibilidad
   Widget _buildIconBox({
     required Widget icon,
     required VoidCallback onTap,
@@ -2249,6 +3589,59 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     });
   }
 
+  /// 📖 Cargar datos completos de la Biblia desde JSON (optimizado)
+  Future<void> _loadBibleData() async {
+    // Solo cargar cuando se necesite, no al inicio
+    if (_bibleData != null) return;
+
+    try {
+      final String jsonString =
+          await rootBundle.loadString('assets/data/biblia.json');
+      final Map<String, dynamic> jsonData = json.decode(jsonString);
+      setState(() {
+        _bibleData = jsonData;
+        _bibleVerses = List<Map<String, dynamic>>.from(jsonData['verses']);
+      });
+    } catch (e) {
+      print('Error cargando datos de la Biblia: $e');
+    }
+  }
+
+  /// 📖 Obtener capítulos de un libro específico (sin cargar todo)
+  Future<List<String>> _getBookChapters(String bookName) async {
+    if (_bibleData == null) {
+      await _loadBibleData();
+    }
+
+    final Set<String> chapters = <String>{};
+    for (final verse in _bibleVerses) {
+      if (verse['book_name'] == bookName) {
+        chapters.add(verse['chapter'] as String);
+      }
+    }
+
+    final List<String> sortedChapters = chapters.toList()
+      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+
+    return sortedChapters;
+  }
+
+  /// 📖 Obtener versículos de un capítulo específico
+  Future<List<Map<String, dynamic>>> _getChapterVerses(
+      String bookName, String chapter) async {
+    if (_bibleData == null) {
+      await _loadBibleData();
+    }
+
+    final chapterVerses = _bibleVerses
+        .where((verse) =>
+            verse['book_name'] == bookName && verse['chapter'] == chapter)
+        .toList()
+      ..sort((a, b) => int.parse(a['verse']).compareTo(int.parse(b['verse'])));
+
+    return chapterVerses;
+  }
+
   void _onAnyChange() {
     setHasUnsavedChanges(true);
 
@@ -2287,6 +3680,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _hiddenController.dispose();
     _hiddenFocus.dispose();
     _scrollController.dispose();
+    _versesScrollController.dispose(); // Limpiar controller de versículos
+    _selectionCounter.dispose(); // Limpiar notifier de selección
     super.dispose();
   }
 
@@ -3137,309 +4532,365 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ),
           ),
 
-          // ======= BARRA INFERIOR =======
+          // ======= BARRA FLOTANTE TIPO iOS =======
           bottomNavigationBar: Container(
             padding: EdgeInsets.only(
-              left: 10,
-              right: 10,
+              left: 20,
+              right: 20,
               bottom: MediaQuery.of(context).viewInsets.bottom > 0
-                  ? MediaQuery.of(context)
-                      .viewInsets
-                      .bottom // 🎯 Pegado al teclado cuando está visible
-                  : 20, // 🎯 Espacio base cuando no hay teclado
+                  ? MediaQuery.of(context).viewInsets.bottom + 15
+                  : 47, // 🎯 Subido 2 píxeles más para ajuste fino
             ),
             child: SafeArea(
               top: false,
-              bottom: false, // 🎯 No agregar padding inferior
+              bottom: false,
               minimum: EdgeInsets.zero,
               child: Container(
-                // 🎯 SIN animación para respuesta instantánea
-                height: MediaQuery.of(context).viewInsets.bottom > 0
-                    ? 95
-                    : 140, // 🎯 Altura óptima sin teclado
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: MediaQuery.of(context).viewInsets.bottom > 0
-                      ? 4
-                      : 16, // 🎯 Espaciado cómodo sin teclado
-                ),
+                height:
+                    MediaQuery.of(context).viewInsets.bottom > 0 ? 100 : 120,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
+                  // � Fondo oscuro tipo dock de iOS
+                  // 🌙 Fondo Glass Morphism - translúcido con blur
+                  color: Colors.white.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(24),
+                  // 🎭 Bordes sutiles para efecto cristal
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                  // � Sombras suaves para efecto flotante
+                  boxShadow: [
                     BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        offset: Offset(0, 2)),
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                      spreadRadius: -5,
+                    ),
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.05),
+                      blurRadius: 30,
+                      offset: const Offset(0, 15),
+                      spreadRadius: -8,
+                    ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // PRIMERA FILA - 4 botones de formato
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // Botón A - Texto Normal
-                          _buildIconBox(
-                            isActive: (!_contentFormat.bold &&
-                                !_contentFormat.underline &&
-                                !_contentFormat.highlight),
-                            icon: Container(
-                              width: 24,
-                              height: 24,
-                              alignment: Alignment.center,
-                              child: Text(
-                                'A',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.normal,
-                                  color: (!_contentFormat.bold &&
-                                          !_contentFormat.underline &&
-                                          !_contentFormat.highlight)
-                                      ? Colors.white
-                                      : const Color(0xFF4F46E5),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // PRIMERA FILA - 4 botones de formato
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            // Botón A - Texto Normal
+                            _buildFloatingButton(
+                              isActive: (!_contentFormat.bold &&
+                                  !_contentFormat.underline &&
+                                  !_contentFormat.highlight),
+                              icon: Container(
+                                width: 24,
+                                height: 24,
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'A',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.normal,
+                                    color: (!_contentFormat.bold &&
+                                            !_contentFormat.underline &&
+                                            !_contentFormat.highlight)
+                                        ? const Color(
+                                            0xFF2563EB) // Azul para activo
+                                        : const Color(
+                                            0xFF64748B), // Gris azulado para inactivo
+                                  ),
                                 ),
                               ),
-                            ),
-                            onTap: () {
-                              // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                              final String currentText =
-                                  _hiddenController.text.trim();
-                              if (currentText.isNotEmpty) {
-                                // Guardar texto actual con formato anterior
-                                setState(() {
-                                  _contentParts.add(_TextPart(
-                                    currentText,
-                                    _contentFormat.bold,
-                                    _contentFormat.underline,
-                                    _contentFormat.underline
-                                        ? _contentFormat.underlineColor.value
-                                        : null,
-                                    _contentFormat.highlight,
-                                    _contentFormat.highlight
-                                        ? _contentFormat.highlightColor.value
-                                        : null,
-                                    false,
-                                  ));
-                                });
-                                _hiddenController.clear();
-                              }
-
-                              // Cambiar a formato normal
-                              setState(() {
-                                _contentFormat = _contentFormat.copyWith(
-                                  bold: false,
-                                  underline: false,
-                                  highlight: false,
-                                );
-                              });
-                              _saveNote(pop: false);
-                              // Mantener foco en el texto
-                              FocusScope.of(context).requestFocus(_hiddenFocus);
-                            },
-                          ),
-                          _buildIconBox(
-                            isActive: _contentFormat.bold,
-                            icon: Icon(
-                              Icons.format_bold_rounded,
-                              size: 24,
-                              color: _contentFormat.bold
-                                  ? Colors.white
-                                  : const Color(0xFF4F46E5),
-                            ),
-                            onTap: () {
-                              // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                              final String currentText =
-                                  _hiddenController.text.trim();
-                              if (currentText.isNotEmpty) {
-                                // Guardar texto actual con formato anterior
-                                setState(() {
-                                  _contentParts.add(_TextPart(
-                                    currentText,
-                                    _contentFormat.bold,
-                                    _contentFormat.underline,
-                                    _contentFormat.underline
-                                        ? _contentFormat.underlineColor.value
-                                        : null,
-                                    _contentFormat.highlight,
-                                    _contentFormat.highlight
-                                        ? _contentFormat.highlightColor.value
-                                        : null,
-                                    false,
-                                  ));
-                                });
-                                _hiddenController.clear();
-                              }
-
-                              // Cambiar formato para texto nuevo
-                              setState(() {
-                                _contentFormat = _contentFormat.copyWith(
-                                  bold: !_contentFormat.bold,
-                                );
-                              });
-                              _saveNote(pop: false);
-                              // Mantener foco en el texto
-                              FocusScope.of(context).requestFocus(_hiddenFocus);
-                            },
-                          ),
-                          _buildIconBox(
-                            isActive: _contentFormat.underline,
-                            icon: Icon(
-                              Icons.format_underlined_rounded,
-                              size: 24,
-                              color: _contentFormat.underline
-                                  ? Colors.white
-                                  : const Color(0xFF9333EA),
-                            ),
-                            onTap: () {
-                              // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                              final String currentText =
-                                  _hiddenController.text.trim();
-                              if (currentText.isNotEmpty) {
-                                // Guardar texto actual con formato anterior
-                                setState(() {
-                                  _contentParts.add(_TextPart(
-                                    currentText,
-                                    _contentFormat.bold,
-                                    _contentFormat.underline,
-                                    _contentFormat.underline
-                                        ? _contentFormat.underlineColor.value
-                                        : null,
-                                    _contentFormat.highlight,
-                                    _contentFormat.highlight
-                                        ? _contentFormat.highlightColor.value
-                                        : null,
-                                    false,
-                                  ));
-                                });
-                                _hiddenController.clear();
-                              }
-
-                              // Cambiar formato para texto nuevo
-                              setState(() {
-                                _contentFormat = _contentFormat.copyWith(
-                                  underline: !_contentFormat.underline,
-                                );
-                              });
-                              _saveNote(pop: false);
-                              // Mantener foco en el texto
-                              FocusScope.of(context).requestFocus(_hiddenFocus);
-                            },
-                          ),
-
-                          _buildIconBox(
-                            icon: const Icon(
-                              Icons.psychology_rounded,
-                              size: 24,
-                              color: Color(0xFFDC2626),
-                            ),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      MindMapFromNoteScreen(note: widget.note),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                        height: MediaQuery.of(context).viewInsets.bottom > 0
-                            ? 2
-                            : 6), // 🎯 Separación dinámica entre filas
-                    // SEGUNDA FILA - 3 botones funcionales
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildIconBox(
-                            isActive: _contentFormat.highlight,
-                            icon: Icon(
-                              Icons.highlight_rounded,
-                              size: 24,
-                              color: _contentFormat.highlight
-                                  ? Colors.white
-                                  : const Color(0xFFEAB308),
-                            ),
-                            onTap: () {
-                              // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                              final String currentText =
-                                  _hiddenController.text.trim();
-                              if (currentText.isNotEmpty) {
-                                // Guardar texto actual con formato anterior
-                                setState(() {
-                                  _contentParts.add(_TextPart(
-                                    currentText,
-                                    _contentFormat.bold,
-                                    _contentFormat.underline,
-                                    _contentFormat.underline
-                                        ? _contentFormat.underlineColor.value
-                                        : null,
-                                    _contentFormat.highlight,
-                                    _contentFormat.highlight
-                                        ? _contentFormat.highlightColor.value
-                                        : null,
-                                    false,
-                                  ));
-                                });
-                                _hiddenController.clear();
-                              }
-
-                              // Cambiar formato para texto nuevo
-                              setState(() {
-                                _contentFormat = _contentFormat.copyWith(
-                                  highlight: !_contentFormat.highlight,
-                                );
-                              });
-                              _saveNote(pop: false);
-                              // Mantener foco en el texto
-                              FocusScope.of(context).requestFocus(_hiddenFocus);
-                            },
-                          ),
-                          // 🎨 NUEVO BOTÓN LÁPIZ
-                          _buildIconBox(
-                            isActive:
-                                _isDrawingMode, // Activo cuando está en modo dibujo
-                            icon: Icon(
-                              Icons.brush_rounded,
-                              size: 24,
-                              color: _isDrawingMode
-                                  ? Colors.white
-                                  : const Color(
-                                      0xFF8B5CF6), // Morado para lápiz
-                            ),
-                            onTap: () {
-                              setState(() {
-                                _showDrawingToolsMenu = !_showDrawingToolsMenu;
-                                if (_showDrawingToolsMenu) {
-                                  _isDrawingMode =
-                                      true; // Activar modo dibujo al abrir menú
-                                } else {
-                                  _isDrawingMode =
-                                      false; // Desactivar al cerrar
+                              onTap: () {
+                                // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                                final String currentText =
+                                    _hiddenController.text.trim();
+                                if (currentText.isNotEmpty) {
+                                  // Guardar texto actual con formato anterior
+                                  setState(() {
+                                    _contentParts.add(_TextPart(
+                                      currentText,
+                                      _contentFormat.bold,
+                                      _contentFormat.underline,
+                                      _contentFormat.underline
+                                          ? _contentFormat.underlineColor.value
+                                          : null,
+                                      _contentFormat.highlight,
+                                      _contentFormat.highlight
+                                          ? _contentFormat.highlightColor.value
+                                          : null,
+                                      false,
+                                    ));
+                                  });
+                                  _hiddenController.clear();
                                 }
-                              });
-                            },
-                          ),
-                          _buildIconBox(
-                            icon: const Icon(
-                              Icons.menu_book_rounded,
-                              size: 24,
-                              color: Color(
-                                  0xFFB45309), // Color dorado/marrón bíblico
+
+                                // Cambiar a formato normal
+                                setState(() {
+                                  _contentFormat = _contentFormat.copyWith(
+                                    bold: false,
+                                    underline: false,
+                                    highlight: false,
+                                  );
+                                });
+                                _saveNote(pop: false);
+                                // Mantener foco en el texto
+                                FocusScope.of(context)
+                                    .requestFocus(_hiddenFocus);
+                              },
                             ),
-                            onTap: () {
-                              _addBibleVerse();
-                            },
-                          ),
-                        ],
+                            _buildFloatingButton(
+                              isActive: _contentFormat.bold,
+                              icon: Icon(
+                                Icons.format_bold_rounded,
+                                size: 20,
+                                color: _contentFormat.bold
+                                    ? const Color(
+                                        0xFF2563EB) // Azul para activo
+                                    : const Color(
+                                        0xFF64748B), // Gris azulado para inactivo
+                              ),
+                              onTap: () {
+                                // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                                final String currentText =
+                                    _hiddenController.text.trim();
+                                if (currentText.isNotEmpty) {
+                                  // Guardar texto actual con formato anterior
+                                  setState(() {
+                                    _contentParts.add(_TextPart(
+                                      currentText,
+                                      _contentFormat.bold,
+                                      _contentFormat.underline,
+                                      _contentFormat.underline
+                                          ? _contentFormat.underlineColor.value
+                                          : null,
+                                      _contentFormat.highlight,
+                                      _contentFormat.highlight
+                                          ? _contentFormat.highlightColor.value
+                                          : null,
+                                      false,
+                                    ));
+                                  });
+                                  _hiddenController.clear();
+                                }
+
+                                // Cambiar formato para texto nuevo
+                                setState(() {
+                                  _contentFormat = _contentFormat.copyWith(
+                                    bold: !_contentFormat.bold,
+                                  );
+                                });
+                                _saveNote(pop: false);
+                                // Mantener foco en el texto
+                                FocusScope.of(context)
+                                    .requestFocus(_hiddenFocus);
+                              },
+                            ),
+                            _buildFloatingButton(
+                              isActive: _contentFormat.underline,
+                              icon: Icon(
+                                Icons.format_underlined_rounded,
+                                size: 20,
+                                color: _contentFormat.underline
+                                    ? const Color(
+                                        0xFF2563EB) // Azul para activo
+                                    : const Color(
+                                        0xFF64748B), // Gris azulado para inactivo
+                              ),
+                              onTap: () {
+                                // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                                final String currentText =
+                                    _hiddenController.text.trim();
+                                if (currentText.isNotEmpty) {
+                                  // Guardar texto actual con formato anterior
+                                  setState(() {
+                                    _contentParts.add(_TextPart(
+                                      currentText,
+                                      _contentFormat.bold,
+                                      _contentFormat.underline,
+                                      _contentFormat.underline
+                                          ? _contentFormat.underlineColor.value
+                                          : null,
+                                      _contentFormat.highlight,
+                                      _contentFormat.highlight
+                                          ? _contentFormat.highlightColor.value
+                                          : null,
+                                      false,
+                                    ));
+                                  });
+                                  _hiddenController.clear();
+                                }
+
+                                // Cambiar formato para texto nuevo
+                                setState(() {
+                                  _contentFormat = _contentFormat.copyWith(
+                                    underline: !_contentFormat.underline,
+                                  );
+                                });
+                                _saveNote(pop: false);
+                                // Mantener foco en el texto
+                                FocusScope.of(context)
+                                    .requestFocus(_hiddenFocus);
+                              },
+                            ),
+
+                            _buildFloatingButton(
+                              icon: const Icon(
+                                Icons.psychology_rounded,
+                                size: 20,
+                                color: Color(
+                                    0xFF64748B), // Gris azulado consistente
+                              ),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => MindMapFromNoteScreen(
+                                        note: widget.note),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8), // 🎯 Separación entre filas
+                      // SEGUNDA FILA - 4 botones funcionales
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildFloatingButton(
+                              isActive: _contentFormat.highlight,
+                              icon: Icon(
+                                Icons.highlight_rounded,
+                                size: 20,
+                                color: _contentFormat.highlight
+                                    ? const Color(
+                                        0xFF2563EB) // Azul para activo
+                                    : const Color(
+                                        0xFF64748B), // Gris azulado para inactivo
+                              ),
+                              onTap: () {
+                                // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+                                final String currentText =
+                                    _hiddenController.text.trim();
+                                if (currentText.isNotEmpty) {
+                                  // Guardar texto actual con formato anterior
+                                  setState(() {
+                                    _contentParts.add(_TextPart(
+                                      currentText,
+                                      _contentFormat.bold,
+                                      _contentFormat.underline,
+                                      _contentFormat.underline
+                                          ? _contentFormat.underlineColor.value
+                                          : null,
+                                      _contentFormat.highlight,
+                                      _contentFormat.highlight
+                                          ? _contentFormat.highlightColor.value
+                                          : null,
+                                      false,
+                                    ));
+                                  });
+                                  _hiddenController.clear();
+                                }
+
+                                // Cambiar formato para texto nuevo
+                                setState(() {
+                                  _contentFormat = _contentFormat.copyWith(
+                                    highlight: !_contentFormat.highlight,
+                                  );
+                                });
+                                _saveNote(pop: false);
+                                // Mantener foco en el texto
+                                FocusScope.of(context)
+                                    .requestFocus(_hiddenFocus);
+                              },
+                            ),
+                            // 🎨 NUEVO BOTÓN LÁPIZ
+                            _buildFloatingButton(
+                              isActive: _isDrawingMode,
+                              icon: Icon(
+                                Icons.brush_rounded,
+                                size: 20,
+                                color: _isDrawingMode
+                                    ? const Color(
+                                        0xFF2563EB) // Azul para activo
+                                    : const Color(
+                                        0xFF64748B), // Gris azulado para inactivo
+                              ),
+                              onTap: () {
+                                setState(() {
+                                  _showDrawingToolsMenu =
+                                      !_showDrawingToolsMenu;
+                                  if (_showDrawingToolsMenu) {
+                                    _isDrawingMode = true;
+                                  } else {
+                                    _isDrawingMode = false;
+                                  }
+                                });
+                              },
+                            ),
+                            _buildFloatingButton(
+                              isActive: _showBibleMenu,
+                              icon: Icon(
+                                Icons.menu_book_rounded,
+                                size: 20,
+                                color: _showBibleMenu
+                                    ? const Color(
+                                        0xFF2563EB) // Azul para activo
+                                    : const Color(
+                                        0xFF64748B), // Gris azulado para inactivo
+                              ),
+                              onTap: () {
+                                setState(() {
+                                  _showBibleMenu = !_showBibleMenu;
+                                  if (_showBibleMenu) {
+                                    _showBulletsMenu =
+                                        false; // Cerrar otros menús
+                                    _showDrawingToolsMenu = false;
+                                    _showColorPalette = false;
+                                    _currentBibleStep =
+                                        'testament'; // Empezar con NT/AT
+                                  }
+                                });
+                              },
+                            ),
+                            // 📝 Botón de viñetas y numeración
+                            _buildFloatingButton(
+                              isActive: _showBulletsMenu,
+                              icon: Icon(
+                                Icons.format_list_bulleted_rounded,
+                                size: 20,
+                                color: _showBulletsMenu
+                                    ? const Color(
+                                        0xFF2563EB) // Azul para activo
+                                    : const Color(
+                                        0xFF64748B), // Gris azulado para inactivo
+                              ),
+                              onTap: () {
+                                setState(() {
+                                  _showBulletsMenu = !_showBulletsMenu;
+                                  // Cerrar otros menús si están abiertos
+                                  if (_showBulletsMenu) {
+                                    _showDrawingToolsMenu = false;
+                                    _showColorPalette = false;
+                                  }
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -3505,9 +4956,33 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ),
 
         // ======= MENÚ FLOTANTE DE LÁPICES =======
+        // � ======= MENÚ DE VERSÍCULOS BÍBLICOS =======
+        if (_showBibleMenu)
+          Positioned(
+            bottom: 120, // Más cerca de los botones principales
+            left: 40, // Un poco más hacia la izquierda
+            right: 60, // Compensamos el otro lado
+            child: _buildBibleMenu(),
+          ),
+
+        // �📝 ======= MENÚ DE VIÑETAS Y NUMERACIÓN =======
+        if (_showBulletsMenu)
+          Positioned(
+            bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                ? MediaQuery.of(context).viewInsets.bottom +
+                    140 // 🎯 Arriba del teclado con Glass Morphism
+                : 177, // 🎯 Arriba del menú Glass Morphism (altura 125 + padding 47 + espacio 5)
+            left: 20,
+            right: 20,
+            child: _buildBulletsMenu(),
+          ),
+
         if (_showDrawingToolsMenu)
           Positioned(
-            bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 110 : 160,
+            bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                ? MediaQuery.of(context).viewInsets.bottom +
+                    140 // 🎯 Arriba del teclado con Glass Morphism
+                : 177, // 🎯 Arriba del menú Glass Morphism (altura 125 + padding 47 + espacio 5)
             left: 20,
             right: 20,
             child: _buildDrawingToolsMenu(),
@@ -3516,7 +4991,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         // 🌈 ======= PALETA DE COLORES TEMÁTICA =======
         if (_showColorPalette)
           Positioned(
-            bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 200 : 250,
+            bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                ? MediaQuery.of(context).viewInsets.bottom +
+                    210 // 🎯 Arriba del menú de lápices
+                : 247, // 🎯 Arriba del menú de lápices (177 + altura del menú ~70)
             left: 20,
             right: 20,
             child: _buildColorPalette(),
@@ -3664,8 +5142,8 @@ class _FanMenuOverlayState extends State<_FanMenuOverlay>
   }) {
     final radians = angle * (3.14159 / 180);
     final radius = 70.0;
-    final x = radius * cos(radians);
-    final y = radius * sin(radians);
+    final x = radius * math.cos(radians);
+    final y = radius * math.sin(radians);
 
     return Transform.translate(
       offset: Offset(
@@ -3967,7 +5445,7 @@ class CalligraphyInkEffect {
 
       // Agregar goteo sutil cada ciertos puntos
       if (i % 15 == 0 && i > 0) {
-        final random = Random();
+        final random = math.Random();
         final dropOffset = Offset(
           point.dx + (random.nextDouble() - 0.5) * 2,
           point.dy + random.nextDouble() * 4 + 2,
@@ -3979,7 +5457,7 @@ class CalligraphyInkEffect {
 
       // Textura orgánica - pequeñas variaciones
       if (i % 3 == 0) {
-        final random = Random();
+        final random = math.Random();
         final textureOffset = Offset(
           point.dx + (random.nextDouble() - 0.5) * 1.5,
           point.dy + (random.nextDouble() - 0.5) * 1.5,
