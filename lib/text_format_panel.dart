@@ -154,6 +154,25 @@ class _TextFormatPanelState extends State<TextFormatPanel>
               opacity: _fadeAnimation,
               child: Container(
                 margin: const EdgeInsets.only(left: 16, top: 80),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 2,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 40,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,

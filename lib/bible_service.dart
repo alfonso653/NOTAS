@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BibleVerse {
   final String bookName;
@@ -25,6 +26,10 @@ class BibleVerse {
 
   String get reference => '$bookName $chapter:$verse';
   String get fullText => '$reference - $text';
+
+  // 🎯 ID único para favoritos basado en referencia
+  String get id =>
+      '${bookName.toLowerCase().replaceAll(' ', '_')}_${chapter}_$verse';
 }
 
 class BibleService {
@@ -34,6 +39,14 @@ class BibleService {
 
   List<BibleVerse> _verses = [];
   bool _isLoaded = false;
+
+  // 🎯 Sistema de Favoritos
+  Set<String> _favoriteIds = <String>{};
+  bool _favoritesLoaded = false;
+
+  // 🎯 Sistema de Historial
+  List<Map<String, dynamic>> _verseHistory = [];
+  bool _historyLoaded = false;
 
   Future<void> loadBible() async {
     if (_isLoaded) return;
@@ -255,5 +268,349 @@ class BibleService {
     };
 
     return bookMappings[book] ?? book;
+  }
+
+  // ===========================
+  // 🎯 SISTEMA DE FAVORITOS
+  // ===========================
+
+  Future<void> _loadFavorites() async {
+    if (_favoritesLoaded) return;
+
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final List<String> favoritesList =
+          prefs.getStringList('bible_favorites') ?? [];
+      _favoriteIds = favoritesList.toSet();
+      _favoritesLoaded = true;
+      print('💛 Favoritos cargados: ${_favoriteIds.length}');
+    } catch (e) {
+      print('❌ Error cargando favoritos: $e');
+    }
+  }
+
+  Future<void> _saveFavorites() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('bible_favorites', _favoriteIds.toList());
+    } catch (e) {
+      print('❌ Error guardando favoritos: $e');
+    }
+  }
+
+  /// Verificar si un versículo es favorito
+  Future<bool> isFavorite(BibleVerse verse) async {
+    await _loadFavorites();
+    return _favoriteIds.contains(verse.id);
+  }
+
+  /// Agregar versículo a favoritos
+  Future<void> addToFavorites(BibleVerse verse) async {
+    await _loadFavorites();
+    _favoriteIds.add(verse.id);
+    await _saveFavorites();
+    print('💛 Agregado a favoritos: ${verse.reference}');
+  }
+
+  /// Quitar versículo de favoritos
+  Future<void> removeFromFavorites(BibleVerse verse) async {
+    await _loadFavorites();
+    _favoriteIds.remove(verse.id);
+    await _saveFavorites();
+    print('💔 Quitado de favoritos: ${verse.reference}');
+  }
+
+  /// Toggle favorito (agregar si no está, quitar si está)
+  Future<bool> toggleFavorite(BibleVerse verse) async {
+    final isCurrentlyFavorite = await isFavorite(verse);
+    if (isCurrentlyFavorite) {
+      await removeFromFavorites(verse);
+      return false;
+    } else {
+      await addToFavorites(verse);
+      return true;
+    }
+  }
+
+  /// Obtener todos los versículos favoritos
+  Future<List<BibleVerse>> getFavoriteVerses() async {
+    await _loadFavorites();
+    await loadBible();
+
+    final favoriteVerses = <BibleVerse>[];
+    for (final verse in _verses) {
+      if (_favoriteIds.contains(verse.id)) {
+        favoriteVerses.add(verse);
+      }
+    }
+
+    return favoriteVerses;
+  }
+
+  /// Limpiar todos los favoritos
+  Future<void> clearFavorites() async {
+    _favoriteIds.clear();
+    await _saveFavorites();
+    print('🗑️ Todos los favoritos eliminados');
+  }
+
+  // ===========================
+  // 🎯 BÚSQUEDA POR PALABRAS CLAVE
+  // ===========================
+
+  /// Buscar versículos por palabras clave en el texto
+  List<BibleVerse> searchByKeywords(String keywords, {int maxResults = 20}) {
+    if (!_isLoaded || keywords.trim().isEmpty) return [];
+
+    final cleanKeywords = keywords.trim().toLowerCase();
+    final searchTerms =
+        cleanKeywords.split(' ').where((term) => term.length > 2).toList();
+
+    if (searchTerms.isEmpty) return [];
+
+    final results = <BibleVerse>[];
+
+    for (final verse in _verses) {
+      final verseText = verse.text.toLowerCase();
+
+      // Contar cuántas palabras clave coinciden
+      int matchCount = 0;
+      for (final term in searchTerms) {
+        if (verseText.contains(term)) {
+          matchCount++;
+        }
+      }
+
+      // Si coinciden todas las palabras clave, agregar a resultados
+      if (matchCount == searchTerms.length) {
+        results.add(verse);
+      }
+
+      // Limitar resultados
+      if (results.length >= maxResults) break;
+    }
+
+    return results;
+  }
+
+  /// Buscar versículos por tema específico
+  List<BibleVerse> searchByTheme(String theme, {int maxResults = 15}) {
+    final themes = <String, List<String>>{
+      'amor': ['amor', 'amar', 'ama', 'amado', 'amamos', 'caridad', 'cariño'],
+      'paz': ['paz', 'pacifico', 'tranquilo', 'sosiego', 'calma', 'sereno'],
+      'fe': ['fe', 'creer', 'creo', 'creemos', 'confianza', 'confiar', 'fiel'],
+      'esperanza': ['esperanza', 'esperar', 'espero', 'esperamos', 'esperar'],
+      'sabiduría': [
+        'sabiduría',
+        'sabio',
+        'prudencia',
+        'entendimiento',
+        'conocimiento'
+      ],
+      'perdón': ['perdón', 'perdonar', 'perdona', 'perdonamos', 'misericordia'],
+      'oración': ['oración', 'orar', 'oro', 'oramos', 'pedir', 'ruego'],
+      'gozo': [
+        'gozo',
+        'alegría',
+        'alegrar',
+        'regocijar',
+        'contento',
+        'felicidad'
+      ],
+      'fortaleza': ['fortaleza', 'fuerte', 'poder', 'fuerza', 'resistencia'],
+      'gratitud': [
+        'gracias',
+        'agradecer',
+        'agradecido',
+        'gratitud',
+        'reconocer'
+      ],
+    };
+
+    final searchTerms = themes[theme.toLowerCase()] ?? [theme.toLowerCase()];
+
+    final results = <BibleVerse>[];
+
+    for (final verse in _verses) {
+      final verseText = verse.text.toLowerCase();
+
+      // Buscar cualquiera de los términos del tema
+      for (final term in searchTerms) {
+        if (verseText.contains(term)) {
+          results.add(verse);
+          break; // Solo agregar una vez por versículo
+        }
+      }
+
+      if (results.length >= maxResults) break;
+    }
+
+    return results;
+  }
+
+  /// Obtener temas disponibles
+  List<String> getAvailableThemes() {
+    return [
+      'amor',
+      'paz',
+      'fe',
+      'esperanza',
+      'sabiduría',
+      'perdón',
+      'oración',
+      'gozo',
+      'fortaleza',
+      'gratitud'
+    ];
+  }
+
+  // ===========================
+  // 🎯 SISTEMA DE HISTORIAL
+  // ===========================
+
+  Future<void> _loadHistory() async {
+    if (_historyLoaded) return;
+
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final List<String> historyJson =
+          prefs.getStringList('bible_history') ?? [];
+
+      _verseHistory = historyJson.map((json) {
+        final Map<String, dynamic> data = Map<String, dynamic>.from(
+            (jsonDecode(json) as Map).cast<String, dynamic>());
+        return data;
+      }).toList();
+
+      _historyLoaded = true;
+      print('📚 Historial cargado: ${_verseHistory.length} entradas');
+    } catch (e) {
+      print('❌ Error cargando historial: $e');
+      _verseHistory = [];
+    }
+  }
+
+  Future<void> _saveHistory() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final List<String> historyJson =
+          _verseHistory.map((entry) => jsonEncode(entry)).toList();
+
+      await prefs.setStringList('bible_history', historyJson);
+    } catch (e) {
+      print('❌ Error guardando historial: $e');
+    }
+  }
+
+  /// Agregar versículo al historial cuando se usa
+  Future<void> addToHistory(BibleVerse verse) async {
+    await _loadHistory();
+
+    final now = DateTime.now();
+    final entry = {
+      'verseId': verse.id,
+      'reference': verse.reference,
+      'text': verse.text,
+      'bookName': verse.bookName,
+      'chapter': verse.chapter,
+      'verse': verse.verse,
+      'timestamp': now.millisecondsSinceEpoch,
+      'dateString':
+          '${now.day}/${now.month}/${now.year} ${now.hour}:${now.minute.toString().padLeft(2, '0')}',
+    };
+
+    // Remover entrada anterior si existe (evitar duplicados)
+    _verseHistory.removeWhere((item) => item['verseId'] == verse.id);
+
+    // Agregar al inicio (más reciente primero)
+    _verseHistory.insert(0, entry);
+
+    // Mantener máximo 50 entradas
+    if (_verseHistory.length > 50) {
+      _verseHistory = _verseHistory.take(50).toList();
+    }
+
+    await _saveHistory();
+    print('📖 Agregado al historial: ${verse.reference}');
+  }
+
+  /// Obtener historial de versículos usados
+  Future<List<Map<String, dynamic>>> getVerseHistory(
+      {int maxResults = 20}) async {
+    await _loadHistory();
+
+    return _verseHistory.take(maxResults).toList();
+  }
+
+  /// Obtener versículos del historial como objetos BibleVerse
+  Future<List<BibleVerse>> getHistoryVerses({int maxResults = 20}) async {
+    await _loadHistory();
+
+    final historyVerses = <BibleVerse>[];
+
+    for (final entry in _verseHistory.take(maxResults)) {
+      try {
+        final verse = BibleVerse(
+          bookName: entry['bookName'] as String,
+          chapter: entry['chapter'] as String,
+          verse: entry['verse'] as String,
+          text: entry['text'] as String,
+        );
+        historyVerses.add(verse);
+      } catch (e) {
+        print('❌ Error procesando entrada del historial: $e');
+      }
+    }
+
+    return historyVerses;
+  }
+
+  /// Limpiar historial
+  Future<void> clearHistory() async {
+    _verseHistory.clear();
+    await _saveHistory();
+    print('🗑️ Historial de versículos limpiado');
+  }
+
+  /// Obtener estadísticas del historial
+  Future<Map<String, dynamic>> getHistoryStats() async {
+    await _loadHistory();
+
+    if (_verseHistory.isEmpty) {
+      return {
+        'totalVerses': 0,
+        'uniqueBooks': 0,
+        'mostUsedBook': 'Ninguno',
+        'recentActivity': 'Sin actividad',
+      };
+    }
+
+    // Contar libros más usados
+    final bookCounts = <String, int>{};
+    for (final entry in _verseHistory) {
+      final book = entry['bookName'] as String;
+      bookCounts[book] = (bookCounts[book] ?? 0) + 1;
+    }
+
+    // Encontrar libro más usado
+    String mostUsedBook = 'Ninguno';
+    int maxCount = 0;
+    for (final entry in bookCounts.entries) {
+      if (entry.value > maxCount) {
+        maxCount = entry.value;
+        mostUsedBook = entry.key;
+      }
+    }
+
+    // Actividad reciente
+    final lastEntry = _verseHistory.first;
+    final recentActivity = lastEntry['dateString'] as String;
+
+    return {
+      'totalVerses': _verseHistory.length,
+      'uniqueBooks': bookCounts.length,
+      'mostUsedBook': mostUsedBook,
+      'recentActivity': recentActivity,
+    };
   }
 }

@@ -24,7 +24,7 @@ import 'note_provider.dart';
 import 'audio_mic_fab.dart';
 import 'image_gallery_fab.dart';
 
-import 'mindmap_from_note_screen.dart';
+
 
 /// =========================
 /// Modelo de segmento (_TextPart)
@@ -596,9 +596,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   String _selectedChapter = '';
   Map<String, dynamic>? _bibleData;
   List<Map<String, dynamic>> _bibleVerses = [];
-  Set<String> _selectedVerses = {}; // Versículos seleccionados para inserción múltiple
-  ScrollController _versesScrollController = ScrollController(); // Para mantener posición del scroll
-  ValueNotifier<int> _selectionCounter = ValueNotifier<int>(0); // Contador para el botón
+  Set<String> _selectedVerses =
+      {}; // Versículos seleccionados para inserción múltiple
+  ScrollController _versesScrollController =
+      ScrollController(); // Para mantener posición del scroll
+  ValueNotifier<int> _selectionCounter =
+      ValueNotifier<int>(0); // Contador para el botón
 
   // 📚 Libros del Nuevo Testamento
   final List<String> _ntBooks = [
@@ -1835,6 +1838,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       _showBibleAutocomplete = false;
     });
 
+    // 🎯 Agregar al historial de versículos usados
+    BibleService.instance.addToHistory(verse);
+
     // Agregar el versículo seleccionado
     setState(() {
       _contentParts.add(_TextPart(
@@ -1874,6 +1880,53 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       });
     });
     _bibleController.clear();
+  }
+
+  void _onMultipleVersesSelected(List<BibleVerse> verses) {
+    // Ocultar el autocomplete
+    setState(() {
+      _showBibleAutocomplete = false;
+    });
+
+    // Agregar cada versículo al historial y a la nota
+    for (final verse in verses) {
+      // 🎯 Agregar al historial de versículos usados
+      BibleService.instance.addToHistory(verse);
+
+      // Agregar el versículo seleccionado
+      _contentParts.add(_TextPart(
+        '📖 ${verse.fullText}',
+        true, // bold para destacar
+        false, // underline
+        null, // underlineColor
+        true, // highlight con color bíblico
+        0xFFF3E8FF, // Color púrpura muy suave
+        false, // no es imagen especial
+      ));
+    }
+
+    setState(() {}); // Actualizar UI
+
+    _saveNote(pop: false);
+
+    // Mostrar confirmación
+    final verseCount = verses.length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(verseCount == 1
+            ? 'Versículo añadido: ${verses.first.reference}'
+            : '$verseCount versículos añadidos exitosamente'),
+        backgroundColor: const Color(0xFF059669),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    // Enfocar de nuevo el campo de texto principal
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        FocusScope.of(context).requestFocus(_hiddenFocus);
+      }
+    });
   }
 
   void _processBibleReference(String reference) {
@@ -2579,9 +2632,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       _selectedChapter = chapter;
       _selectedVerses.clear(); // Limpiar selecciones anteriores
       _selectionCounter.value = 0; // Resetear contador
-      _currentBibleStep = 'verses'; // Ir a la pantalla de versículos con checkboxes
+      _currentBibleStep =
+          'verses'; // Ir a la pantalla de versículos con checkboxes
     });
-    
+
     // Resetear scroll al inicio para nuevo capítulo
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_versesScrollController.hasClients) {
@@ -2782,7 +2836,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       child: Container(
         constraints: BoxConstraints(
           maxHeight: 400, // Altura apropiada para ver versículos
-          maxWidth: 340,  // Ancho adecuado
+          maxWidth: 340, // Ancho adecuado
         ),
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
         padding: const EdgeInsets.all(16),
@@ -2810,245 +2864,347 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           ],
         ),
         child: Column(
-            children: [
-              // Header con título y botón regresar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      '$_selectedBook $_selectedChapter',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+          children: [
+            // Header con título y botón regresar
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    '$_selectedBook $_selectedChapter',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _currentBibleStep = 'chapters';
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 18,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _currentBibleStep = 'chapters';
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // FutureBuilder para cargar versículos dinámicamente
+            Expanded(
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _getChapterVerses(_selectedBook, _selectedChapter),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 18,
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error cargando versículos',
+                        style: const TextStyle(color: Colors.white70),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // FutureBuilder para cargar versículos dinámicamente
-              Expanded(
-                child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _getChapterVerses(_selectedBook, _selectedChapter),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      );
-                    }
+                    );
+                  }
 
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Error cargando versículos',
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                      );
-                    }
+                  final chapterVerses = snapshot.data ?? [];
 
-                    final chapterVerses = snapshot.data ?? [];
-
-                    return Column(
-                      children: [
-                        // Lista de versículos
-                        Expanded(
-                          child: ListView.builder(
-                            controller: _versesScrollController,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: chapterVerses.length,
-                            itemBuilder: (context, index) {
-                              final verse = chapterVerses[index];
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 3),
-                                child: _buildVerseOptionFromBible(verse),
-                              );
-                            },
-                          ),
-                        ),
-                        // Botón para insertar múltiples versículos (solo se reconstruye cuando cambia)
-                        ValueListenableBuilder<int>(
-                          valueListenable: _selectionCounter,
-                          builder: (context, count, child) {
-                            if (count == 0) return const SizedBox.shrink();
-                            
-                            return Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(top: 12),
-                              child: ElevatedButton.icon(
-                                onPressed: () => _insertSelectedVerses(),
-                                icon: const Icon(Icons.add, color: Colors.white),
-                                label: Text(
-                                  'Insertar $count versículo${count > 1 ? 's' : ''}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade600,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
+                  return Column(
+                    children: [
+                      // Lista de versículos
+                      Expanded(
+                        child: ListView.builder(
+                          controller: _versesScrollController,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: chapterVerses.length,
+                          itemBuilder: (context, index) {
+                            final verse = chapterVerses[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              child: _buildVerseOptionFromBible(verse),
                             );
                           },
                         ),
-                      ],
-                    );
-                  },
-                ),
+                      ),
+                      // Botón para insertar múltiples versículos (solo se reconstruye cuando cambia)
+                      ValueListenableBuilder<int>(
+                        valueListenable: _selectionCounter,
+                        builder: (context, count, child) {
+                          if (count == 0) return const SizedBox.shrink();
+
+                          return Column(
+                            children: [
+                              // Botón para insertar versículos seleccionados
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(top: 12),
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _insertSelectedVerses(),
+                                  icon: const Icon(Icons.add,
+                                      color: Colors.white),
+                                  label: Text(
+                                    'Insertar $count versículo${count > 1 ? 's' : ''}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green.shade600,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Botón para cancelar selecciones
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(top: 8),
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedVerses.clear();
+                                      _selectionCounter.value = 0;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear,
+                                      color: Colors.white70),
+                                  label: const Text(
+                                    'Cancelar selección',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildVerseOptionFromBible(Map<String, dynamic> verse) {
-    final reference = '${verse['book_name']} ${verse['chapter']}:${verse['verse']}';
+    final reference =
+        '${verse['book_name']} ${verse['chapter']}:${verse['verse']}';
     final text = verse['text'] as String;
+    final verseId =
+        '${verse['book_name']}_${verse['chapter']}_${verse['verse']}';
+    final isSelected = _selectedVerses.contains(verseId);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: isSelected
+            ? Colors.green.withOpacity(0.4)
+            : Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(8),
+        border: isSelected ? Border.all(color: Colors.green, width: 2) : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            print('🔥 VERSÍCULO PRESIONADO: $reference');
-            
-            // Insertar como NUEVO PÁRRAFO independiente
-            final verseText = '📖 $reference\n"$text"';
-            print('🔥 Texto a insertar: $verseText');
-            
-            // SIEMPRE crear una nueva parte para el versículo
-            final newPartIndex = widget.note.contentParts.length;
-            print('🔥 ContentParts antes: ${widget.note.contentParts.length}');
-            
-            widget.note.contentParts.add({
-              'text': verseText,
-              'bold': false,
-              'italic': false,
-              'underline': false,
-              'fontSize': widget.note.contentFontSize,
-            });
-            
-            print('🔥 ContentParts después: ${widget.note.contentParts.length}');
-            print('🔥 Nueva parte creada en índice: $newPartIndex');
-            
-            // TAMBIÉN agregar a _contentParts para que se vea visualmente
-            final textPart = _TextPart(
-              verseText,  // text
-              false,      // bold
-              false,      // underline
-              null,       // underlineColor
-              false,      // highlight
-              null,       // highlightColor
-              false,      // isImage
-              null,       // imageWidth
-              null,       // imageHeight
-            );
-            _contentParts.add(textPart);
-            print('🔥 Agregado a _contentParts. Total visual: ${_contentParts.length}');
-            
-            // CREAR controller para la nueva parte
-            _partControllers[newPartIndex] = TextEditingController();
-            final controller = _partControllers[newPartIndex]!;
-            controller.text = verseText;
-            print('🔥 Controller creado y actualizado');
-          
-          // Mover cursor al final
-          controller.selection = TextSelection.fromPosition(
-            TextPosition(offset: controller.text.length),
-          );
-          
-          // Forzar actualización COMPLETA de la UI
-          setState(() {
-            // Forzar rebuild completo del widget
-          });
-          
-          // Verificar que el widget se está actualizando
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            print('🔥 UI actualizada. Partes totales: ${widget.note.contentParts.length}');
-            print('🔥 Controllers totales: ${_partControllers.length}');
-          });
-          
-          // Cerrar menú bíblico después del repaint
-          Future.delayed(Duration(milliseconds: 300), () {
-            if (mounted) {
+            // Si hay versículos seleccionados, cambiar modo selección
+            if (_selectedVerses.isNotEmpty) {
               setState(() {
-                _showBibleMenu = false;
-                _currentBibleStep = 'testament';
-                _selectedTestament = '';
-                _selectedBook = '';
-                _selectedChapter = '';
+                if (isSelected) {
+                  _selectedVerses.remove(verseId);
+                } else {
+                  _selectedVerses.add(verseId);
+                }
+                _selectionCounter.value = _selectedVerses.length;
               });
+              return;
             }
-          });
-          
-          print('🔥 Guardando nota...');
-          // Guardar cambios
-          _saveNote(pop: false);
-          print('🔥 ¡Nota guardada! Total partes: ${widget.note.contentParts.length}');
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              reference,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+
+            // Comportamiento normal: insertar versículo individual
+            _insertSingleVerse(verse, reference, text);
+          },
+          onLongPress: () {
+            // Activar modo selección múltiple con long press
+            setState(() {
+              if (_selectedVerses.isEmpty) {
+                // Iniciar selección múltiple con este versículo
+                _selectedVerses.add(verseId);
+                _selectionCounter.value = 1;
+
+                // Mostrar feedback
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('Modo selección múltiple activado'),
+                      ],
+                    ),
+                    backgroundColor: Colors.green.shade600,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              } else {
+                // Toggle selección del versículo
+                if (isSelected) {
+                  _selectedVerses.remove(verseId);
+                } else {
+                  _selectedVerses.add(verseId);
+                }
+                _selectionCounter.value = _selectedVerses.length;
+              }
+            });
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (isSelected)
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 16,
+                    ),
+                  if (isSelected) SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      // Si hay selecciones múltiples, mostrar solo el número del versículo
+                      _selectedVerses.isNotEmpty
+                          ? 'Versículo ${verse['verse']}'
+                          : reference,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.green : Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Colors.white70,
+              const SizedBox(height: 4),
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isSelected ? Colors.green.shade200 : Colors.white70,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
+
+  // Función para insertar un versículo individual
+  void _insertSingleVerse(
+      Map<String, dynamic> verse, String reference, String text) {
+    print('🔥 VERSÍCULO PRESIONADO: $reference');
+
+    // Extraer número del versículo y agregar punto
+    final verseNumber = verse['verse'];
+    final formattedText = '$verseNumber.${text.trimLeft()}';
+    print('🔥 DEBUG - Número: $verseNumber, Texto formateado: $formattedText');
+
+    // Insertar como NUEVO PÁRRAFO independiente con formato correcto
+    final verseText = '📖 $reference\n$formattedText';
+    print('🔥 Texto a insertar: $verseText');
+
+    // SIEMPRE crear una nueva parte para el versículo
+    final newPartIndex = widget.note.contentParts.length;
+    print('🔥 ContentParts antes: ${widget.note.contentParts.length}');
+
+    widget.note.contentParts.add({
+      'text': verseText,
+      'bold': false,
+      'italic': false,
+      'underline': false,
+      'fontSize': widget.note.contentFontSize,
+    });
+
+    print('🔥 ContentParts después: ${widget.note.contentParts.length}');
+    print('🔥 Nueva parte creada en índice: $newPartIndex');
+
+    // TAMBIÉN agregar a _contentParts como UN SOLO bloque pegado
+    final completeText = '📖 $reference\n$formattedText';
+    _contentParts.add(_TextPart(completeText, false));
+    print(
+        '🔥 Agregado a _contentParts como bloque único. Total visual: ${_contentParts.length}');
+
+    // CREAR controller para la nueva parte
+    _partControllers[newPartIndex] = TextEditingController();
+    final controller = _partControllers[newPartIndex]!;
+    controller.text = verseText;
+    print('🔥 Controller creado y actualizado');
+
+    // Mover cursor al final
+    controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: controller.text.length),
+    );
+
+    // Forzar actualización COMPLETA de la UI
+    setState(() {
+      // Forzar rebuild completo del widget
+    });
+
+    // Verificar que el widget se está actualizando
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print(
+          '🔥 UI actualizada. Partes totales: ${widget.note.contentParts.length}');
+      print('🔥 Controllers totales: ${_partControllers.length}');
+    });
+
+    // Cerrar menú bíblico después del repaint
+    Future.delayed(Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _showBibleMenu = false;
+          _currentBibleStep = 'testament';
+          _selectedTestament = '';
+          _selectedBook = '';
+          _selectedChapter = '';
+        });
+      }
+    });
+
+    print('🔥 Guardando nota...');
+    // Guardar cambios
+    _saveNote(pop: false);
+    print(
+        '🔥 ¡Nota guardada! Total partes: ${widget.note.contentParts.length}');
   }
 
   // Función para insertar todos los versículos seleccionados
@@ -3056,56 +3212,159 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     try {
       final verses = await _getChapterVerses(_selectedBook, _selectedChapter);
       final selectedVersesList = <Map<String, dynamic>>[];
-      
+
       // Filtrar solo los versículos seleccionados
       for (final verse in verses) {
-        final verseId = '${verse['book_name']}_${verse['chapter']}_${verse['verse']}';
+        final verseId =
+            '${verse['book_name']}_${verse['chapter']}_${verse['verse']}';
         if (_selectedVerses.contains(verseId)) {
           selectedVersesList.add(verse);
         }
       }
 
       if (selectedVersesList.isNotEmpty) {
-        // Formatear múltiples versículos
-        final StringBuffer fullText = StringBuffer();
-        
+        // Ordenar versículos por número
+        selectedVersesList.sort((a, b) => int.parse(a['verse'].toString())
+            .compareTo(int.parse(b['verse'].toString())));
+
+        // Crear referencia agrupada
+        final bookName = selectedVersesList.first['book_name'];
+        final chapter = selectedVersesList.first['chapter'];
+        final verseNumbers =
+            selectedVersesList.map((v) => v['verse'].toString()).toList();
+
+        String groupedReference;
+        if (verseNumbers.length == 1) {
+          groupedReference = '$bookName $chapter:${verseNumbers.first}';
+        } else {
+          // Crear rango compacto (ej: "Juan 3:16-18" o "Juan 3:16, 18-20")
+          groupedReference =
+              '$bookName $chapter:${_formatVerseRange(verseNumbers)}';
+        }
+
+        // Crear UN SOLO TextPart con todo pegado
+        final StringBuffer completeText = StringBuffer();
+
+        // 1. Agregar referencia
+        completeText.write('📖 $groupedReference\n');
+
+        // 2. Agregar todos los versículos cada uno en su línea
         for (int i = 0; i < selectedVersesList.length; i++) {
           final verse = selectedVersesList[i];
           final verseText = verse['text'] ?? '';
           final verseNumber = verse['verse'] ?? '';
-          final reference = '${verse['book_name']} ${verse['chapter']}:$verseNumber';
-          
-          fullText.write('"$verseText"');
-          fullText.write('\n— $reference');
-          
-          // Agregar separación entre versículos (excepto el último)
+
+          // Cada versículo en su propia línea con punto después del número
+          final formattedVerse = '$verseNumber.${verseText.trimLeft()}';
+          print('🔥 DEBUG MÚLTIPLE - Verso $verseNumber: $formattedVerse');
+          completeText.write(formattedVerse);
+
+          // Agregar pequeño espacio entre versículos para estética
           if (i < selectedVersesList.length - 1) {
-            fullText.write('\n\n');
+            completeText.write('\n\n');
           }
         }
 
-        // Insertar en el editor
-        final currentText = _hiddenController.text;
-        final cursorPosition = _hiddenController.selection.start;
+        // Crear un solo TextPart con todo el contenido
+        _contentParts.add(_TextPart(completeText.toString(),
+            false)); // Crear un texto plano para contentParts (para persistencia)
+        final StringBuffer plainText = StringBuffer();
+        plainText.write('📖 $groupedReference\n');
+        for (int i = 0; i < selectedVersesList.length; i++) {
+          final verse = selectedVersesList[i];
+          final verseText = verse['text'] ?? '';
+          final verseNumber = verse['verse'] ?? '';
+          plainText.write('$verseNumber.${verseText.trimLeft()}');
 
-        final beforeCursor = currentText.substring(0, cursorPosition);
-        final afterCursor = currentText.substring(cursorPosition);
+          // Agregar pequeño espacio entre versículos para estética
+          if (i < selectedVersesList.length - 1) {
+            plainText.write('\n\n');
+          }
+        }
 
-        _hiddenController.text = beforeCursor + fullText.toString() + afterCursor;
-        _hiddenController.selection =
-            TextSelection.collapsed(offset: cursorPosition + fullText.length);
+        // Insertar usando el sistema actual de contentParts
+        final newPartIndex = widget.note.contentParts.length;
 
-        // Limpiar selección y cerrar menú
+        widget.note.contentParts.add({
+          'text': plainText.toString(),
+          'bold': false,
+          'italic': false,
+          'underline': false,
+          'fontSize': widget.note.contentFontSize,
+        });
+
+        // Crear controller para la nueva parte
+        _partControllers[newPartIndex] = TextEditingController();
+        final controller = _partControllers[newPartIndex]!;
+        controller.text = plainText.toString();
+
+        // Mover cursor al final
+        controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: controller.text.length),
+        );
+
+        // Actualizar UI
         setState(() {
           _selectedVerses.clear();
-          _selectionCounter.value = 0; // Resetear contador
+          _selectionCounter.value = 0;
           _showBibleMenu = false;
           _currentBibleStep = 'testament';
+          _selectedTestament = '';
+          _selectedBook = '';
+          _selectedChapter = '';
         });
+
+        // Guardar cambios
+        _saveNote(pop: false);
+
+        // Mostrar confirmación
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '${selectedVersesList.length} versículos añadidos: $groupedReference'),
+            backgroundColor: const Color(0xFF059669),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
       print('Error insertando versículos: $e');
     }
+  }
+
+  // Función auxiliar para formatear rangos de versículos
+  String _formatVerseRange(List<String> verseNumbers) {
+    if (verseNumbers.isEmpty) return '';
+    if (verseNumbers.length == 1) return verseNumbers.first;
+
+    final numbers = verseNumbers.map(int.parse).toList()..sort();
+    final ranges = <String>[];
+    int start = numbers.first;
+    int end = start;
+
+    for (int i = 1; i < numbers.length; i++) {
+      if (numbers[i] == end + 1) {
+        end = numbers[i];
+      } else {
+        // Finalizar rango actual
+        if (start == end) {
+          ranges.add(start.toString());
+        } else {
+          ranges.add('$start-$end');
+        }
+        start = numbers[i];
+        end = start;
+      }
+    }
+
+    // Agregar último rango
+    if (start == end) {
+      ranges.add(start.toString());
+    } else {
+      ranges.add('$start-$end');
+    }
+
+    return ranges.join(', ');
   }
 
   Widget _buildVerseOption(Map<String, String> verse) {
@@ -4558,19 +4817,19 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     color: Colors.white.withOpacity(0.3),
                     width: 1.5,
                   ),
-                  // � Sombras suaves para efecto flotante
+                  // ✨ Sombra elegante y minimalista
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                      spreadRadius: -5,
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 0,
                     ),
                     BoxShadow(
-                      color: Colors.blue.withOpacity(0.05),
-                      blurRadius: 30,
-                      offset: const Offset(0, 15),
-                      spreadRadius: -8,
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 32,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 2,
                     ),
                   ],
                 ),
@@ -4744,18 +5003,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
                             _buildFloatingButton(
                               icon: const Icon(
-                                Icons.psychology_rounded,
+                                Icons.auto_fix_high,
                                 size: 20,
                                 color: Color(
                                     0xFF64748B), // Gris azulado consistente
                               ),
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => MindMapFromNoteScreen(
-                                        note: widget.note),
-                                  ),
-                                );
+                                // TODO: Implementar Auto-Format Inteligente
+                                print('🎨 Auto-Format Inteligente - Próximamente');
                               },
                             ),
                           ],
@@ -4850,6 +5105,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         0xFF64748B), // Gris azulado para inactivo
                               ),
                               onTap: () {
+                                // 🎯 Ocultar teclado automáticamente para mostrar las tarjetas bíblicas
+                                FocusScope.of(context).unfocus();
+                                
                                 setState(() {
                                   _showBibleMenu = !_showBibleMenu;
                                   if (_showBibleMenu) {
@@ -4942,6 +5200,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               child: BibleAutoCompleteWidget(
                                 controller: _bibleController,
                                 onVerseSelected: _onVerseSelected,
+                                onMultipleVersesSelected:
+                                    _onMultipleVersesSelected,
                                 onCancel: _cancelBibleAutocomplete,
                               ),
                             ),
@@ -4959,7 +5219,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         // � ======= MENÚ DE VERSÍCULOS BÍBLICOS =======
         if (_showBibleMenu)
           Positioned(
-            bottom: 120, // Más cerca de los botones principales
+            bottom: 200, // ⬆️ Subido para evitar superposición con el menú principal
             left: 40, // Un poco más hacia la izquierda
             right: 60, // Compensamos el otro lado
             child: _buildBibleMenu(),
