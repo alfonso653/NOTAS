@@ -28,6 +28,9 @@ dependencies:
   flutter_local_notifications: ^17.2.3
   timezone: ^0.9.4
 
+  # 💰 Google AdMob para monetización
+  # google_mobile_ads: ^3.0.0  # Temporalmente comentado para resolver namespace
+
   # (Opcionales: solo si los usas en otras partes de tu app)
   screenshot: ^2.1.0
   image: ^4.1.3

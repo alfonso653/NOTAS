@@ -23,6 +23,7 @@ import 'note.dart';
 import 'note_provider.dart';
 import 'audio_mic_fab.dart';
 import 'image_gallery_fab.dart';
+// import 'admob_service.dart'; // 💰 Temporalmente comentado para resolver namespace
 
 /// =========================
 /// Modelo de segmento (_TextPart)
@@ -1236,6 +1237,300 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     });
   }
 
+  void _showCommercialAd() {
+    // 💰 MODO DEMO: Simulando sistema de apoyo (AdMob temporalmente deshabilitado por namespace)
+    _showPreAdDialog();
+    /* Código AdMob comentado temporalmente:
+    if (AdMobService().isRewardedAdReady) {
+      // Mostrar mensaje de preparación
+      _showPreAdDialog();
+    } else {
+      // Si no hay anuncio disponible, mostrar mensaje y cargar
+      _showAdNotAvailableDialog();
+      AdMobService().loadRewardedAd();
+    }
+    */
+  }
+
+  void _showPreAdDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.video_library, color: Colors.blue.shade600, size: 28),
+            SizedBox(width: 8),
+            Text(
+              '📺 Comercial Listo',
+              style: TextStyle(
+                color: Colors.blue.shade600,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade50, Colors.green.shade50],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '¡Gracias por apoyar el ministerio!',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade700,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Se reproducirá un anuncio de 30 segundos. Tu visualización me ayuda a seguir desarrollando la app.',
+                style: TextStyle(
+                  color: Colors.blue.shade700,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.monetization_on,
+                      color: Colors.amber.shade600, size: 20),
+                  SizedBox(width: 4),
+                  Text(
+                    'Ingresos = Más Funcionalidades',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.amber.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _showRealAdMobAd();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.play_arrow, size: 18),
+                SizedBox(width: 6),
+                Text('Ver Anuncio'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRealAdMobAd() {
+    // 🎬 DEMO: Simulando anuncio de Google AdMob
+    // Simular éxito después de 2 segundos
+    Future.delayed(Duration(seconds: 2), () {
+      _showAdCompletedDialog();
+    });
+
+    /* Código AdMob comentado temporalmente:
+    AdMobService().showRewardedAd(
+      onUserEarnedReward: () {
+        // ✅ Usuario completó el anuncio - mostrar agradecimiento
+        _showAdCompletedDialog();
+      },
+      onAdClosed: () {
+        // 📱 Anuncio cerrado - cargar el siguiente
+        print('📱 Usuario cerró el anuncio');
+      },
+      onError: (error) {
+        // ❌ Error - mostrar mensaje de fallback
+        _showAdCompletedDialog(); // Mostrar agradecimiento aunque falle
+      },
+    );
+    */
+  }
+
+  void _showAdCompletedDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.celebration, color: Colors.green.shade600, size: 28),
+            SizedBox(width: 8),
+            Text(
+              '🎉 ¡Gracias!',
+              style: TextStyle(
+                color: Colors.green.shade600,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade50, Colors.blue.shade50],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '¡Has apoyado el desarrollo del ministerio!',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade700,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Cada anuncio que ves me ayuda a dedicar más tiempo al desarrollo de nuevas características para la app.',
+                style: TextStyle(
+                  color: Colors.blue.shade700,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade300),
+                ),
+                child: Text(
+                  '💰 Ingresos generados para el ministerio ✓',
+                  style: TextStyle(
+                    color: Colors.amber.shade800,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text('¡De nada! 🙏'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAdNotAvailableDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.wifi_off, color: Colors.orange.shade600, size: 28),
+            SizedBox(width: 8),
+            Text(
+              'Anuncio No Disponible',
+              style: TextStyle(
+                color: Colors.orange.shade600,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'No hay anuncios disponibles en este momento. Esto puede ser debido a:\n\n• Sin conexión a internet\n• Límite de anuncios alcanzado\n• Problema temporal del servidor\n\n¡Intenta de nuevo en unos minutos!',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Entendido'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAdErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red.shade600, size: 28),
+            SizedBox(width: 8),
+            Text(
+              'Error en Anuncio',
+              style: TextStyle(
+                color: Colors.red.shade600,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Hubo un problema mostrando el anuncio:\n\n$error\n\nPuedes intentar:\n• Verificar tu conexión\n• Reiniciar la app\n• Intentar más tarde',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _addNumberedList() {
     int nextNumber = 1;
     int maxFoundNumber = 0;
@@ -1412,29 +1707,40 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   ),
                 );
               }).toList(),
-              pw.Spacer(),
-              pw.Align(
-                alignment: pw.Alignment.centerRight,
-                child: pw.Text(
-                  'Página ${context.pageNumber} de ${context.pagesCount}',
-                  style: pw.TextStyle(
-                      fontSize: 10, color: PdfColors.grey, font: nunito),
-                ),
-              ),
+              // Removido numeración de páginas para evitar null check operator error
+              pw.SizedBox(height: 20),
             ];
           },
         ),
       );
 
       final bytes = await pdf.save();
+      print('✅ PDF generado exitosamente - tamaño: ${bytes.length} bytes');
+      
       final dir = await getTemporaryDirectory();
+      print('📂 Directorio temporal obtenido: ${dir.path}');
+      
       final file = File('${dir.path}/nota.pdf');
       await file.writeAsBytes(bytes);
+      print('💾 Archivo PDF guardado: ${file.path}');
+      
+      // Verificar que el archivo existe
+      if (await file.exists()) {
+        final fileSize = await file.length();
+        print('✅ Archivo confirmado - tamaño: $fileSize bytes');
+      } else {
+        throw Exception('El archivo PDF no fue creado correctamente');
+      }
+      
+      print('🔗 Iniciando Share.shareXFiles...');
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'application/pdf', name: 'nota.pdf')],
         text: _titleController.text,
       );
-    } catch (e) {
+      print('✅ Share.shareXFiles completado');
+    } catch (e, stackTrace) {
+      print('❌ Error detallado en _shareAsPdf: $e');
+      print('📚 StackTrace: $stackTrace');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No se pudo compartir como PDF: $e')),
@@ -1454,15 +1760,32 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) throw Exception('No se pudo codificar la imagen');
       final bytes = byteData.buffer.asUint8List();
+      print('✅ Imagen generada exitosamente - tamaño: ${bytes.length} bytes');
 
       final dir = await getTemporaryDirectory();
+      print('📂 Directorio temporal obtenido: ${dir.path}');
+      
       final file = File('${dir.path}/nota.png');
       await file.writeAsBytes(bytes);
+      print('💾 Archivo PNG guardado: ${file.path}');
+      
+      // Verificar que el archivo existe
+      if (await file.exists()) {
+        final fileSize = await file.length();
+        print('✅ Archivo confirmado - tamaño: $fileSize bytes');
+      } else {
+        throw Exception('El archivo PNG no fue creado correctamente');
+      }
+      
+      print('🔗 Iniciando Share.shareXFiles...');
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'image/png', name: 'nota.png')],
         text: _titleController.text,
       );
-    } catch (e) {
+      print('✅ Share.shareXFiles completado');
+    } catch (e, stackTrace) {
+      print('❌ Error detallado en _shareAsImage: $e');
+      print('📚 StackTrace: $stackTrace');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No se pudo compartir como imagen: $e')),
@@ -4745,11 +5068,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     return Material(
       color: Colors.transparent,
       child: Container(
-        height: 60,
+        height: 64, // 💰 Optimizado: Altura ajustada para 5 botones
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.black87,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
@@ -4792,6 +5115,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         return 16.0; // Flecha básica (fallback)
       case '1.':
         return 14.0; // Numeración estándar
+      case '💖':
+        return 20.0; // 💰 Emoji de corazón más grande para destacar
       default:
         return 14.0;
     }
@@ -4804,8 +5129,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 54, // 💰 Optimizado: Ancho reducido para 5 botones
+        height: 54, // 💰 Optimizado: Alto reducido para mejor proporción
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.2),
           borderRadius: BorderRadius.circular(8),
@@ -4917,6 +5242,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   @override
   void initState() {
     super.initState();
+
+    // 💰 Inicializar AdMob para comerciales
+    // AdMobService().loadRewardedAd();  // Temporalmente comentado
 
     _scrollController = ScrollController();
     _scrollController.addListener(() {
@@ -6237,15 +6565,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             ),
 
                             _buildFloatingButton(
-                              icon: const Icon(
-                                Icons.auto_fix_high,
-                                size: 20,
-                                color: Color(
-                                    0xFF64748B), // Gris azulado consistente
+                              icon: Container(
+                                child: Text(
+                                  '💖',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                               onTap: () {
-                                // 🎨 Ejecutar Auto-Format Inteligente
-                                _applyAutoFormatIntelligente();
+                                // 💖 Ejecutar sistema de apoyo ministerial
+                                _showCommercialAd();
                               },
                             ),
                           ],

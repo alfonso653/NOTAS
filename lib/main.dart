@@ -18,12 +18,16 @@ import 'notebook_provider.dart';
 import 'alarm_screen_service.dart';
 import 'real_alarm_service.dart';
 import 'monthly_tasks_view.dart';
+// import 'admob_service.dart'; // 💰 Temporalmente comentado para resolver namespace
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 🌍 Mantener inglés para selectores pero español para fechas (manual)
   await initializeDateFormatting('en_US', null);
   Intl.defaultLocale = 'en_US';
+
+  // 💰 Inicializar AdMob para comerciales
+  // await AdMobService.initialize();  // Temporalmente comentado
 
   // 📱 Inicializar servicio de notificaciones
   await NotificationService.initialize();
