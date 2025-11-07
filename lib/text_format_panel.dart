@@ -173,229 +173,158 @@ class _TextFormatPanelState extends State<TextFormatPanel>
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Botón Letra Normal (A)
-                    GestureDetector(
-                      onTap: () => _set(v.copyWith(
-                        bold: false,
-                        underline: false,
-                        highlight: false,
-                      )),
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: (!v.bold && !v.underline && !v.highlight)
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFFF6F7F9),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Botón Letra Normal (A)
+                      GestureDetector(
+                        onTap: () => _set(v.copyWith(
+                          bold: false,
+                          underline: false,
+                          highlight: false,
+                        )),
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
                             color: (!v.bold && !v.underline && !v.highlight)
-                                ? Colors.green.shade700
-                                : Colors.grey.shade300,
-                            width: 2,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFFF6F7F9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: (!v.bold && !v.underline && !v.highlight)
+                                  ? Colors.green.shade700
+                                  : Colors.grey.shade300,
+                              width: 2,
                             ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'A',
-                          style: TextStyle(
-                            fontWeight: FontWeight.normal,
-                            fontSize: 22,
-                            color: (!v.bold && !v.underline && !v.highlight)
-                                ? Colors.white
-                                : Colors.black87,
-                            letterSpacing: 2,
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'A',
+                            style: TextStyle(
+                              fontWeight: FontWeight.normal,
+                              fontSize: 22,
+                              color: (!v.bold && !v.underline && !v.highlight)
+                                  ? Colors.white
+                                  : Colors.black87,
+                              letterSpacing: 2,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // Botón Negrilla (B)
-                    GestureDetector(
-                      onTap: () => _set(v.copyWith(
-                        bold: !v.bold,
-                        underline: false, // Desactivar subrayado
-                        highlight: false, // Desactivar resaltado
-                      )),
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: v.bold
-                              ? const Color(0xFFFFC107)
-                              : const Color(0xFFF6F7F9),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+                      // Botón Negrilla (B)
+                      GestureDetector(
+                        onTap: () => _set(v.copyWith(
+                          bold: !v.bold,
+                          underline: false, // Desactivar subrayado
+                          highlight: false, // Desactivar resaltado
+                        )),
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
                             color: v.bold
-                                ? Colors.amber.shade700
-                                : Colors.grey.shade300,
-                            width: 2,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
+                                ? const Color(0xFFFFC107)
+                                : const Color(0xFFF6F7F9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: v.bold
+                                  ? Colors.amber.shade700
+                                  : Colors.grey.shade300,
+                              width: 2,
                             ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'B',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 22,
-                            color: v.bold ? Colors.white : Colors.black87,
-                            letterSpacing: 2,
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'B',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                              color: v.bold ? Colors.white : Colors.black87,
+                              letterSpacing: 2,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // Botón Subrayado (U) con selección de color (ya existente)
-                    UnderlineButton(
-                      selected: v.underline,
-                      color: v.underlineColor,
-                      onTap: () => _set(v.copyWith(
-                        underline: !v.underline,
-                        bold: false, // Desactivar negrita
-                        highlight: false, // Desactivar resaltado
-                      )),
-                      onColorSelected: (color) => _set(
-                        v.copyWith(
-                          underline: true,
-                          underlineColor: color,
+                      // Botón Subrayado (U) con selección de color (ya existente)
+                      UnderlineButton(
+                        selected: v.underline,
+                        color: v.underlineColor,
+                        onTap: () => _set(v.copyWith(
+                          underline: !v.underline,
                           bold: false, // Desactivar negrita
                           highlight: false, // Desactivar resaltado
+                        )),
+                        onColorSelected: (color) => _set(
+                          v.copyWith(
+                            underline: true,
+                            underlineColor: color,
+                            bold: false, // Desactivar negrita
+                            highlight: false, // Desactivar resaltado
+                          ),
                         ),
                       ),
-                    ),
-                    // Botón Resaltado (Highlight) con selección de color pastel
-                    HighlightButton(
-                      selected: v.highlight,
-                      color: v.highlightColor,
-                      onTap: () => _set(v.copyWith(
-                        highlight: !v.highlight,
-                        bold: false, // Desactivar negrita
-                        underline: false, // Desactivar subrayado
-                      )),
-                      onColorSelected: (color) => _set(
-                        v.copyWith(
-                          highlight: true,
-                          highlightColor: color,
+                      // Botón Resaltado (Highlight) con selección de color pastel
+                      HighlightButton(
+                        selected: v.highlight,
+                        color: v.highlightColor,
+                        onTap: () => _set(v.copyWith(
+                          highlight: !v.highlight,
                           bold: false, // Desactivar negrita
                           underline: false, // Desactivar subrayado
+                        )),
+                        onColorSelected: (color) => _set(
+                          v.copyWith(
+                            highlight: true,
+                            highlightColor: color,
+                            bold: false, // Desactivar negrita
+                            underline: false, // Desactivar subrayado
+                          ),
                         ),
                       ),
-                    ),
-                    // Nuevos botones de dibujo libre
-                    PencilButton(
-                      selected: v.pencil,
-                      color: v.pencilColor,
-                      onTap: () => _set(v.copyWith(
-                        pencil: !v.pencil,
-                        pen: false, // Desactivar lapicero
-                        crayon: false, // Desactivar crayón
-                        brush: false, // Desactivar pincel
-                        eraser: false, // Desactivar borrador
-                      )),
-                      onColorSelected: (color) => _set(
-                        v.copyWith(
-                          pencil: true,
-                          pencilColor: color,
-                          pen: false, // Desactivar lapicero
-                          crayon: false, // Desactivar crayón
-                          brush: false, // Desactivar pincel
-                          eraser: false, // Desactivar borrador
+                      // BOTÓN BORRADOR DIRECTO - MÁS VISIBLE
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 8.0),
+                        decoration: BoxDecoration(
+                          border: v.eraser
+                              ? Border.all(color: Colors.red, width: 2)
+                              : null,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: EraserButton(
+                          selected: v.eraser,
+                          onTap: () => _set(v.copyWith(
+                            eraser: !v.eraser,
+                            pencil: false,
+                            pen: false,
+                            crayon: false,
+                            brush: false,
+                            bold: false,
+                            underline: false,
+                            highlight: false,
+                          )),
                         ),
                       ),
-                    ),
-                    PenButton(
-                      selected: v.pen,
-                      color: v.penColor,
-                      onTap: () => _set(v.copyWith(
-                        pen: !v.pen,
-                        pencil: false, // Desactivar lápiz
-                        crayon: false, // Desactivar crayón
-                        brush: false, // Desactivar pincel
-                        eraser: false, // Desactivar borrador
-                      )),
-                      onColorSelected: (color) => _set(
-                        v.copyWith(
-                          pen: true,
-                          penColor: color,
-                          pencil: false, // Desactivar lápiz
-                          crayon: false, // Desactivar crayón
-                          brush: false, // Desactivar pincel
-                          eraser: false, // Desactivar borrador
-                        ),
-                      ),
-                    ),
-                    CrayonButton(
-                      selected: v.crayon,
-                      color: v.crayonColor,
-                      onTap: () => _set(v.copyWith(
-                        crayon: !v.crayon,
-                        pencil: false, // Desactivar lápiz
-                        pen: false, // Desactivar lapicero
-                        brush: false, // Desactivar pincel
-                        eraser: false, // Desactivar borrador
-                      )),
-                      onColorSelected: (color) => _set(
-                        v.copyWith(
-                          crayon: true,
-                          crayonColor: color,
-                          pencil: false, // Desactivar lápiz
-                          pen: false, // Desactivar lapicero
-                          brush: false, // Desactivar pincel
-                          eraser: false, // Desactivar borrador
-                        ),
-                      ),
-                    ),
-                    BrushButton(
-                      selected: v.brush,
-                      color: v.brushColor,
-                      onTap: () => _set(v.copyWith(
-                        brush: !v.brush,
-                        pencil: false, // Desactivar lápiz
-                        pen: false, // Desactivar lapicero
-                        crayon: false, // Desactivar crayón
-                        eraser: false, // Desactivar borrador
-                      )),
-                      onColorSelected: (color) => _set(
-                        v.copyWith(
-                          brush: true,
-                          brushColor: color,
-                          pencil: false, // Desactivar lápiz
-                          pen: false, // Desactivar lapicero
-                          crayon: false, // Desactivar crayón
-                          eraser: false, // Desactivar borrador
-                        ),
-                      ),
-                    ),
-                    // Botón Borrador
-                    EraserButton(
-                      selected: v.eraser,
-                      onTap: () => _set(v.copyWith(
-                        eraser: !v.eraser,
-                        pencil: false, // Desactivar lápiz
-                        pen: false, // Desactivar lapicero
-                        crayon: false, // Desactivar crayón
-                        brush: false, // Desactivar pincel
-                      )),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1168,12 +1097,13 @@ class EraserButton extends StatelessWidget {
       child: Container(
         width: 50,
         height: 50,
-        margin: const EdgeInsets.symmetric(vertical: 8),
+        margin: const EdgeInsets.symmetric(
+            horizontal: 4), // Margen horizontal para fila
         decoration: BoxDecoration(
-          color: selected ? Colors.white : const Color(0xFFF6F7F9),
+          color: selected ? Colors.red.shade100 : const Color(0xFFF6F7F9),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? Colors.grey.shade400 : Colors.grey.shade300,
+            color: selected ? Colors.red : Colors.grey.shade300,
             width: 2,
           ),
           boxShadow: const [
@@ -1185,11 +1115,10 @@ class EraserButton extends StatelessWidget {
           ],
         ),
         alignment: Alignment.center,
-        child: Image.asset(
-          'assets/borrador.png',
-          width: 24,
-          height: 24,
-          color: selected ? Colors.grey.shade700 : null,
+        child: Icon(
+          Icons.auto_fix_off, // Icono de borrador más visible
+          size: 24,
+          color: selected ? Colors.red.shade700 : Colors.grey.shade600,
         ),
       ),
     );

@@ -24,8 +24,6 @@ import 'note_provider.dart';
 import 'audio_mic_fab.dart';
 import 'image_gallery_fab.dart';
 
-
-
 /// =========================
 /// Modelo de segmento (_TextPart)
 /// =========================
@@ -94,12 +92,14 @@ class DrawingStroke {
   final Color color;
   final double strokeWidth;
   final String toolType; // 'pencil', 'pen', 'crayon', 'brush'
+  final double opacity; // ✨ Para animaciones de borrado elegante
 
   const DrawingStroke({
     required this.points,
     required this.color,
     required this.strokeWidth,
     required this.toolType,
+    this.opacity = 1.0, // Por defecto completamente opaco
   });
 
   Map<String, dynamic> toJson() => {
@@ -107,6 +107,7 @@ class DrawingStroke {
         'color': color.value,
         'strokeWidth': strokeWidth,
         'toolType': toolType,
+        'opacity': opacity,
       };
 
   factory DrawingStroke.fromJson(Map<String, dynamic> json) => DrawingStroke(
@@ -117,6 +118,7 @@ class DrawingStroke {
         color: Color(json['color'] as int),
         strokeWidth: (json['strokeWidth'] as num).toDouble(),
         toolType: json['toolType'] as String,
+        opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
       );
 }
 
@@ -125,6 +127,15 @@ class DrawingPainter extends CustomPainter {
   final List<DrawingStroke> strokes;
   final DrawingStroke? currentStroke;
 
+  // ========= Borrador Profesional =========
+  final Set<DrawingStroke> strokesToErase;
+  final Offset? eraserPosition;
+  final double eraserRadius;
+  final bool isErasing;
+
+  // ========= Animaciones Elegantes =========
+  final Map<DrawingStroke, Animation<double>> fadeAnimations;
+
   /// scrollOffset: cuánto ha avanzado el ListView (para desplazar el lienzo de visualización)
   final double scrollOffset;
 
@@ -132,6 +143,11 @@ class DrawingPainter extends CustomPainter {
     required this.strokes,
     this.currentStroke,
     required this.scrollOffset,
+    this.strokesToErase = const {},
+    this.eraserPosition,
+    this.eraserRadius = 20.0,
+    this.isErasing = false,
+    this.fadeAnimations = const {},
   });
 
   @override
@@ -146,12 +162,34 @@ class DrawingPainter extends CustomPainter {
 
     // Dibujar todos los trazos completados
     for (final stroke in strokes) {
-      _drawStroke(canvas, stroke);
+      // ✨ Aplicar animación de desvanecimiento si existe
+      final fadeAnimation = fadeAnimations[stroke];
+      final animatedStroke = fadeAnimation != null
+          ? DrawingStroke(
+              points: stroke.points,
+              color: stroke.color,
+              strokeWidth: stroke.strokeWidth,
+              toolType: stroke.toolType,
+              opacity: fadeAnimation.value, // ✨ Opacidad animada
+            )
+          : stroke;
+
+      // 🔴 Highlight: Los trazos que se van a borrar se muestran en rojo
+      if (strokesToErase.contains(stroke)) {
+        _drawStrokeHighlight(canvas, animatedStroke);
+      } else {
+        _drawStroke(canvas, animatedStroke);
+      }
     }
 
     // Dibujar el trazo actual (en progreso)
     if (currentStroke != null) {
       _drawStroke(canvas, currentStroke!);
+    }
+
+    // 🧽 Dibujar círculo del borrador
+    if (isErasing && eraserPosition != null) {
+      _drawEraserCursor(canvas, eraserPosition!, eraserRadius);
     }
 
     canvas.restore();
@@ -208,7 +246,8 @@ class DrawingPainter extends CustomPainter {
   // ✏️ Lápiz - Trazo suave y uniforme
   void _drawPencilStroke(Canvas canvas, DrawingStroke stroke) {
     final paint = Paint()
-      ..color = stroke.color.withOpacity(0.8)
+      ..color =
+          stroke.color.withOpacity(0.8 * stroke.opacity) // ✨ Opacidad animada
       ..strokeWidth = stroke.strokeWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -445,12 +484,112 @@ class DrawingPainter extends CustomPainter {
     canvas.drawPath(path, blurPaint);
   }
 
+  /// 🔴 Dibujar trazo con highlight rojo (para borrador)
+  void _drawStrokeHighlight(Canvas canvas, DrawingStroke stroke) {
+    if (stroke.points.isEmpty) return;
+
+    // Crear un trazo destacado en rojo
+    final highlightPaint = Paint()
+      ..color = Colors.red.withOpacity(0.8)
+      ..strokeWidth = stroke.strokeWidth + 4.0 // Más grueso para el highlight
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
+    for (int i = 1; i < stroke.points.length; i++) {
+      path.lineTo(stroke.points[i].dx, stroke.points[i].dy);
+    }
+
+    // Dibujar el highlight primero
+    canvas.drawPath(path, highlightPaint);
+
+    // Luego dibujar el trazo original encima
+    _drawStroke(canvas, stroke);
+  }
+
+  /// 🧽 Dibujar cursor de borrador realista
+  void _drawEraserCursor(Canvas canvas, Offset position, double radius) {
+    // 🔴 Círculo de área de borrado (translúcido)
+    final areaPaint = Paint()
+      ..color = Colors.red.withOpacity(0.15)
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = Colors.red.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    // Dibujar área de borrado
+    canvas.drawCircle(position, radius, areaPaint);
+    canvas.drawCircle(position, radius, borderPaint);
+
+    // 🧽 Dibujar icono de borrador realista
+    final eraserSize = 20.0;
+
+    // Cuerpo del borrador (rectángulo rosa)
+    final bodyPaint = Paint()
+      ..color = const Color(0xFFFFB3BA) // Rosa suave
+      ..style = PaintingStyle.fill;
+
+    // Contorno del borrador
+    final outlinePaint = Paint()
+      ..color = const Color(0xFF8B5A5A) // Marrón suave
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    // Metalico del borrador
+    final metalPaint = Paint()
+      ..color = const Color(0xFFE0E0E0) // Gris metálico
+      ..style = PaintingStyle.fill;
+
+    // Dibujar cuerpo del borrador
+    final eraserRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: position,
+        width: eraserSize * 0.8,
+        height: eraserSize,
+      ),
+      const Radius.circular(4),
+    );
+    canvas.drawRRect(eraserRect, bodyPaint);
+    canvas.drawRRect(eraserRect, outlinePaint);
+
+    // Dibujar parte metálica (ferrule)
+    final metalRect = Rect.fromCenter(
+      center: Offset(position.dx, position.dy - eraserSize * 0.25),
+      width: eraserSize * 0.8,
+      height: eraserSize * 0.2,
+    );
+    canvas.drawRect(metalRect, metalPaint);
+    canvas.drawRect(metalRect, outlinePaint);
+
+    // Detalles del borrador (líneas horizontales)
+    final detailPaint = Paint()
+      ..color = const Color(0xFFFF9FA5) // Rosa más oscuro
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    for (int i = 0; i < 3; i++) {
+      final y = position.dy + (i - 1) * 4;
+      canvas.drawLine(
+        Offset(position.dx - eraserSize * 0.3, y),
+        Offset(position.dx + eraserSize * 0.3, y),
+        detailPaint,
+      );
+    }
+  }
+
   @override
   bool shouldRepaint(covariant DrawingPainter old) {
     // OPTIMIZACIÓN: Comparaciones más eficientes
     if (old.scrollOffset != scrollOffset) return true;
     if (old.currentStroke != currentStroke) return true;
     if (old.strokes.length != strokes.length) return true;
+    // 🧽 Añadir comparaciones para el borrador
+    if (old.isErasing != isErasing) return true;
+    if (old.eraserPosition != eraserPosition) return true;
+    if (old.strokesToErase.length != strokesToErase.length) return true;
     return false;
   }
 }
@@ -583,7 +722,20 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   bool _showColorPalette = false;
   Color _selectedDrawingColor = Colors.black;
   double _selectedBrushSize = 3.0;
-  int _selectedBrushType = 0; // 0-4 para diferentes tipos de pincel
+  int _selectedBrushType = 0; // 0-5 para diferentes tipos de pincel + borrador
+
+  // 🌈 PALETA DE COLORES DE RESALTADO
+  bool _showHighlightColorPalette = false;
+  Color _selectedHighlightColor =
+      const Color(0xFFFFEB3B); // Amarillo por defecto
+  final List<Color> _highlightColors = [
+    const Color(0xFFFFEB3B), // Amarillo pastel
+    const Color(0xFFE1F5FE), // Azul pastel
+    const Color(0xFFE8F5E8), // Verde pastel
+    const Color(0xFFFFE0E6), // Rosa pastel
+    const Color(0xFFFFF3E0), // Naranja pastel
+    const Color(0xFFE1BEE7), // Púrpura pastel
+  ];
 
   // 📝 MENÚ DE VIÑETAS Y NUMERACIÓN
   bool _showBulletsMenu = false;
@@ -701,6 +853,60 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   final List<DrawingStroke> _drawingStrokes = <DrawingStroke>[];
   bool _isDrawingMode = false;
   DrawingStroke? _currentStroke;
+
+  // ========= Sistema de Borrador Profesional =========
+  Offset? _eraserPosition; // Posición actual del borrador
+  Offset?
+      _lastEraserPosition; // Última posición del borrador para trayectoria continua
+  Set<DrawingStroke> _strokesToErase = {}; // Trazos que se van a borrar
+  bool _isErasing = false; // Estado de borrado activo
+
+  // ========= Animación de Borrado Elegante =========
+  final Map<DrawingStroke, AnimationController> _fadeControllers = {};
+  final Map<DrawingStroke, Animation<double>> _fadeAnimations = {};
+
+  // ========= Posición de Inserción de Versículos =========
+  int? _currentInsertionIndex; // Donde insertar nuevos versículos
+
+  /// 🎯 Determinar posición de inserción para versículos
+  int _getInsertionPosition() {
+    // Si hay un índice de edición activo, insertar después de ese párrafo
+    if (_editingPartIndex != null) {
+      return _editingPartIndex! + 1;
+    }
+
+    // Si hay una posición de inserción guardada, usarla
+    if (_currentInsertionIndex != null) {
+      return _currentInsertionIndex!;
+    }
+
+    // Si el campo oculto tiene texto, preparar inserción al final
+    if (_hiddenController.text.trim().isNotEmpty) {
+      return _contentParts.length + 1; // Después del texto actual
+    }
+
+    // Por defecto, insertar al final
+    return _contentParts.length;
+  }
+
+  /// 📝 Guardar texto actual del campo oculto como párrafo
+  void _saveCurrentHiddenText() {
+    final String currentText = _hiddenController.text.trim();
+    if (currentText.isNotEmpty) {
+      setState(() {
+        _contentParts.add(_TextPart(
+          currentText,
+          _contentFormat.bold,
+          _contentFormat.underline,
+          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+          _contentFormat.highlight,
+          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+          false,
+        ));
+      });
+      _hiddenController.clear();
+    }
+  }
 
   // ========= Header Collapsible =========
   bool _isHeaderCollapsed = false;
@@ -1351,6 +1557,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           color = _selectedDrawingColor;
           strokeWidth = _selectedBrushSize;
           break;
+        case 5: // Borrador
+          toolType = 'eraser';
+          color = Colors.transparent; // No importa el color para el borrador
+          strokeWidth = _selectedBrushSize * 2; // Borrador más ancho
+          break;
       }
     }
     // Sistema ANTIGUO de botones (mantener compatibilidad)
@@ -1377,14 +1588,24 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     // Crear nuevo trazo (en espacio de CONTENIDO)
     setState(() {
       final p = _toContentCoords(details.localPosition);
-      _currentStroke = (_contentFormat.eraser)
-          ? null
-          : DrawingStroke(
-              points: [p],
-              color: color,
-              strokeWidth: strokeWidth,
-              toolType: toolType,
-            );
+
+      // Inicializar borrador visual para ambos tipos
+      if (_contentFormat.eraser ||
+          (_showDrawingToolsMenu && _selectedBrushType == 5)) {
+        _currentStroke = null;
+        // 🧽 Iniciar estado visual del borrador
+        _eraserPosition = p;
+        _isErasing = true;
+        _strokesToErase.clear();
+        return;
+      }
+
+      _currentStroke = DrawingStroke(
+        points: [p],
+        color: color,
+        strokeWidth: strokeWidth,
+        toolType: toolType,
+      );
     });
   }
 
@@ -1393,8 +1614,31 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     final p = _toContentCoords(details.localPosition);
 
+    // 🔥 Manejar borrador tradicional - BORRADO SÚPER RESPONSIVO
     if (_contentFormat.eraser) {
-      _eraseStrokesAt(p);
+      _updateEraserPreview(p, 30.0); // Área aún más generosa
+      _eraseStrokesAtContinuous(p, radius: 30.0);
+
+      // 🚀 BORRADO ADICIONAL en la trayectoria del movimiento
+      if (_lastEraserPosition != null) {
+        _eraseAlongPath(_lastEraserPosition!, p, 30.0);
+      }
+      _lastEraserPosition = p;
+      return;
+    }
+
+    // 🔥 Manejar borrador del menú flotante - BORRADO SÚPER RESPONSIVO
+    if (_showDrawingToolsMenu && _selectedBrushType == 5) {
+      final eraserRadius =
+          (_selectedBrushSize * 3.0).clamp(25.0, 60.0); // Área MÁS generosa
+      _updateEraserPreview(p, eraserRadius);
+      _eraseStrokesAtContinuous(p, radius: eraserRadius);
+
+      // 🚀 BORRADO ADICIONAL en la trayectoria del movimiento
+      if (_lastEraserPosition != null) {
+        _eraseAlongPath(_lastEraserPosition!, p, eraserRadius);
+      }
+      _lastEraserPosition = p;
       return;
     }
 
@@ -1412,7 +1656,19 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   void _onDrawEnd(DragEndDetails details) {
     if (!_isDrawingMode) return;
-    if (_contentFormat.eraser) return;
+
+    // Limpiar estado del borrador al terminar
+    if (_contentFormat.eraser ||
+        (_showDrawingToolsMenu && _selectedBrushType == 5)) {
+      setState(() {
+        _isErasing = false;
+        _eraserPosition = null;
+        _lastEraserPosition = null; // 🔥 Limpiar trayectoria del borrador
+        _strokesToErase.clear();
+      });
+      return;
+    }
+
     if (_currentStroke == null) return;
 
     setState(() {
@@ -1443,28 +1699,247 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     _saveNote();
   }
 
-  // Borrar trazos cerca de una posición (en coordenadas de CONTENIDO)
-  void _eraseStrokesAt(Offset positionInContent) {
-    const double eraserRadius = 20.0;
-    final toRemove = <DrawingStroke>[];
+  // Borrar trazos cerca de una posición (en coordenadas de CONTENIDO) - CON ANIMACIÓN ELEGANTE
+  void _eraseStrokesAt(Offset positionInContent, {double radius = 20.0}) {
+    final toErase = <DrawingStroke>[];
 
     for (final stroke in _drawingStrokes) {
+      // Skip si ya está siendo animado
+      if (_fadeControllers.containsKey(stroke)) continue;
+
       for (final point in stroke.points) {
-        if ((point - positionInContent).distance <= eraserRadius) {
-          toRemove.add(stroke);
+        if ((point - positionInContent).distance <= radius) {
+          toErase.add(stroke);
           break;
         }
       }
     }
 
-    if (toRemove.isNotEmpty) {
-      setState(() {
-        for (final s in toRemove) {
-          _drawingStrokes.remove(s);
-        }
-      });
-      _saveNote();
+    // ✨ Iniciar animación de desvanecimiento elegante
+    for (final stroke in toErase) {
+      _startEraseFadeAnimation(stroke);
     }
+  }
+
+  // ✨ SISTEMA DE BORRADO INMEDIATO - BORRA AL TOCAR CUALQUIER LÍNEA
+  void _eraseStrokesAtContinuous(Offset positionInContent,
+      {double radius = 25.0}) {
+    final toErase = <DrawingStroke>[];
+
+    for (final stroke in _drawingStrokes) {
+      // Skip si ya está siendo animado para evitar duplicados
+      if (_fadeControllers.containsKey(stroke)) continue;
+
+      // 🔥 BORRADO ULTRA-AGRESIVO: Detectar intersección con CUALQUIER punto del trazo
+      bool shouldErase = false;
+
+      // Verificar si el área del borrador intersecta con CUALQUIER punto del trazo
+      for (int i = 0; i < stroke.points.length; i++) {
+        final point = stroke.points[i];
+        final distance = (point - positionInContent).distance;
+
+        if (distance <= radius) {
+          shouldErase = true;
+          break;
+        }
+
+        // También verificar interpolación entre puntos para no perder intersecciones
+        if (i > 0) {
+          final prevPoint = stroke.points[i - 1];
+          final closestPointOnLine =
+              _getClosestPointOnLine(positionInContent, prevPoint, point);
+          if ((closestPointOnLine - positionInContent).distance <= radius) {
+            shouldErase = true;
+            break;
+          }
+        }
+      }
+
+      if (shouldErase) {
+        toErase.add(stroke);
+      }
+    }
+
+    // 🚀 BORRADO INMEDIATO - SIN DEMORAS
+    for (final stroke in toErase) {
+      _startInstantEraseFadeAnimation(stroke);
+    }
+  }
+
+  // 🔥 Calcular el punto más cercano en una línea para detección precisa
+  Offset _getClosestPointOnLine(
+      Offset point, Offset lineStart, Offset lineEnd) {
+    final lineDirection = lineEnd - lineStart;
+    final lineLength = lineDirection.distance;
+
+    if (lineLength == 0) return lineStart;
+
+    final t = ((point - lineStart).dx * lineDirection.dx +
+            (point - lineStart).dy * lineDirection.dy) /
+        (lineLength * lineLength);
+
+    final clampedT = t.clamp(0.0, 1.0);
+    return lineStart + lineDirection * clampedT;
+  }
+
+  // ⚡ Animación SUPER RÁPIDA para borrado instantáneo
+  void _startInstantEraseFadeAnimation(DrawingStroke stroke) {
+    if (_fadeControllers.containsKey(stroke)) return;
+
+    final controller = AnimationController(
+      duration: const Duration(milliseconds: 150), // SÚPER RÁPIDO
+      vsync: this,
+    );
+
+    final animation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeOutQuint, // Curva más agresiva
+    ));
+
+    _fadeControllers[stroke] = controller;
+    _fadeAnimations[stroke] = animation;
+
+    // Listener para actualizar la pantalla
+    animation.addListener(() {
+      setState(() {});
+    });
+
+    // Al completar la animación, eliminar el trazo
+    controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _drawingStrokes.remove(stroke);
+          _fadeControllers.remove(stroke)?.dispose();
+          _fadeAnimations.remove(stroke);
+        });
+        _saveNote();
+      }
+    });
+
+    controller.forward();
+  }
+
+  /// ✨ Iniciar animación de desvanecimiento elegante
+  void _startEraseFadeAnimation(DrawingStroke stroke) {
+    if (_fadeControllers.containsKey(stroke)) return;
+
+    final controller = AnimationController(
+      duration: const Duration(milliseconds: 600), // Duración elegante
+      vsync: this,
+    );
+
+    final animation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeOut, // Curva suave
+    ));
+
+    _fadeControllers[stroke] = controller;
+    _fadeAnimations[stroke] = animation;
+
+    // Listener para actualizar la pantalla
+    animation.addListener(() {
+      setState(() {
+        // El trazo se actualiza automáticamente en el CustomPainter
+      });
+    });
+
+    // Al completar la animación, eliminar el trazo
+    controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _drawingStrokes.remove(stroke);
+          _fadeControllers.remove(stroke)?.dispose();
+          _fadeAnimations.remove(stroke);
+        });
+        _saveNote();
+      }
+    });
+
+    controller.forward();
+  }
+
+  // 🔥 BORRAR A LO LARGO DEL CAMINO DEL DEDO - Para no perder ningún trazo
+  void _eraseAlongPath(Offset start, Offset end, double radius) {
+    final toErase = <DrawingStroke>[];
+
+    // Calcular la distancia del movimiento
+    final pathDistance = (end - start).distance;
+
+    // Si el movimiento es muy pequeño, no hacer nada adicional
+    if (pathDistance < 5.0) return;
+
+    // Crear puntos a lo largo del camino para borrado continuo
+    final steps = (pathDistance / 5.0).ceil().clamp(1, 20); // Máximo 20 pasos
+
+    for (int i = 0; i <= steps; i++) {
+      final t = i / steps;
+      final pointOnPath = Offset.lerp(start, end, t)!;
+
+      // Verificar intersecciones en cada punto del camino
+      for (final stroke in _drawingStrokes) {
+        // Skip si ya está siendo animado
+        if (_fadeControllers.containsKey(stroke)) continue;
+        if (toErase.contains(stroke)) continue;
+
+        // Verificar si algún punto del trazo intersecta con este punto del camino
+        for (int j = 0; j < stroke.points.length; j++) {
+          final point = stroke.points[j];
+          if ((point - pointOnPath).distance <= radius) {
+            toErase.add(stroke);
+            break;
+          }
+
+          // También verificar líneas entre puntos
+          if (j > 0) {
+            final prevPoint = stroke.points[j - 1];
+            final closestPoint =
+                _getClosestPointOnLine(pointOnPath, prevPoint, point);
+            if ((closestPoint - pointOnPath).distance <= radius) {
+              toErase.add(stroke);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Borrar todos los trazos encontrados
+    for (final stroke in toErase) {
+      _startInstantEraseFadeAnimation(stroke);
+    }
+  }
+
+  /// 🎯 Actualizar preview profesional del borrador - VERSIÓN MEJORADA
+  void _updateEraserPreview(Offset positionInContent, double radius) {
+    setState(() {
+      _eraserPosition = positionInContent;
+      _isErasing = true;
+
+      // ✨ Encontrar trazos que se van a borrar para el highlight - ÁREA MÁS GENEROSA
+      _strokesToErase.clear();
+      for (final stroke in _drawingStrokes) {
+        // Skip si ya está siendo animado
+        if (_fadeControllers.containsKey(stroke)) continue;
+
+        bool willBeErased = false;
+        for (final point in stroke.points) {
+          if ((point - positionInContent).distance <= radius) {
+            willBeErased = true;
+            break;
+          }
+        }
+
+        if (willBeErased) {
+          _strokesToErase.add(stroke);
+        }
+      }
+    });
   }
 
   // ========= Header Collapsible Methods =========
@@ -1502,6 +1977,484 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   void _loadFloatingButtonsCollapseState() {
     _isFloatingButtonsCollapsed =
         widget.note.isFloatingButtonsCollapsed ?? false;
+  }
+
+  // ========= � SISTEMA DE RESALTADO CON COLORES PASTEL =========
+
+  /// 🎯 Aplicar resaltado rápido con el último color seleccionado
+  void _applyHighlightQuick() {
+    // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
+    final String currentText = _hiddenController.text.trim();
+    if (currentText.isNotEmpty) {
+      // Guardar texto actual con formato anterior
+      setState(() {
+        _contentParts.add(_TextPart(
+          currentText,
+          _contentFormat.bold,
+          _contentFormat.underline,
+          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+          _contentFormat.highlight,
+          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+          false,
+        ));
+      });
+      _hiddenController.clear();
+    }
+
+    // Cambiar formato para texto nuevo con el color seleccionado
+    setState(() {
+      _contentFormat = _contentFormat.copyWith(
+        highlight: !_contentFormat.highlight,
+        highlightColor: _selectedHighlightColor,
+      );
+    });
+    _saveNote(pop: false);
+    // Mantener foco en el texto
+    FocusScope.of(context).requestFocus(_hiddenFocus);
+  }
+
+  /// 🎨 Toggle del menú de colores de resaltado (consistente con otros menús)
+  void _toggleHighlightColorMenu() {
+    setState(() {
+      _showHighlightColorPalette = !_showHighlightColorPalette;
+
+      // Cerrar otros menús si se abre este (UX consistente)
+      if (_showHighlightColorPalette) {
+        _showColorPalette = false;
+        _showBibleMenu = false;
+        _showBulletsMenu = false;
+        _showDrawingToolsMenu = false; // También cerrar menú de lápices
+      }
+    });
+  }
+
+  /// 🌈 Aplicar color de resaltado seleccionado (estilo submenú)
+  void _applyHighlightColor(Color color) {
+    // 1️⃣ Guardar texto actual con formato anterior
+    final String currentText = _hiddenController.text.trim();
+    if (currentText.isNotEmpty) {
+      setState(() {
+        _contentParts.add(_TextPart(
+          currentText,
+          _contentFormat.bold,
+          _contentFormat.underline,
+          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+          _contentFormat.highlight,
+          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+          false,
+        ));
+      });
+      _hiddenController.clear();
+    }
+
+    // 2️⃣ Aplicar el nuevo color y activar resaltado
+    setState(() {
+      _selectedHighlightColor = color;
+      _contentFormat = _contentFormat.copyWith(
+        highlight: true, // Siempre activar al seleccionar color
+        highlightColor: color,
+      );
+
+      // 3️⃣ Cerrar menú (comportamiento estándar de submenú)
+      _showHighlightColorPalette = false;
+    });
+
+    _saveNote(pop: false);
+    FocusScope.of(context).requestFocus(_hiddenFocus);
+  }
+
+  // ========= �🎨 AUTO-FORMAT INTELIGENTE - Sistema Algorítmico =========
+
+  /// 🚫 Desactivar resaltado (opción del submenú)
+  void _disableHighlight() {
+    // 1️⃣ Guardar texto actual con formato anterior
+    final String currentText = _hiddenController.text.trim();
+    if (currentText.isNotEmpty) {
+      setState(() {
+        _contentParts.add(_TextPart(
+          currentText,
+          _contentFormat.bold,
+          _contentFormat.underline,
+          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
+          _contentFormat.highlight,
+          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
+          false,
+        ));
+      });
+      _hiddenController.clear();
+    }
+
+    // 2️⃣ Desactivar resaltado
+    setState(() {
+      _contentFormat = _contentFormat.copyWith(highlight: false);
+
+      // 3️⃣ Cerrar menú
+      _showHighlightColorPalette = false;
+    });
+
+    _saveNote(pop: false);
+    FocusScope.of(context).requestFocus(_hiddenFocus);
+  }
+
+  /// 🧠 Botón Auto-Format (placeholder para futuras funciones)
+  Future<void> _applyAutoFormatIntelligente() async {
+    if (_contentParts.isEmpty) {
+      _showAutoFormatFeedback('No hay contenido para formatear', isError: true);
+      return;
+    }
+
+    // Mostrar progreso
+    _showAutoFormatProgress();
+
+    try {
+      // Simular procesamiento
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      // Cerrar diálogo de progreso
+      if (mounted) Navigator.of(context).pop();
+
+      // Mostrar mensaje de que está listo para nuevas funciones
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🤖 Auto-Format listo para nuevas funciones'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar diálogo de progreso en caso de error
+      if (mounted) Navigator.of(context).pop();
+
+      print('❌ Error: $e');
+      _showAutoFormatFeedback('Error en Auto-Format', isError: true);
+    }
+  }
+
+  /// �️ REORGANIZACIÓN ESTRUCTURAL PROFUNDA DEL DOCUMENTO
+
+  /// 🧠 ALGORITMOS DE RECONOCIMIENTO DE PATRONES ===
+
+  bool _isTitlePattern(String text) {
+    // Títulos típicos: cortos, pueden tener mayúsculas, sin punto final
+    if (text.length > 80) return false;
+
+    // Patrones de título
+    final titlePatterns = [
+      RegExp(
+          r'^[A-ZÁÉÍÓÚ][A-ZÁÉÍÓÚA-Za-z\s]{2,}$'), // Mayúscula inicial + letras
+      RegExp(r'^[#]{1,6}\s+'), // Markdown headers
+      RegExp(r'^[0-9]+\.\s+[A-ZÁÉÍÓÚ]'), // "1. Título"
+      RegExp(r'^[IVXLCDM]+\.\s+'), // Numeración romana
+    ];
+
+    for (final pattern in titlePatterns) {
+      if (pattern.hasMatch(text)) return true;
+    }
+
+    // Heurística: pocas palabras + no termina en punto + tiene mayúsculas
+    final words = text.split(RegExp(r'\s+'));
+    final hasUpperCase = text.contains(RegExp(r'[A-ZÁÉÍÓÚ]'));
+    final noEndingPeriod = !text.endsWith('.');
+
+    return words.length <= 8 && hasUpperCase && noEndingPeriod;
+  }
+
+  bool _isListPattern(String text) {
+    final listPatterns = [
+      RegExp(r'^[•·▪▫◦‣⁃]\s+'), // Viñetas
+      RegExp(r'^[-*+]\s+'), // Markdown lists
+      RegExp(r'^[0-9]+[\.)]\s+'), // Numeradas: "1. " o "1) "
+      RegExp(r'^[a-z][\.)]\s+'), // Letras: "a. " o "a) "
+      RegExp(r'^[IVXLCDM]+[\.)]\s+'), // Romano: "I. " o "I) "
+    ];
+
+    return listPatterns.any((pattern) => pattern.hasMatch(text));
+  }
+
+  bool _isDatePattern(String text) {
+    final datePatterns = [
+      RegExp(r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b'), // 01/01/2024
+      RegExp(r'\b\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}\b'), // 2024-01-01
+      RegExp(
+          r'\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{1,2},?\s+\d{4}\b',
+          caseSensitive: false),
+      RegExp(
+          r'\b\d{1,2}\s+(de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(de\s+)?\d{4}\b',
+          caseSensitive: false),
+    ];
+
+    return datePatterns.any((pattern) => pattern.hasMatch(text));
+  }
+
+  bool _isNumberPattern(String text) {
+    // Detectar estadísticas, números importantes, porcentajes
+    final numberPatterns = [
+      RegExp(r'\b\d+%\b'), // Porcentajes
+      RegExp(r'\b\d{1,3}(,\d{3})*(\.\d{2})?\b'), // Números con comas
+      RegExp(r'^\s*\d+\s*$'), // Solo números
+      RegExp(r'\$\s?\d+'), // Monedas
+    ];
+
+    return numberPatterns.any((pattern) => pattern.hasMatch(text)) &&
+        text.length < 50; // Evitar párrafos con números incidentales
+  }
+
+  bool _isQuotePattern(String text) {
+    return text.startsWith('"') && text.endsWith('"') ||
+        text.startsWith("'") && text.endsWith("'") ||
+        text.startsWith('«') && text.endsWith('»') ||
+        text.contains('dijo') ||
+        text.contains('dice') ||
+        text.startsWith('- ') && text.length > 10;
+  }
+
+  bool _isBibleVersePattern(String text) {
+    return text.contains('📖') ||
+        RegExp(r'\b(Juan|Mateo|Marcos|Lucas|Génesis|Salmos|Proverbios|Isaías|Jeremías|Apocalipsis)\s+\d+:\d+',
+                caseSensitive: false)
+            .hasMatch(text);
+  }
+
+  bool _isQuestionPattern(String text) {
+    return text.endsWith('?') ||
+        text.startsWith('¿') ||
+        RegExp(r'\b(qué|cómo|cuándo|dónde|por\s+qué|quién)\b',
+                caseSensitive: false)
+            .hasMatch(text);
+  }
+
+  bool _isUrlPattern(String text) {
+    return RegExp(
+            r'https?:\/\/[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b')
+        .hasMatch(text);
+  }
+
+  /// 🎨 FORMATEADORES ESPECÍFICOS ===
+
+  String _formatTitle(String text) {
+    // Limpiar y formatear título
+    var formatted = text.trim();
+
+    // Remover puntos finales innecesarios
+    if (formatted.endsWith('.') &&
+        !formatted.contains('Dr.') &&
+        !formatted.contains('Sr.')) {
+      formatted = formatted.substring(0, formatted.length - 1);
+    }
+
+    // Capitalizar apropiadamente (solo primera letra de cada palabra importante)
+    final words = formatted.split(' ');
+    final capitalized = words.map((word) {
+      if (word.length <= 2) return word.toLowerCase(); // "de", "la", "en", etc.
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+
+    return '📋 $capitalized';
+  }
+
+  String _formatList(String text) {
+    // Mejorar formato de lista
+    var formatted = text.trim();
+
+    // Asegurar espacio después de viñeta/número
+    formatted = formatted.replaceAll(
+        RegExp(r'^([•·▪▫◦‣⁃\-\*\+]|[0-9a-zA-Z]+[\.\)])\s*'), r'$1 ');
+
+    // Capitalizar primera letra del contenido
+    final match = RegExp(r'^([•·▪▫◦‣⁃\-\*\+]|[0-9a-zA-Z]+[\.\)])\s*(.+)')
+        .firstMatch(formatted);
+    if (match != null) {
+      final bullet = match.group(1)!;
+      final content = match.group(2)!;
+      if (content.isNotEmpty) {
+        formatted =
+            '$bullet ${content[0].toUpperCase()}${content.substring(1)}';
+      }
+    }
+
+    return formatted;
+  }
+
+  String _formatBibleVerse(String text) {
+    // Ya están bien formateados, solo limpiar
+    return text.trim();
+  }
+
+  String _formatDate(String text) {
+    // Formatear fecha de manera consistente
+    var formatted = text.trim();
+
+    // Intentar parsear y reformatear (para futuras mejoras)
+    // final now = DateTime.now();
+
+    // Si es fecha relativa, mantener
+    if (formatted.toLowerCase().contains('hoy') ||
+        formatted.toLowerCase().contains('ayer') ||
+        formatted.toLowerCase().contains('mañana')) {
+      return '📅 $formatted';
+    }
+
+    return '📅 $formatted';
+  }
+
+  String _formatNumbers(String text) {
+    return '📊 ${text.trim()}';
+  }
+
+  String _formatQuote(String text) {
+    var formatted = text.trim();
+
+    // Asegurar comillas apropiadas
+    if (!formatted.startsWith('"') && !formatted.startsWith("'")) {
+      formatted = '"$formatted"';
+    }
+
+    return '💬 $formatted';
+  }
+
+  String _formatQuestion(String text) {
+    var formatted = text.trim();
+
+    // Asegurar signos de interrogación apropiados
+    if (!formatted.startsWith('¿') && formatted.endsWith('?')) {
+      formatted = '¿$formatted';
+    }
+
+    return '❓ $formatted';
+  }
+
+  String _formatUrl(String text) {
+    return '🔗 ${text.trim()}';
+  }
+
+  String _formatParagraph(String text) {
+    // Limpiar párrafo: remover espacios extra, corregir puntuación
+    var formatted = text.trim();
+
+    // Remover espacios múltiples
+    formatted = formatted.replaceAll(RegExp(r'\s+'), ' ');
+
+    // Capitalizar después de puntos
+    formatted = formatted.replaceAllMapped(RegExp(r'\.(\s+)([a-z])'), (match) {
+      return '.${match.group(1)}${match.group(2)!.toUpperCase()}';
+    });
+
+    // Asegurar mayúscula al inicio
+    if (formatted.isNotEmpty) {
+      formatted = formatted[0].toUpperCase() + formatted.substring(1);
+    }
+
+    return formatted;
+  }
+
+  /// 📊 INTERFAZ DE PROGRESO Y FEEDBACK ===
+
+  void _showAutoFormatProgress() {
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Permitir cerrar tocando afuera
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+            ),
+            SizedBox(height: 16),
+            Text(
+              '🧠 Analizando contenido...',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Aplicando formato inteligente',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAutoFormatSuccess(Map<String, dynamic> analysis) {
+    final totalItems = (analysis['titles'] as List).length +
+        (analysis['lists'] as List).length +
+        (analysis['paragraphs'] as List).length +
+        (analysis['dates'] as List).length +
+        (analysis['numbers'] as List).length +
+        (analysis['quotes'] as List).length +
+        (analysis['bible_verses'] as List).length +
+        (analysis['questions'] as List).length +
+        (analysis['urls'] as List).length;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.auto_fix_high, color: Colors.green.shade600, size: 28),
+            SizedBox(width: 8),
+            Text('¡Formato Aplicado!',
+                style: TextStyle(color: Colors.green.shade700)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Elementos procesados: $totalItems'),
+            SizedBox(height: 8),
+            if ((analysis['titles'] as List).isNotEmpty)
+              Text('📋 Títulos: ${(analysis['titles'] as List).length}'),
+            if ((analysis['lists'] as List).isNotEmpty)
+              Text('📝 Listas: ${(analysis['lists'] as List).length}'),
+            if ((analysis['bible_verses'] as List).isNotEmpty)
+              Text(
+                  '📖 Versículos: ${(analysis['bible_verses'] as List).length}'),
+            if ((analysis['dates'] as List).isNotEmpty)
+              Text('📅 Fechas: ${(analysis['dates'] as List).length}'),
+            if ((analysis['questions'] as List).isNotEmpty)
+              Text('❓ Preguntas: ${(analysis['questions'] as List).length}'),
+            SizedBox(height: 8),
+            Text('Palabras totales: ${analysis['totalWords']}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('¡Excelente!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAutoFormatFeedback(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.info_outline,
+              color: Colors.white,
+            ),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isError ? Colors.red.shade600 : Colors.blue.shade600,
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   // ========= Header Flotante Mini - Widgets =========
@@ -1841,9 +2794,15 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     // 🎯 Agregar al historial de versículos usados
     BibleService.instance.addToHistory(verse);
 
-    // Agregar el versículo seleccionado
+    // 📝 Guardar texto actual del campo oculto si existe
+    _saveCurrentHiddenText();
+
+    // 🎯 Determinar posición de inserción
+    final insertPosition = _getInsertionPosition();
+
+    // Agregar el versículo en la posición correcta
     setState(() {
-      _contentParts.add(_TextPart(
+      final verseTextPart = _TextPart(
         '📖 ${verse.fullText}',
         true, // bold para destacar
         false, // underline
@@ -1851,7 +2810,21 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         true, // highlight con color bíblico
         0xFFF3E8FF, // Color púrpura muy suave
         false, // no es imagen especial
-      ));
+      );
+
+      // Insertar en la posición correcta
+      if (insertPosition >= _contentParts.length) {
+        _contentParts.add(verseTextPart);
+      } else {
+        _contentParts.insert(insertPosition, verseTextPart);
+      }
+
+      // Crear controller para la nueva parte
+      final newPartIndex = insertPosition >= _contentParts.length - 1
+          ? _contentParts.length - 1
+          : insertPosition;
+      _partControllers[newPartIndex] = TextEditingController();
+      _partControllers[newPartIndex]!.text = verseTextPart.text;
     });
 
     _saveNote(pop: false);
@@ -1888,24 +2861,47 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       _showBibleAutocomplete = false;
     });
 
-    // Agregar cada versículo al historial y a la nota
-    for (final verse in verses) {
-      // 🎯 Agregar al historial de versículos usados
-      BibleService.instance.addToHistory(verse);
+    // 📝 Guardar texto actual del campo oculto si existe
+    _saveCurrentHiddenText();
 
-      // Agregar el versículo seleccionado
-      _contentParts.add(_TextPart(
-        '📖 ${verse.fullText}',
-        true, // bold para destacar
-        false, // underline
-        null, // underlineColor
-        true, // highlight con color bíblico
-        0xFFF3E8FF, // Color púrpura muy suave
-        false, // no es imagen especial
-      ));
-    }
+    // 🎯 Determinar posición de inserción inicial
+    int insertPosition = _getInsertionPosition();
 
-    setState(() {}); // Actualizar UI
+    setState(() {
+      // Agregar cada versículo al historial y a la nota en la posición correcta
+      for (int i = 0; i < verses.length; i++) {
+        final verse = verses[i];
+
+        // 🎯 Agregar al historial de versículos usados
+        BibleService.instance.addToHistory(verse);
+
+        // Crear el versículo como TextPart
+        final verseTextPart = _TextPart(
+          '📖 ${verse.fullText}',
+          true, // bold para destacar
+          false, // underline
+          null, // underlineColor
+          true, // highlight con color bíblico
+          0xFFF3E8FF, // Color púrpura muy suave
+          false, // no es imagen especial
+        );
+
+        // Insertar en la posición correcta (incrementando para cada versículo)
+        final currentInsertPos = insertPosition + i;
+        if (currentInsertPos >= _contentParts.length) {
+          _contentParts.add(verseTextPart);
+        } else {
+          _contentParts.insert(currentInsertPos, verseTextPart);
+        }
+
+        // Crear controller para la nueva parte
+        final newPartIndex = currentInsertPos >= _contentParts.length - 1
+            ? _contentParts.length - 1
+            : currentInsertPos;
+        _partControllers[newPartIndex] = TextEditingController();
+        _partControllers[newPartIndex]!.text = verseTextPart.text;
+      }
+    }); // Actualizar UI una sola vez al final
 
     _saveNote(pop: false);
 
@@ -2296,6 +3292,100 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     );
   }
 
+  /// 🌈 Paleta de colores pastel para resaltado (estilo tarjetas negras)
+  Widget _buildHighlightColorPalette() {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black87, // 🎯 Mismo estilo que otros menús
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // 🚫 Botón DESACTIVAR resaltado
+            GestureDetector(
+              onTap: () => _disableHighlight(),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: !_contentFormat.highlight
+                      ? Colors.white
+                          .withOpacity(0.2) // Activo cuando no hay resaltado
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: !_contentFormat.highlight
+                        ? Colors.white
+                        : Colors.white54,
+                    width: !_contentFormat.highlight ? 2 : 1,
+                  ),
+                ),
+                child: Icon(
+                  Icons.highlight_off_rounded,
+                  color:
+                      !_contentFormat.highlight ? Colors.white : Colors.white54,
+                  size: 20,
+                ),
+              ),
+            ),
+
+            // Separador visual
+            Container(width: 1, height: 30, color: Colors.white24),
+
+            // 🎨 6 COLORES PASTEL en fila
+            ..._highlightColors.map((color) {
+              final isSelected =
+                  _selectedHighlightColor == color && _contentFormat.highlight;
+              return GestureDetector(
+                onTap: () => _applyHighlightColor(color),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.white54,
+                      width: isSelected ? 2 : 1,
+                    ),
+                    boxShadow: [
+                      if (isSelected)
+                        BoxShadow(
+                          color: color.withOpacity(0.6),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                    ],
+                  ),
+                  child: isSelected
+                      ? const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 16,
+                        )
+                      : null,
+                ),
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// 🖌️ Herramientas de pincel
   List<Widget> _buildBrushTools() {
     final brushIcons = [
@@ -2304,9 +3394,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       Icons.format_paint_rounded, // Pincel grueso
       Icons.blur_on_rounded, // Difuminado
       Icons.highlight_rounded, // Marcador
+      Icons.auto_fix_off, // Borrador
     ];
 
-    return List.generate(5, (index) {
+    return List.generate(6, (index) {
       final isSelected = _selectedBrushType == index;
       return GestureDetector(
         onTap: () {
@@ -2329,6 +3420,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               case 4:
                 _selectedBrushSize = 12.0;
                 break; // Marcador
+              case 5:
+                _selectedBrushSize = 8.0;
+                break; // Borrador
             }
           });
         },
@@ -2551,19 +3645,42 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               ],
             ),
             const SizedBox(height: 12),
-            // Grid de libros con scroll
+            // Grid de libros con scroll - ELEGANTE Y ADAPTATIVO
             Expanded(
-              child: GridView.builder(
-                physics: const BouncingScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3, // 3 columnas para mejor legibilidad
-                  childAspectRatio: 2.2, // Mejor proporción
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: books.length,
-                itemBuilder: (context, index) {
-                  return _buildBookOption(books[index]);
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Calcular columnas de forma más elegante y balanceada
+                  final screenWidth = constraints.maxWidth;
+                  int crossAxisCount;
+                  double childAspectRatio;
+
+                  if (screenWidth > 350) {
+                    crossAxisCount =
+                        3; // Pantallas grandes: 3 columnas elegantes
+                    childAspectRatio = 2.4; // Más rectangular y formal
+                  } else if (screenWidth > 280) {
+                    crossAxisCount =
+                        2; // Pantallas medianas: 2 columnas balanceadas
+                    childAspectRatio = 2.2;
+                  } else {
+                    crossAxisCount =
+                        2; // Pantallas pequeñas: 2 columnas compactas
+                    childAspectRatio = 2.0;
+                  }
+
+                  return GridView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      childAspectRatio: childAspectRatio,
+                      crossAxisSpacing: 8, // Espaciado más moderado y elegante
+                      mainAxisSpacing: 8,
+                    ),
+                    itemCount: books.length,
+                    itemBuilder: (context, index) {
+                      return _buildBookOption(books[index]);
+                    },
+                  );
                 },
               ),
             ),
@@ -2574,47 +3691,68 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   Widget _buildBookOption(String book) {
-    return GestureDetector(
-      onTap: () => _selectBook(book),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          // Fondo más sólido y visible
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.9), // Mucho más sólido
-              Colors.white.withOpacity(0.7),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.8),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 3,
-              offset: const Offset(0, 2),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Diseño elegante y formal que se adapta al espacio
+        final buttonWidth = constraints.maxWidth;
+        final isCompact = buttonWidth < 100;
+
+        return GestureDetector(
+          onTap: () => _selectBook(book),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 4.0 : 6.0,
+              vertical: isCompact ? 6.0 : 8.0,
             ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            book,
-            style: const TextStyle(
-              fontSize: 11, // Texto más grande
-              fontWeight: FontWeight.bold,
-              color: Colors.black87, // Texto oscuro sobre fondo blanco
+            margin:
+                const EdgeInsets.all(1), // Margen mínimo para espaciado limpio
+            decoration: BoxDecoration(
+              // Diseño más formal y elegante
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withOpacity(0.95),
+                  Colors.white.withOpacity(0.85),
+                ],
+              ),
+              borderRadius:
+                  BorderRadius.circular(8), // Bordes más formales y sutiles
+              border: Border.all(
+                color:
+                    Colors.blue.shade200.withOpacity(0.6), // Borde azul sutil
+                width: 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08), // Sombra muy sutil
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  book,
+                  style: TextStyle(
+                    fontSize: isCompact
+                        ? 10.0
+                        : 11.5, // Tamaño más moderado y elegante
+                    fontWeight: FontWeight.w600, // Peso más moderado
+                    color: Colors.blue.shade800, // Color azul elegante
+                    letterSpacing: 0.2, // Espaciado entre letras para elegancia
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -2742,18 +3880,41 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
                   final bookChapters = snapshot.data ?? [];
 
-                  return GridView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 6,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 1.2,
-                    ),
-                    itemCount: bookChapters.length,
-                    itemBuilder: (context, index) {
-                      return _buildChapterOption(bookChapters[index]);
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Grid adaptativo profesional por tamaño de pantalla
+                      final screenWidth = constraints.maxWidth;
+                      int crossAxisCount;
+                      double childAspectRatio;
+
+                      if (screenWidth > 280) {
+                        crossAxisCount =
+                            5; // Pantallas grandes: 5 columnas elegantes
+                        childAspectRatio = 1.3; // Rectángulos horizontales
+                      } else if (screenWidth > 240) {
+                        crossAxisCount =
+                            4; // Pantallas medianas: 4 columnas balanceadas
+                        childAspectRatio = 1.2;
+                      } else {
+                        crossAxisCount =
+                            3; // Pantallas pequeñas: 3 columnas amplias
+                        childAspectRatio = 1.1;
+                      }
+
+                      return GridView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 6, // Espaciado elegante
+                          mainAxisSpacing: 6,
+                          childAspectRatio:
+                              childAspectRatio, // Botones rectangulares
+                        ),
+                        itemCount: bookChapters.length,
+                        itemBuilder: (context, index) {
+                          return _buildChapterOption(bookChapters[index]);
+                        },
+                      );
                     },
                   );
                 },
@@ -2769,36 +3930,45 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     return GestureDetector(
       onTap: () => _selectChapter(chapter),
       child: Container(
+        margin: const EdgeInsets.all(1), // Margen mínimo para separación limpia
+        padding: const EdgeInsets.symmetric(
+            horizontal: 4, vertical: 6), // Padding interno
         decoration: BoxDecoration(
-          // Fondo más sólido y visible
+          // Diseño rectangular elegante - NO MÁS CÍRCULOS
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Colors.white.withOpacity(0.9), // Mucho más sólido
-              Colors.white.withOpacity(0.7),
+              Colors.white.withOpacity(0.95), // Fondo más sólido
+              Colors.white.withOpacity(0.85),
             ],
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius:
+              BorderRadius.circular(8), // Bordes rectangulares sutiles
           border: Border.all(
-            color: Colors.white.withOpacity(0.8),
-            width: 1.5,
+            color: Colors.blue.shade300.withOpacity(0.6), // Borde azul elegante
+            width: 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.08), // Sombra muy sutil
+              blurRadius: 2,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
         child: Center(
-          child: Text(
-            chapter,
-            style: const TextStyle(
-              fontSize: 16, // Texto más grande
-              fontWeight: FontWeight.bold,
-              color: Colors.black87, // Texto oscuro sobre fondo blanco
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              chapter,
+              style: TextStyle(
+                fontSize: 14, // Tamaño legible pero no gigante
+                fontWeight: FontWeight.w600, // Peso moderado
+                color: Colors.blue.shade800, // Color azul elegante
+                letterSpacing: 0.3, // Espaciado para claridad
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ),
@@ -3134,57 +4304,67 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       Map<String, dynamic> verse, String reference, String text) {
     print('🔥 VERSÍCULO PRESIONADO: $reference');
 
+    // 📝 Guardar texto actual del campo oculto si existe
+    _saveCurrentHiddenText();
+
     // Extraer número del versículo y agregar punto
     final verseNumber = verse['verse'];
     final formattedText = '$verseNumber.${text.trimLeft()}';
     print('🔥 DEBUG - Número: $verseNumber, Texto formateado: $formattedText');
 
+    // 🎯 Determinar posición de inserción
+    final insertPosition = _getInsertionPosition();
+    print('🔥 Posición de inserción: $insertPosition');
+
     // Insertar como NUEVO PÁRRAFO independiente con formato correcto
     final verseText = '📖 $reference\n$formattedText';
     print('🔥 Texto a insertar: $verseText');
 
-    // SIEMPRE crear una nueva parte para el versículo
-    final newPartIndex = widget.note.contentParts.length;
-    print('🔥 ContentParts antes: ${widget.note.contentParts.length}');
-
-    widget.note.contentParts.add({
-      'text': verseText,
-      'bold': false,
-      'italic': false,
-      'underline': false,
-      'fontSize': widget.note.contentFontSize,
-    });
-
-    print('🔥 ContentParts después: ${widget.note.contentParts.length}');
-    print('🔥 Nueva parte creada en índice: $newPartIndex');
-
-    // TAMBIÉN agregar a _contentParts como UN SOLO bloque pegado
-    final completeText = '📖 $reference\n$formattedText';
-    _contentParts.add(_TextPart(completeText, false));
-    print(
-        '🔥 Agregado a _contentParts como bloque único. Total visual: ${_contentParts.length}');
-
-    // CREAR controller para la nueva parte
-    _partControllers[newPartIndex] = TextEditingController();
-    final controller = _partControllers[newPartIndex]!;
-    controller.text = verseText;
-    print('🔥 Controller creado y actualizado');
-
-    // Mover cursor al final
-    controller.selection = TextSelection.fromPosition(
-      TextPosition(offset: controller.text.length),
-    );
-
-    // Forzar actualización COMPLETA de la UI
     setState(() {
-      // Forzar rebuild completo del widget
-    });
+      // Crear el TextPart para el versículo
+      final verseTextPart = _TextPart(verseText, false);
 
-    // Verificar que el widget se está actualizando
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      print(
-          '🔥 UI actualizada. Partes totales: ${widget.note.contentParts.length}');
-      print('🔥 Controllers totales: ${_partControllers.length}');
+      // Insertar en la posición correcta
+      if (insertPosition >= _contentParts.length) {
+        _contentParts.add(verseTextPart);
+      } else {
+        _contentParts.insert(insertPosition, verseTextPart);
+      }
+
+      // Actualizar widget.note.contentParts para persistencia
+      final newPartIndex = insertPosition >= _contentParts.length - 1
+          ? _contentParts.length - 1
+          : insertPosition;
+
+      // Insertar también en contentParts para guardar
+      if (newPartIndex >= widget.note.contentParts.length) {
+        widget.note.contentParts.add({
+          'text': verseText,
+          'bold': false,
+          'italic': false,
+          'underline': false,
+          'fontSize': widget.note.contentFontSize,
+        });
+      } else {
+        widget.note.contentParts.insert(newPartIndex, {
+          'text': verseText,
+          'bold': false,
+          'italic': false,
+          'underline': false,
+          'fontSize': widget.note.contentFontSize,
+        });
+      }
+
+      // CREAR controller para la nueva parte
+      _partControllers[newPartIndex] = TextEditingController();
+      final controller = _partControllers[newPartIndex]!;
+      controller.text = verseText;
+      print('🔥 Controller creado y actualizado en posición: $newPartIndex');
+
+      // Mover cursor al final del nuevo controller
+      controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: controller.text.length),
+      );
     });
 
     // Cerrar menú bíblico después del repaint
@@ -3651,10 +4831,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   Widget _buildFloatingButton({
     required Widget icon,
     required VoidCallback onTap,
+    VoidCallback? onLongPress, // 🆕 Soporte para toque largo
     bool isActive = false,
   }) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress, // 🆕 Manejar toque largo
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOutCubic,
@@ -3866,18 +5048,40 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
+  /// 📖 Mapeo de nombres de interfaz a nombres del JSON
+  static const Map<String, String> _bookNameMapping = {
+    // Casos donde el nombre de interfaz difiere del JSON
+    'Apocalipsis': 'Revelación',
+    'Ester': 'Esther',
+    'Nahúm': 'Nahum',
+    'Hageo': 'Haggeo',
+    // Agregar más mapeos si se encuentran otros casos
+  };
+
+  /// 📖 Convertir nombre de interfaz a nombre del JSON
+  String _getJsonBookName(String interfaceName) {
+    return _bookNameMapping[interfaceName] ?? interfaceName;
+  }
+
   /// 📖 Obtener capítulos de un libro específico (sin cargar todo)
   Future<List<String>> _getBookChapters(String bookName) async {
     if (_bibleData == null) {
       await _loadBibleData();
     }
 
+    // Convertir nombre de interfaz a nombre del JSON
+    final jsonBookName = _getJsonBookName(bookName);
+    print('🔍 Buscando capítulos para: $bookName -> $jsonBookName'); // Debug
+
     final Set<String> chapters = <String>{};
     for (final verse in _bibleVerses) {
-      if (verse['book_name'] == bookName) {
+      if (verse['book_name'] == jsonBookName) {
         chapters.add(verse['chapter'] as String);
       }
     }
+
+    print(
+        '📖 Capítulos encontrados para $jsonBookName: ${chapters.length}'); // Debug
 
     final List<String> sortedChapters = chapters.toList()
       ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
@@ -3892,11 +5096,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       await _loadBibleData();
     }
 
+    // Convertir nombre de interfaz a nombre del JSON
+    final jsonBookName = _getJsonBookName(bookName);
+    print(
+        '🔍 Buscando versículos para: $bookName -> $jsonBookName, capítulo: $chapter'); // Debug
+
     final chapterVerses = _bibleVerses
         .where((verse) =>
-            verse['book_name'] == bookName && verse['chapter'] == chapter)
+            verse['book_name'] == jsonBookName && verse['chapter'] == chapter)
         .toList()
       ..sort((a, b) => int.parse(a['verse']).compareTo(int.parse(b['verse'])));
+
+    print('📖 Versículos encontrados: ${chapterVerses.length}'); // Debug
 
     return chapterVerses;
   }
@@ -4388,6 +5599,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                             false,
                                           );
                                           _editingPartIndex = null;
+                                          _currentInsertionIndex =
+                                              null; // 🎯 Limpiar posición
                                           _partControllers.remove(i);
                                         });
                                         _saveNote();
@@ -4446,6 +5659,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                               false,
                                             );
                                             _editingPartIndex = null;
+                                            _currentInsertionIndex =
+                                                null; // 🎯 Limpiar posición
                                             _partControllers.remove(i);
                                           });
                                           _saveNote();
@@ -4505,6 +5720,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     child: GestureDetector(
                                       onTap: () => setState(() {
                                         _editingPartIndex = i;
+                                        _currentInsertionIndex =
+                                            i; // 🎯 Guardar posición para versículos
                                       }),
                                       onLongPress: () {
                                         _showParagraphOptionsPanel(
@@ -4553,6 +5770,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                               GestureDetector(
                                                 onTap: () => setState(() {
                                                   _editingPartIndex = i;
+                                                  _currentInsertionIndex =
+                                                      i; // 🎯 Guardar posición para versículos
                                                 }),
                                                 onLongPress: () {
                                                   _showParagraphOptionsPanel(
@@ -4774,6 +5993,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 strokes: _drawingStrokes,
                                 currentStroke: _currentStroke,
                                 scrollOffset: currentScroll,
+                                strokesToErase: _strokesToErase,
+                                eraserPosition: _eraserPosition,
+                                eraserRadius: _showDrawingToolsMenu &&
+                                        _selectedBrushType == 5
+                                    ? _selectedBrushSize * 2
+                                    : 20.0,
+                                isErasing: _isErasing,
+                                fadeAnimations: _fadeAnimations,
                               ),
                             ),
                           )
@@ -4783,6 +6010,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 strokes: _drawingStrokes,
                                 currentStroke: null,
                                 scrollOffset: currentScroll,
+                                strokesToErase: _strokesToErase,
+                                eraserPosition: _eraserPosition,
+                                eraserRadius: _showDrawingToolsMenu &&
+                                        _selectedBrushType == 5
+                                    ? _selectedBrushSize * 2
+                                    : 20.0,
+                                isErasing: _isErasing,
+                                fadeAnimations: _fadeAnimations,
                               ),
                             ),
                           ),
@@ -5009,8 +6244,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     0xFF64748B), // Gris azulado consistente
                               ),
                               onTap: () {
-                                // TODO: Implementar Auto-Format Inteligente
-                                print('🎨 Auto-Format Inteligente - Próximamente');
+                                // 🎨 Ejecutar Auto-Format Inteligente
+                                _applyAutoFormatIntelligente();
                               },
                             ),
                           ],
@@ -5022,52 +6257,23 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
+                            // 🌈 BOTÓN DE RESALTADO CON SUBMENÚ DE COLORES
                             _buildFloatingButton(
-                              isActive: _contentFormat.highlight,
+                              isActive:
+                                  _showHighlightColorPalette, // Activo cuando menú abierto
                               icon: Icon(
                                 Icons.highlight_rounded,
                                 size: 20,
-                                color: _contentFormat.highlight
+                                color: _showHighlightColorPalette
                                     ? const Color(
-                                        0xFF2563EB) // Azul para activo
-                                    : const Color(
-                                        0xFF64748B), // Gris azulado para inactivo
+                                        0xFF2563EB) // Azul cuando activo
+                                    : (_contentFormat.highlight
+                                        ? _selectedHighlightColor
+                                            .withOpacity(0.8)
+                                        : const Color(0xFF64748B)),
                               ),
-                              onTap: () {
-                                // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                                final String currentText =
-                                    _hiddenController.text.trim();
-                                if (currentText.isNotEmpty) {
-                                  // Guardar texto actual con formato anterior
-                                  setState(() {
-                                    _contentParts.add(_TextPart(
-                                      currentText,
-                                      _contentFormat.bold,
-                                      _contentFormat.underline,
-                                      _contentFormat.underline
-                                          ? _contentFormat.underlineColor.value
-                                          : null,
-                                      _contentFormat.highlight,
-                                      _contentFormat.highlight
-                                          ? _contentFormat.highlightColor.value
-                                          : null,
-                                      false,
-                                    ));
-                                  });
-                                  _hiddenController.clear();
-                                }
-
-                                // Cambiar formato para texto nuevo
-                                setState(() {
-                                  _contentFormat = _contentFormat.copyWith(
-                                    highlight: !_contentFormat.highlight,
-                                  );
-                                });
-                                _saveNote(pop: false);
-                                // Mantener foco en el texto
-                                FocusScope.of(context)
-                                    .requestFocus(_hiddenFocus);
-                              },
+                              onTap: () =>
+                                  _toggleHighlightColorMenu(), // Solo toggle del menú
                             ),
                             // 🎨 NUEVO BOTÓN LÁPIZ
                             _buildFloatingButton(
@@ -5107,7 +6313,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                               onTap: () {
                                 // 🎯 Ocultar teclado automáticamente para mostrar las tarjetas bíblicas
                                 FocusScope.of(context).unfocus();
-                                
+
                                 setState(() {
                                   _showBibleMenu = !_showBibleMenu;
                                   if (_showBibleMenu) {
@@ -5219,7 +6425,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         // � ======= MENÚ DE VERSÍCULOS BÍBLICOS =======
         if (_showBibleMenu)
           Positioned(
-            bottom: 200, // ⬆️ Subido para evitar superposición con el menú principal
+            bottom:
+                200, // ⬆️ Subido para evitar superposición con el menú principal
             left: 40, // Un poco más hacia la izquierda
             right: 60, // Compensamos el otro lado
             child: _buildBibleMenu(),
@@ -5258,6 +6465,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             left: 20,
             right: 20,
             child: _buildColorPalette(),
+          ),
+
+        // 🌈 ======= PALETA DE COLORES DE RESALTADO PASTEL =======
+        if (_showHighlightColorPalette)
+          Positioned(
+            bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                ? MediaQuery.of(context).viewInsets.bottom +
+                    210 // 🎯 Arriba del menú de herramientas
+                : 247, // 🎯 Arriba del menú de herramientas
+            left: 20,
+            right: 20,
+            child: _buildHighlightColorPalette(),
           ),
       ],
     );
