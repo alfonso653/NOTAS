@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Para rootBundle
 import 'package:provider/provider.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // 💰 AdMob reactivado para producción
 
 import 'package:share_plus/share_plus.dart';
 import 'bible_service.dart';
@@ -23,7 +24,7 @@ import 'note.dart';
 import 'note_provider.dart';
 import 'audio_mic_fab.dart';
 import 'image_gallery_fab.dart';
-// import 'admob_service.dart'; // 💰 Temporalmente comentado para resolver namespace
+import 'admob_service.dart'; // 💰 AdMob activado para producción
 
 /// =========================
 /// Modelo de segmento (_TextPart)
@@ -1238,9 +1239,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   void _showCommercialAd() {
-    // 💰 MODO DEMO: Simulando sistema de apoyo (AdMob temporalmente deshabilitado por namespace)
-    _showPreAdDialog();
-    /* Código AdMob comentado temporalmente:
+    // 💰 MODO PRODUCCIÓN: Sistema de apoyo con AdMob real
     if (AdMobService().isRewardedAdReady) {
       // Mostrar mensaje de preparación
       _showPreAdDialog();
@@ -1249,7 +1248,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       _showAdNotAvailableDialog();
       AdMobService().loadRewardedAd();
     }
-    */
   }
 
   void _showPreAdDialog() {
@@ -1356,13 +1354,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   void _showRealAdMobAd() {
-    // 🎬 DEMO: Simulando anuncio de Google AdMob
-    // Simular éxito después de 2 segundos
-    Future.delayed(Duration(seconds: 2), () {
-      _showAdCompletedDialog();
-    });
-
-    /* Código AdMob comentado temporalmente:
+    // 💰 PRODUCCIÓN: Mostrando anuncio real de Google AdMob
     AdMobService().showRewardedAd(
       onUserEarnedReward: () {
         // ✅ Usuario completó el anuncio - mostrar agradecimiento
@@ -1377,7 +1369,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         _showAdCompletedDialog(); // Mostrar agradecimiento aunque falle
       },
     );
-    */
   }
 
   void _showAdCompletedDialog() {
@@ -1647,16 +1638,98 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     await Share.share(textOut);
   }
 
+  // Función para limpiar y mejorar el texto para PDF con Unicode
+  String _prepareTextForPdf(String text) {
+    if (text.isEmpty) return text;
+
+    // Normalizar y limpiar el texto
+    String cleanText = text;
+
+    // Reemplazar caracteres problemáticos con versiones compatibles
+    final Map<String, String> charReplacements = {
+      // Viñetas y símbolos de lista
+      '•': '• ', // Asegurar bullet point Unicode U+2022
+      '◦': '◦ ', // White bullet U+25E6
+      '▪': '▪ ', // Black small square U+25AA
+      '▫': '▫ ', // White small square U+25AB
+
+      // Flechas
+      '→': '→', // Right arrow U+2192
+      '←': '←', // Left arrow U+2190
+      '↑': '↑', // Up arrow U+2191
+      '↓': '↓', // Down arrow U+2193
+
+      // Símbolos especiales
+      '★': '★', // Black star U+2605
+      '☆': '☆', // White star U+2606
+      '♦': '♦', // Black diamond suit U+2666
+      '♠': '♠', // Black spade suit U+2660
+      '♣': '♣', // Black club suit U+2663
+      '♥': '♥', // Black heart suit U+2665
+
+      // Emoticones básicos en Unicode
+      '😊': '😊', // Smiling face U+1F60A
+      '😍': '😍', // Heart eyes U+1F60D
+      '🎉': '🎉', // Party popper U+1F389
+      '❤️': '❤️', // Red heart U+2764
+      '💖': '💖', // Sparkling heart U+1F496
+      '🔥': '🔥', // Fire U+1F525
+      '✨': '✨', // Sparkles U+2728
+      '📝': '📝', // Memo U+1F4DD
+      '🙏': '🙏', // Folded hands U+1F64F
+    };
+
+    // Aplicar reemplazos
+    charReplacements.forEach((original, replacement) {
+      cleanText = cleanText.replaceAll(original, replacement);
+    });
+
+    // Limpiar espacios múltiples
+    cleanText = cleanText.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    return cleanText;
+  }
+
   Future<void> _shareAsPdf() async {
     try {
       final pdf = pw.Document();
-      final nunito = pw.Font.helvetica();
-      final nunitoBold = pw.Font.helveticaBold();
+
+      // Usar fuentes con soporte Unicode para emojis y caracteres especiales
+      pw.Font robotoFont;
+      pw.Font robotoBoldFont;
+
+      try {
+        // Intentar cargar fuentes personalizadas con soporte Unicode
+        final robotoData =
+            await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+        final robotoBoldData =
+            await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+        robotoFont = pw.Font.ttf(robotoData);
+        robotoBoldFont = pw.Font.ttf(robotoBoldData);
+        print('✅ Fuentes Unicode NotoSans cargadas correctamente');
+      } catch (e) {
+        try {
+          // Fallback a fuentes Nunito existentes
+          final robotoData =
+              await rootBundle.load('assets/fonts/Nunito-Regular.ttf');
+          final robotoBoldData =
+              await rootBundle.load('assets/fonts/Nunito-Bold.ttf');
+          robotoFont = pw.Font.ttf(robotoData);
+          robotoBoldFont = pw.Font.ttf(robotoBoldData);
+          print('✅ Fuentes Nunito cargadas como fallback');
+        } catch (e2) {
+          // Último fallback a fuentes por defecto
+          print('⚠️ Usando fuentes por defecto: $e2');
+          robotoFont = pw.Font.helvetica();
+          robotoBoldFont = pw.Font.helveticaBold();
+        }
+      }
 
       pdf.addPage(
         pw.MultiPage(
           pageTheme: pw.PageTheme(
-            theme: pw.ThemeData.withFont(base: nunito, bold: nunitoBold),
+            theme:
+                pw.ThemeData.withFont(base: robotoFont, bold: robotoBoldFont),
             margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
           ),
           build: (context) {
@@ -1664,7 +1737,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               pw.SizedBox(height: 12),
               pw.Text(widget.note.title,
                   style: pw.TextStyle(
-                    font: nunitoBold,
+                    font: robotoBoldFont,
                     fontSize: 28,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -1674,7 +1747,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
                   child: pw.Text(widget.note.categoria,
                       style: pw.TextStyle(
-                        font: nunito,
+                        font: robotoFont,
                         fontSize: 16,
                         color: PdfColors.blueGrey,
                       ),
@@ -1685,6 +1758,20 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               pw.SizedBox(height: 12),
               ..._contentParts.map((e) {
                 if (e.isImage) return pw.SizedBox(height: 0);
+
+                // Procesar el texto usando la función de limpieza mejorada
+                String cleanText = _prepareTextForPdf(e.text);
+
+                // Validar texto antes de renderizar
+                if (cleanText.trim().isEmpty) {
+                  return pw.SizedBox(height: 8);
+                }
+
+                print(
+                    '🔤 Texto original: "${e.text.length > 50 ? e.text.substring(0, 50) : e.text}..."');
+                print(
+                    '✨ Texto procesado: "${cleanText.length > 50 ? cleanText.substring(0, 50) : cleanText}..."');
+
                 return pw.Padding(
                   padding: const pw.EdgeInsets.only(bottom: 8),
                   child: pw.Container(
@@ -1692,9 +1779,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         ? PdfColor.fromInt(e.highlightColor!)
                         : null,
                     child: pw.Text(
-                      e.text,
+                      cleanText, // Usar el texto limpio procesado
                       style: pw.TextStyle(
-                        font: e.bold ? nunitoBold : nunito,
+                        font: e.bold ? robotoBoldFont : robotoFont,
                         fontSize: 16,
                         decoration: e.underline
                             ? pw.TextDecoration.underline
@@ -1716,14 +1803,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
       final bytes = await pdf.save();
       print('✅ PDF generado exitosamente - tamaño: ${bytes.length} bytes');
-      
+
       final dir = await getTemporaryDirectory();
       print('📂 Directorio temporal obtenido: ${dir.path}');
-      
+
       final file = File('${dir.path}/nota.pdf');
       await file.writeAsBytes(bytes);
       print('💾 Archivo PDF guardado: ${file.path}');
-      
+
       // Verificar que el archivo existe
       if (await file.exists()) {
         final fileSize = await file.length();
@@ -1731,7 +1818,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       } else {
         throw Exception('El archivo PDF no fue creado correctamente');
       }
-      
+
       print('🔗 Iniciando Share.shareXFiles...');
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'application/pdf', name: 'nota.pdf')],
@@ -1764,11 +1851,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
       final dir = await getTemporaryDirectory();
       print('📂 Directorio temporal obtenido: ${dir.path}');
-      
+
       final file = File('${dir.path}/nota.png');
       await file.writeAsBytes(bytes);
       print('💾 Archivo PNG guardado: ${file.path}');
-      
+
       // Verificar que el archivo existe
       if (await file.exists()) {
         final fileSize = await file.length();
@@ -1776,7 +1863,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       } else {
         throw Exception('El archivo PNG no fue creado correctamente');
       }
-      
+
       print('🔗 Iniciando Share.shareXFiles...');
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'image/png', name: 'nota.png')],
@@ -5243,8 +5330,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   void initState() {
     super.initState();
 
-    // 💰 Inicializar AdMob para comerciales
-    // AdMobService().loadRewardedAd();  // Temporalmente comentado
+    // 💰 Inicializar AdMob para comerciales - ACTIVADO PARA PRODUCCIÓN
+    AdMobService().loadRewardedAd();
 
     _scrollController = ScrollController();
     _scrollController.addListener(() {

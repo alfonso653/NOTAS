@@ -1,4 +1,4 @@
-package com.example.notes_module
+package com.emethagenda.notes
 
 import android.app.AlarmManager
 import android.app.PendingIntent

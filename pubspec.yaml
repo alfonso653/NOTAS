@@ -1,6 +1,6 @@
 name: emeth_agenda
 description: EMETH AGENDA - Tu agenda personal con notas, recordatorios y planificación diaria.
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ">=2.18.0 <4.0.0"
@@ -27,9 +27,10 @@ dependencies:
   intl: ^0.20.2
   flutter_local_notifications: ^17.2.3
   timezone: ^0.9.4
+  google_fonts: ^6.1.0  # Para fuentes con soporte Unicode/emojis - NO USAR EN PDF
 
   # 💰 Google AdMob para monetización
-  # google_mobile_ads: ^3.0.0  # Temporalmente comentado para resolver namespace
+  google_mobile_ads: ^5.1.0  # Activado para producción
 
   # (Opcionales: solo si los usas en otras partes de tu app)
   screenshot: ^2.1.0
@@ -94,6 +95,11 @@ flutter:
         - asset: assets/fonts/Nunito-BoldItalic.ttf
           weight: 700
           style: italic
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.ttf
+        - asset: assets/fonts/NotoSans-Bold.ttf
+          weight: 700
 
 # Configuración del Splash Screen
 flutter_native_splash:
