@@ -18,6 +18,43 @@
 				"build",
 				"apk"
 			]
+		},
+		{
+			"label": "Flutter Run Web",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"run",
+				"-d",
+				"chrome"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Flutter Pub Get y Run Web",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"pub",
+				"get"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Flutter Run Chrome Web",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"run",
+				"-d",
+				"chrome",
+				"--web-renderer",
+				"html"
+			],
+			"isBackground": true,
+			"problemMatcher": []
 		}
 	]
 }

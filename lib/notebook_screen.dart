@@ -7,7 +7,10 @@ import 'dart:typed_data';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'dart:html' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'platform_utils.dart' as platform;
+import 'package:universal_io/io.dart' show File;
 import 'notebook_provider.dart';
 import 'notebook_models.dart';
 import 'pending.dart';
@@ -96,7 +99,7 @@ class NotebookScreen extends StatefulWidget {
   final String title;
   final String? description;
   final bool
-      isTaskNotebook; // true para cuaderno de tarea, false para cuaderno del día
+  isTaskNotebook; // true para cuaderno de tarea, false para cuaderno del día
   final DateTime? date; // Fecha para cuaderno del día
 
   const NotebookScreen({
@@ -232,8 +235,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
       final taskId = 'auto_task_${task.id}';
 
       // Buscar si ya existe esta tarea automática
-      final existingTask =
-          notebook.subTasks.where((s) => s.id == taskId).firstOrNull;
+      final existingTask = notebook.subTasks
+          .where((s) => s.id == taskId)
+          .firstOrNull;
 
       if (existingTask != null) {
         // Si existe, verificar si necesita sincronización
@@ -244,11 +248,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
         }
       } else {
         // Crear nueva tarea automática
-        autoTasks.add(SubTask(
-          id: taskId,
-          title: taskEntry,
-          completed: task.completed,
-        ));
+        autoTasks.add(
+          SubTask(id: taskId, title: taskEntry, completed: task.completed),
+        );
       }
     }
 
@@ -290,10 +292,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     if (_newSubTaskController.text.trim().isNotEmpty) {
       final notebookProvider = context.read<NotebookProvider>();
       final subTaskEntry = '✅ ${_newSubTaskController.text.trim()}';
-      notebookProvider.addSubTaskToNotebook(
-        notebook.id,
-        subTaskEntry,
-      );
+      notebookProvider.addSubTaskToNotebook(notebook.id, subTaskEntry);
       _newSubTaskController.clear();
       setState(() {
         _showSubTaskField = false;
@@ -306,10 +305,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
     if (_titleController.text.trim().isNotEmpty) {
       final notebookProvider = context.read<NotebookProvider>();
       final titleEntry = '📝 ${_titleController.text.trim()}';
-      notebookProvider.addSubTaskToNotebook(
-        notebook.id,
-        titleEntry,
-      );
+      notebookProvider.addSubTaskToNotebook(notebook.id, titleEntry);
       _titleController.clear();
       setState(() {
         _showTitleField = false;
@@ -324,10 +320,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
       final notebookProvider = context.read<NotebookProvider>();
       final costEntry =
           '🟦 ${_costController.text.trim()} / ${_costDescriptionController.text.trim()}';
-      notebookProvider.addSubTaskToNotebook(
-        notebook.id,
-        costEntry,
-      );
+      notebookProvider.addSubTaskToNotebook(notebook.id, costEntry);
       _costController.clear();
       _costDescriptionController.clear();
       setState(() {
@@ -402,8 +395,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
           '🟦 ${_editCostController.text.trim()} / ${_editDescriptionController.text.trim()}';
 
       // Encontrar la subtarea actual y crear una actualizada
-      final currentSubTask =
-          notebook.subTasks.firstWhere((s) => s.id == _editingSegmentId!);
+      final currentSubTask = notebook.subTasks.firstWhere(
+        (s) => s.id == _editingSegmentId!,
+      );
       final updatedSubTask = currentSubTask.copyWith(title: newTitle);
 
       notebookProvider.updateSubTask(notebook.id, updatedSubTask);
@@ -432,8 +426,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
       // Editar título específico de subtarea
       setState(() {
         _editingTitleId = subTask.id;
-        _editTitleController.text =
-            subTask.title.substring(2).trim(); // Quitar emoji 📝
+        _editTitleController.text = subTask.title
+            .substring(2)
+            .trim(); // Quitar emoji 📝
         _showTitleField = true;
       });
     } else {
@@ -459,8 +454,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
         notebookProvider.updateNotebook(updatedNotebook);
       } else {
         // Editar título específico de subtarea
-        final currentSubTask =
-            notebook.subTasks.firstWhere((s) => s.id == _editingTitleId!);
+        final currentSubTask = notebook.subTasks.firstWhere(
+          (s) => s.id == _editingTitleId!,
+        );
         final updatedSubTask = currentSubTask.copyWith(
           title: '📝 ${_editTitleController.text.trim()}',
         );
@@ -497,8 +493,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
     if (_editingSubTaskId != null &&
         _editSubTaskController.text.trim().isNotEmpty) {
       final notebookProvider = context.read<NotebookProvider>();
-      final currentSubTask =
-          notebook.subTasks.firstWhere((s) => s.id == _editingSubTaskId!);
+      final currentSubTask = notebook.subTasks.firstWhere(
+        (s) => s.id == _editingSubTaskId!,
+      );
       final updatedSubTask = currentSubTask.copyWith(
         title: _editSubTaskController.text.trim(),
       );
@@ -546,14 +543,16 @@ class _NotebookScreenState extends State<NotebookScreen> {
             ),
             const SizedBox(height: 16),
             ...nonCostSubTasks
-                .map((subTask) => ListTile(
-                      title: Text(subTask.title),
-                      leading: const Icon(Icons.edit),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _startEditingSubTask(subTask);
-                      },
-                    ))
+                .map(
+                  (subTask) => ListTile(
+                    title: Text(subTask.title),
+                    leading: const Icon(Icons.edit),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _startEditingSubTask(subTask);
+                    },
+                  ),
+                )
                 .toList(),
             const SizedBox(height: 8),
             ElevatedButton(
@@ -591,7 +590,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
         final costText = subTask.title.substring(2).split(' / ')[0].trim();
         final cost =
             double.tryParse(costText.replaceAll('.', '').replaceAll(',', '')) ??
-                0;
+            0;
         if (operation == '+') {
           total += cost;
         } else {
@@ -604,9 +603,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   List<SubTask> _getCalculatorItems() {
     return notebook.subTasks
-        .where((task) =>
-            task.title.startsWith('🟦') &&
-            _calculatorOperations.containsKey(task.id))
+        .where(
+          (task) =>
+              task.title.startsWith('🟦') &&
+              _calculatorOperations.containsKey(task.id),
+        )
         .toList();
   }
 
@@ -614,28 +615,39 @@ class _NotebookScreenState extends State<NotebookScreen> {
   Future<void> _shareAsImage() async {
     try {
       // Capturar screenshot del cuaderno
-      RenderRepaintBoundary boundary = _notebookKey.currentContext!
-          .findRenderObject() as RenderRepaintBoundary;
+      RenderRepaintBoundary boundary =
+          _notebookKey.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
       Uint8List pngBytes = byteData!.buffer.asUint8List();
 
-      // Guardar imagen temporalmente
-      final tempDir = await getTemporaryDirectory();
-      final file = File(
-          '${tempDir.path}/cuaderno_${widget.title.replaceAll(' ', '_')}.png');
-      await file.writeAsBytes(pngBytes);
+      if (kIsWeb) {
+        // En web, descargar directamente
+        platform.downloadFile(
+          pngBytes,
+          'cuaderno_${widget.title.replaceAll(' ', '_')}.png',
+          'image/png',
+        );
+      } else {
+        // Guardar imagen temporalmente
+        final tempDir = await getTemporaryDirectory();
+        final file = File(
+          '${tempDir.path}/cuaderno_${widget.title.replaceAll(' ', '_')}.png',
+        );
+        await file.writeAsBytes(pngBytes);
 
-      // Compartir imagen
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Cuaderno: ${widget.title}',
-      );
+        // Compartir imagen
+        await Share.shareXFiles([
+          XFile(file.path),
+        ], text: 'Cuaderno: ${widget.title}');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al compartir imagen: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al compartir imagen: $e')));
     }
   }
 
@@ -646,21 +658,29 @@ class _NotebookScreenState extends State<NotebookScreen> {
       // Crear contenido de texto para PDF
       String textContent = _generateTextContent();
 
-      // Guardar como archivo de texto temporalmente (simula PDF)
-      final tempDir = await getTemporaryDirectory();
-      final file = File(
-          '${tempDir.path}/cuaderno_${widget.title.replaceAll(' ', '_')}.txt');
-      await file.writeAsString(textContent);
+      if (kIsWeb) {
+        // En web, descargar directamente
+        platform.downloadTextFile(
+          textContent,
+          'cuaderno_${widget.title.replaceAll(' ', '_')}.txt',
+        );
+      } else {
+        // Guardar como archivo de texto temporalmente (simula PDF)
+        final tempDir = await getTemporaryDirectory();
+        final file = File(
+          '${tempDir.path}/cuaderno_${widget.title.replaceAll(' ', '_')}.txt',
+        );
+        await file.writeAsString(textContent);
 
-      // Compartir archivo
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Cuaderno PDF: ${widget.title}',
-      );
+        // Compartir archivo
+        await Share.shareXFiles([
+          XFile(file.path),
+        ], text: 'Cuaderno PDF: ${widget.title}');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al compartir PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al compartir PDF: $e')));
     }
   }
 
@@ -672,7 +692,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
     }
     content.writeln('Fecha: ${DateTime.now().toString().split(' ')[0]}');
     content.writeln(
-        'Progreso: ${notebook.completedCount}/${notebook.subTasks.length}');
+      'Progreso: ${notebook.completedCount}/${notebook.subTasks.length}',
+    );
     content.writeln('');
     content.writeln('ELEMENTOS:');
     content.writeln('=' * 50);
@@ -694,13 +715,15 @@ class _NotebookScreenState extends State<NotebookScreen> {
         final parts = item.title.substring(2).split(' / ');
         final cost = parts[0].trim();
         final description = parts.length > 1 ? parts[1].trim() : '';
-        content
-            .writeln('${operation == '+' ? '+' : '-'} $description: \$${cost}');
+        content.writeln(
+          '${operation == '+' ? '+' : '-'} $description: \$${cost}',
+        );
       }
       final total = _getCalculatorTotal();
       content.writeln('');
       content.writeln(
-          'TOTAL: \$${total.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}');
+        'TOTAL: \$${total.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}',
+      );
     }
 
     return content.toString();
@@ -716,10 +739,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
           children: [
             const Text(
               'Compartir Cuaderno',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
             ListTile(
@@ -732,8 +752,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
               },
             ),
             ListTile(
-              leading:
-                  const Icon(Icons.picture_as_pdf, color: Color(0xFFEF4444)),
+              leading: const Icon(
+                Icons.picture_as_pdf,
+                color: Color(0xFFEF4444),
+              ),
               title: const Text('Compartir como Documento'),
               subtitle: const Text('Archivo de texto con todo el contenido'),
               onTap: () {
@@ -793,10 +815,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 const Divider(thickness: 1, height: 20),
                 Row(
                   children: [
-                    const Text(
-                      '💰',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    const Text('💰', style: TextStyle(fontSize: 16)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -898,7 +917,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
                       // Contador de progreso
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.8),
                           borderRadius: BorderRadius.circular(12),
@@ -920,8 +941,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal:
-                          MediaQuery.of(context).size.width > 600 ? 40 : 20,
+                      horizontal: MediaQuery.of(context).size.width > 600
+                          ? 40
+                          : 20,
                       vertical: 20,
                     ),
                     child: Column(
@@ -939,8 +961,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
                                 style: TextStyle(
                                   fontSize:
                                       MediaQuery.of(context).size.width > 600
-                                          ? 20
-                                          : 18,
+                                      ? 20
+                                      : 18,
                                   fontWeight: FontWeight.bold,
                                   color: const Color(0xFF374151),
                                   height: 1.2,
@@ -955,8 +977,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
                                   style: TextStyle(
                                     fontSize:
                                         MediaQuery.of(context).size.width > 600
-                                            ? 16
-                                            : 14,
+                                        ? 16
+                                        : 14,
                                     fontWeight: FontWeight.normal,
                                     color: const Color(0xFF6B7280),
                                     height: 1.4,
@@ -1022,37 +1044,26 @@ class _NotebookScreenState extends State<NotebookScreen> {
     return [
       _buildActionButton(
         onTap: () => setState(() => _showTitleField = !_showTitleField),
-        onLongPress:
-            notebook.title.isNotEmpty ? () => _startEditingTitle() : null,
-        child: Text(
-          '📝',
-          style: TextStyle(fontSize: buttonSize),
-        ),
+        onLongPress: notebook.title.isNotEmpty
+            ? () => _startEditingTitle()
+            : null,
+        child: Text('📝', style: TextStyle(fontSize: buttonSize)),
       ),
       _buildActionButton(
         onTap: () => setState(() => _showSubTaskField = !_showSubTaskField),
         onLongPress: () => _showSubTaskEditOptions(),
-        child: Text(
-          '✅',
-          style: TextStyle(fontSize: buttonSize),
-        ),
+        child: Text('✅', style: TextStyle(fontSize: buttonSize)),
       ),
       _buildActionButton(
         onTap: () => setState(() => _showCostField = !_showCostField),
-        child: Text(
-          '🧮',
-          style: TextStyle(fontSize: buttonSize),
-        ),
+        child: Text('🧮', style: TextStyle(fontSize: buttonSize)),
       ),
       _buildActionButton(
         onTap: _showCalculatorModal,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '💰',
-              style: TextStyle(fontSize: buttonSize * 0.8),
-            ),
+            Text('💰', style: TextStyle(fontSize: buttonSize * 0.8)),
             Text(
               _calculatorOperations.isEmpty
                   ? '\$0'
@@ -1069,10 +1080,11 @@ class _NotebookScreenState extends State<NotebookScreen> {
     ];
   }
 
-  Widget _buildActionButton(
-      {required VoidCallback onTap,
-      VoidCallback? onLongPress,
-      required Widget child}) {
+  Widget _buildActionButton({
+    required VoidCallback onTap,
+    VoidCallback? onLongPress,
+    required Widget child,
+  }) {
     final isSmallScreen = MediaQuery.of(context).size.width < 400;
 
     return GestureDetector(
@@ -1115,10 +1127,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
             child: TextField(
               controller: _titleController,
               onChanged: (_) => setState(() {}),
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF374151),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
               decoration: const InputDecoration(
                 border: UnderlineInputBorder(),
                 hintText: 'Escribir título...',
@@ -1136,11 +1145,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   color: const Color(0xFF10B981),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.check,
-                  size: 16,
-                  color: Colors.white,
-                ),
+                child: const Icon(Icons.check, size: 16, color: Colors.white),
               ),
             ),
           ],
@@ -1163,10 +1168,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
               onSubmitted: (_) => _addSubTask(),
               onChanged: (_) => setState(() {}),
               autofocus: true,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF374151),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
               decoration: const InputDecoration(
                 border: UnderlineInputBorder(),
                 hintText: 'Nueva subtarea... (Enter para agregar)',
@@ -1184,11 +1186,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   color: const Color(0xFF10B981),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.check,
-                  size: 16,
-                  color: Colors.white,
-                ),
+                child: const Icon(Icons.check, size: 16, color: Colors.white),
               ),
             ),
           ],
@@ -1198,7 +1196,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   Widget _buildCostField() {
-    final hasText = _costController.text.trim().isNotEmpty &&
+    final hasText =
+        _costController.text.trim().isNotEmpty &&
         _costDescriptionController.text.trim().isNotEmpty;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1213,10 +1212,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
               onChanged: (_) => setState(() {}),
               keyboardType: TextInputType.number,
               inputFormatters: [NumberFormatter()],
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF374151),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
               decoration: const InputDecoration(
                 border: UnderlineInputBorder(),
                 hintText: '2.500.000',
@@ -1225,17 +1221,16 @@ class _NotebookScreenState extends State<NotebookScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          const Text('/',
-              style: TextStyle(fontSize: 14, color: Color(0xFF374151))),
+          const Text(
+            '/',
+            style: TextStyle(fontSize: 14, color: Color(0xFF374151)),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _costDescriptionController,
               onChanged: (_) => setState(() {}),
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF374151),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
               decoration: const InputDecoration(
                 border: UnderlineInputBorder(),
                 hintText: 'concepto',
@@ -1253,11 +1248,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   color: const Color(0xFF10B981),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.check,
-                  size: 16,
-                  color: Colors.white,
-                ),
+                child: const Icon(Icons.check, size: 16, color: Colors.white),
               ),
             ),
           ],
@@ -1268,7 +1259,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
 
   Widget _buildSubTaskItem(SubTask subTask, int index) {
     // Verificar si la subtarea tiene emoji especial (📝, 🟦, ✅)
-    final hasSpecialEmoji = subTask.title.startsWith('📝') ||
+    final hasSpecialEmoji =
+        subTask.title.startsWith('📝') ||
         subTask.title.startsWith('🟦') ||
         subTask.title.startsWith('✅');
 
@@ -1304,23 +1296,19 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: subTask.completed
-                    ? const Icon(
-                        Icons.check,
-                        size: 14,
-                        color: Colors.white,
-                      )
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
                     : null,
               ),
             ),
           ] else ...[
             // Márgenes diferentes según el tipo de emoji
             SizedBox(
-                width: subTask.title.startsWith('📝')
-                    ? 10 // Título más a la izquierda
-                    : subTask.title.startsWith('✅')
-                        ? 50 // Subtarea más a la derecha
-                        : 60 // Costo más a la derecha
-                ),
+              width: subTask.title.startsWith('📝')
+                  ? 10 // Título más a la izquierda
+                  : subTask.title.startsWith('✅')
+                  ? 50 // Subtarea más a la derecha
+                  : 60, // Costo más a la derecha
+            ),
           ],
 
           // Texto de la subtarea
@@ -1336,8 +1324,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   color: subTask.completed
                       ? const Color(0xFF374151).withOpacity(0.6)
                       : const Color(0xFF374151),
-                  decoration:
-                      subTask.completed ? TextDecoration.lineThrough : null,
+                  decoration: subTask.completed
+                      ? TextDecoration.lineThrough
+                      : null,
                   height: 1.4,
                 ),
               ),
@@ -1572,11 +1561,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 child: Container(
                   width: MediaQuery.of(context).size.width > 600 ? 36 : 32,
                   height: MediaQuery.of(context).size.width > 600 ? 36 : 32,
-                  margin: EdgeInsets.only(
-                    left: 4,
-                    top: 2,
-                    bottom: 2,
-                  ),
+                  margin: EdgeInsets.only(left: 4, top: 2, bottom: 2),
                   decoration: BoxDecoration(
                     color: Colors.grey.withOpacity(0.05),
                     border: Border.all(
@@ -1654,8 +1639,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text('/',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF374151))),
+              const Text(
+                '/',
+                style: TextStyle(fontSize: 14, color: Color(0xFF374151)),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
@@ -1681,10 +1668,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 onPressed: _cancelEditingSegment,
                 child: const Text(
                   'Cancelar',
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
                 ),
               ),
               const SizedBox(width: 8),
@@ -1697,16 +1681,15 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF10B981),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   minimumSize: Size.zero,
                 ),
                 child: const Text(
                   'Guardar',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ),
             ],
@@ -1766,7 +1749,7 @@ void showNotebook(
             height: MediaQuery.of(context).size.height > 800
                 ? MediaQuery.of(context).size.height * 0.8
                 : MediaQuery.of(context).size.height *
-                    0.9, // Más alto en pantallas pequeñas
+                      0.9, // Más alto en pantallas pequeñas
             child: NotebookScreen(
               notebookId: notebookId,
               title: title,

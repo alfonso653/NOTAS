@@ -1,6 +1,8 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'dart:html' as io;
 import 'package:flutter/material.dart';
+import 'package:universal_io/io.dart' show File, Directory;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -64,10 +66,13 @@ class _AudioButtonState extends State<AudioButton> {
   @override
   void initState() {
     super.initState();
-    _init();
+    if (!kIsWeb) {
+      _init();
+    }
   }
 
   Future<void> _init() async {
+    if (kIsWeb) return; // Audio no soportado en web
     await _recorder.openRecorder();
     await _player.openPlayer();
 
@@ -183,8 +188,9 @@ class _AudioButtonState extends State<AudioButton> {
           .where((f) => f.path.endsWith('.aac'))
           .toList();
       if (files.isNotEmpty) {
-        final last = files.reduce((a, b) =>
-            a.lastModifiedSync().isAfter(b.lastModifiedSync()) ? a : b);
+        final last = files.reduce(
+          (a, b) => a.lastModifiedSync().isAfter(b.lastModifiedSync()) ? a : b,
+        );
         final metaFile = File(last.path + '.json');
         await metaFile.writeAsString(
           '${DateTime.now().toIso8601String()}|${_recordDuration.inSeconds}',
@@ -236,9 +242,9 @@ class _AudioButtonState extends State<AudioButton> {
       await _loadAudioFiles();
       setState(() {});
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error eliminando audio: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error eliminando audio: $e')));
     }
   }
 
@@ -254,8 +260,10 @@ class _AudioButtonState extends State<AudioButton> {
               child: ListView(
                 children: _audioFiles.map((audio) {
                   return Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -298,11 +306,14 @@ class _AudioButtonState extends State<AudioButton> {
                                       context: context,
                                       builder: (ctx) => AlertDialog(
                                         shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12)),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
                                         title: const Text("¿Eliminar seguro?"),
                                         content: const Text(
-                                            "Esta acción no se puede deshacer."),
+                                          "Esta acción no se puede deshacer.",
+                                        ),
                                         actions: [
                                           TextButton(
                                             child: const Text("Cancelar"),
@@ -310,9 +321,12 @@ class _AudioButtonState extends State<AudioButton> {
                                                 Navigator.of(ctx).pop(false),
                                           ),
                                           TextButton(
-                                            child: const Text("Eliminar",
-                                                style: TextStyle(
-                                                    color: Colors.red)),
+                                            child: const Text(
+                                              "Eliminar",
+                                              style: TextStyle(
+                                                color: Colors.red,
+                                              ),
+                                            ),
                                             onPressed: () =>
                                                 Navigator.of(ctx).pop(true),
                                           ),
@@ -332,7 +346,9 @@ class _AudioButtonState extends State<AudioButton> {
                           if (audio.isPlaying)
                             Padding(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                               child: Column(
                                 children: [
                                   SliderTheme(
@@ -341,11 +357,13 @@ class _AudioButtonState extends State<AudioButton> {
                                       inactiveTrackColor: Colors.grey[300],
                                       thumbColor: Colors.blue,
                                       thumbShape: const RoundSliderThumbShape(
-                                          enabledThumbRadius: 10.0),
+                                        enabledThumbRadius: 10.0,
+                                      ),
                                       trackHeight: 6.0,
                                       overlayShape:
                                           const RoundSliderOverlayShape(
-                                              overlayRadius: 20.0),
+                                        overlayRadius: 20.0,
+                                      ),
                                       trackShape:
                                           const RoundedRectSliderTrackShape(),
                                     ),
@@ -354,9 +372,10 @@ class _AudioButtonState extends State<AudioButton> {
                                           ? _currentPosition.inMilliseconds
                                               .toDouble()
                                               .clamp(
-                                                  0.0,
-                                                  audio.duration.inMilliseconds
-                                                      .toDouble())
+                                                0.0,
+                                                audio.duration.inMilliseconds
+                                                    .toDouble(),
+                                              )
                                           : 0.0,
                                       min: 0.0,
                                       max: audio.duration.inMilliseconds > 0
@@ -369,18 +388,21 @@ class _AudioButtonState extends State<AudioButton> {
                                       onChanged: (double value) {
                                         setModalState(() {
                                           _currentPosition = Duration(
-                                              milliseconds: value.toInt());
+                                            milliseconds: value.toInt(),
+                                          );
                                         });
                                       },
                                       onChangeEnd: (double value) async {
                                         _isDragging = false;
                                         setModalState(() {
                                           _currentPosition = Duration(
-                                              milliseconds: value.toInt());
+                                            milliseconds: value.toInt(),
+                                          );
                                         });
                                         try {
-                                          await _player
-                                              .seekToPlayer(_currentPosition);
+                                          await _player.seekToPlayer(
+                                            _currentPosition,
+                                          );
                                         } catch (_) {
                                           // versiones antiguas:
                                           // await _player.seekToPosition(_currentPosition);
@@ -392,7 +414,9 @@ class _AudioButtonState extends State<AudioButton> {
                                   Text(
                                     "${_formatDuration(_currentPosition)} / ${_formatDuration(audio.duration)}",
                                     style: const TextStyle(
-                                        fontSize: 12, color: Colors.grey),
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -423,6 +447,25 @@ class _AudioButtonState extends State<AudioButton> {
 
   @override
   Widget build(BuildContext context) {
+    // En web, mostrar mensaje de no disponible
+    if (kIsWeb) {
+      return FloatingActionButton(
+        heroTag: "recorder_btn",
+        backgroundColor: Colors.grey.shade300,
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                '🎤 Grabación de audio no disponible en versión web',
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        },
+        child: const Icon(Icons.mic_off, color: Colors.grey),
+      );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

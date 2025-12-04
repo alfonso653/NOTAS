@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class AdMobService {
@@ -8,37 +8,38 @@ class AdMobService {
 
   // 🔑 IDs de AdMob - IDs reales de Google AdMob
   static String get rewardedAdUnitId {
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-7212476048136650/8858589295'; // ✅ ID REAL - Apoyo ministerial
-    } else if (Platform.isIOS) {
-      return 'ca-app-pub-7212476048136650/8858589295'; // ✅ ID REAL - iOS
-    } else {
-      throw UnsupportedError('Plataforma no soportada');
+    if (kIsWeb) {
+      return ''; // Web no soporta AdMob móvil
     }
+    // Para móvil, usar defaultTargetPlatform
+    return 'ca-app-pub-7212476048136650/8858589295'; // ✅ ID REAL
   }
 
   static String get bannerAdUnitId {
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/6300978111'; // Test ID - cambiar por tu ID real
-    } else if (Platform.isIOS) {
-      return 'ca-app-pub-3940256099942544/2934735716'; // Test ID - cambiar por tu ID real
-    } else {
-      throw UnsupportedError('Plataforma no soportada');
+    if (kIsWeb) {
+      return ''; // Web no soporta AdMob móvil
     }
+    // Para móvil
+    return 'ca-app-pub-3940256099942544/6300978111'; // Test ID
   }
 
   // Variables para anuncios
   RewardedAd? _rewardedAd;
   bool _isRewardedAdReady = false;
 
-  // 🚀 Inicializar AdMob
+  // 🚀 Inicializar AdMob (solo en móvil)
   static Future<void> initialize() async {
+    if (kIsWeb) {
+      print('🌐 AdMob no disponible en web');
+      return;
+    }
     await MobileAds.instance.initialize();
     print('📱 AdMob inicializado correctamente');
   }
 
   // 💰 Cargar anuncio recompensado (el que genera dinero)
   void loadRewardedAd() {
+    if (kIsWeb) return; // No cargar en web
     RewardedAd.load(
       adUnitId: rewardedAdUnitId,
       request: const AdRequest(),

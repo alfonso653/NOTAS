@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' if (dart.library.html) 'dart:html' as io;
 import 'package:image_picker/image_picker.dart';
 
 class CameraGalleryWidget extends StatefulWidget {
@@ -10,13 +11,28 @@ class CameraGalleryWidget extends StatefulWidget {
 }
 
 class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
-  File? _image;
+  dynamic _image;
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
+    if (kIsWeb && source == ImageSource.camera) {
+      // En web, la cámara tiene soporte limitado
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cámara no disponible en web. Usa "Elegir archivo".'),
+        ),
+      );
+      return;
+    }
+
     final picked = await _picker.pickImage(source: source);
     if (picked != null) {
-      _image = File(picked.path);
+      if (!kIsWeb) {
+        _image = io.File(picked.path);
+      } else {
+        // En web, retornamos el XFile directamente
+        _image = picked;
+      }
       // Devolvemos la imagen seleccionada y cerramos el modal
       Navigator.of(context).pop(_image);
     }
@@ -88,10 +104,7 @@ class _IconTextButton extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 label,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: color, fontWeight: FontWeight.w600),
               ),
             ],
           ),

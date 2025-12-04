@@ -1,11 +1,11 @@
 {
-    "name": "notes_module",
-    "short_name": "notes_module",
+    "name": "EMETH AGENDA",
+    "short_name": "EMETH",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FEF7F0",
+    "theme_color": "#4A90E2",
+    "description": "Tu agenda personal con notas, recordatorios y planificación diaria. Organiza tu vida de manera simple y efectiva.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

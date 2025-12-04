@@ -3,21 +3,21 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'dart:html' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:universal_io/io.dart' show File, Directory;
 import 'calendar_verse_service.dart';
 import 'quotes_service.dart';
 
 class DailyVerseWidget extends StatefulWidget {
   final DateTime selectedDate;
 
-  const DailyVerseWidget({
-    Key? key,
-    required this.selectedDate,
-  }) : super(key: key);
+  const DailyVerseWidget({Key? key, required this.selectedDate})
+      : super(key: key);
 
   @override
   State<DailyVerseWidget> createState() => _DailyVerseWidgetState();
@@ -41,18 +41,15 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
 
     // Configurar animación de difuminado optimizada
     _blinkController = AnimationController(
-      duration:
-          const Duration(milliseconds: 400), // Reducido para mejor rendimiento
+      duration: const Duration(
+        milliseconds: 400,
+      ), // Reducido para mejor rendimiento
       vsync: this,
     );
 
-    _blinkAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _blinkController,
-      curve: Curves.easeInOut,
-    ));
+    _blinkAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut),
+    );
 
     _loadContent();
   }
@@ -152,10 +149,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         // Estrategia 3: Como último recurso, dentro de la app
         print('🔄 Como último recurso, intentando dentro de la app...');
         try {
-          bool launched = await launchUrl(
-            uri,
-            mode: LaunchMode.inAppWebView,
-          );
+          bool launched = await launchUrl(uri, mode: LaunchMode.inAppWebView);
           print('✅ Abierto dentro de la app: $launched');
         } catch (e3) {
           print('❌ Todas las estrategias fallaron: $e3');
@@ -198,9 +192,13 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
 
       // 🔍 Debug logging para diagnosticar problemas futuros
       if (_quoteData == null) {
-        print('⚠️ ADVERTENCIA: No se pudo cargar cita para ${widget.selectedDate.day}/${widget.selectedDate.month}/${widget.selectedDate.year}');
+        print(
+          '⚠️ ADVERTENCIA: No se pudo cargar cita para ${widget.selectedDate.day}/${widget.selectedDate.month}/${widget.selectedDate.year}',
+        );
       } else {
-        print('✅ Cita cargada exitosamente para ${widget.selectedDate.day}/${widget.selectedDate.month}: "${_quoteData?['quote']?.substring(0, 30)}..."');
+        print(
+          '✅ Cita cargada exitosamente para ${widget.selectedDate.day}/${widget.selectedDate.month}: "${_quoteData?['quote']?.substring(0, 30)}..."',
+        );
       }
 
       // Iniciar el ciclo de animación si hay datos
@@ -216,13 +214,15 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
     _blinkTimer?.cancel();
 
     print(
-        '🔄 Iniciando ciclo de animación - Mostrando: ${_showingVerse ? 'VERSÍCULO' : 'CITA'}');
+      '🔄 Iniciando ciclo de animación - Mostrando: ${_showingVerse ? 'VERSÍCULO' : 'CITA'}',
+    );
 
     // Mostrar contenido por 10 segundos, luego parpadear y cambiar
     _contentTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) {
         print(
-            '⏰ Han pasado 10 segundos - Iniciando difuminado para cambiar de ${_showingVerse ? 'VERSÍCULO' : 'CITA'} a ${!_showingVerse ? 'VERSÍCULO' : 'CITA'}');
+          '⏰ Han pasado 10 segundos - Iniciando difuminado para cambiar de ${_showingVerse ? 'VERSÍCULO' : 'CITA'} a ${!_showingVerse ? 'VERSÍCULO' : 'CITA'}',
+        );
         _performBlinkTransition();
       }
     });
@@ -245,7 +245,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
           _showingVerse = !_showingVerse;
         });
         print(
-            '🔄 Contenido cambiado a: ${_showingVerse ? 'VERSÍCULO' : 'CITA'}');
+          '🔄 Contenido cambiado a: ${_showingVerse ? 'VERSÍCULO' : 'CITA'}',
+        );
         // Fade in con el nuevo contenido
         _blinkController.reverse().then((_) {
           if (mounted) {
@@ -273,9 +274,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
           color: Colors.white.withOpacity(0.9),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -341,10 +340,12 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                     position: Tween<Offset>(
                       begin: const Offset(0.0, 0.1),
                       end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    )),
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutCubic,
+                      ),
+                    ),
                     child: child,
                   ),
                 );
@@ -395,7 +396,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               child: Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                      horizontal: isCompactMode ? 4.0 : 8.0),
+                    horizontal: isCompactMode ? 4.0 : 8.0,
+                  ),
                   child: GestureDetector(
                     onTap: () => _showFullScreenText(
                       context,
@@ -423,8 +425,9 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
             // Referencia bíblica
             Container(
               padding: EdgeInsets.symmetric(
-                  horizontal: isCompactMode ? 8 : 10,
-                  vertical: isCompactMode ? 2 : 3),
+                horizontal: isCompactMode ? 8 : 10,
+                vertical: isCompactMode ? 2 : 3,
+              ),
               decoration: BoxDecoration(
                 color: const Color(0xFF374151).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(isCompactMode ? 12 : 15),
@@ -458,7 +461,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                 _openSource([chapterUrl]);
               } else {
                 print(
-                    '⚠️ No hay cita o referencia disponible para este versículo');
+                  '⚠️ No hay cita o referencia disponible para este versículo',
+                );
               }
             },
             child: Container(
@@ -474,10 +478,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                   ),
                 ],
               ),
-              child: const Text(
-                '📖',
-                style: TextStyle(fontSize: 16),
-              ),
+              child: const Text('📖', style: TextStyle(fontSize: 16)),
             ),
           ),
         ),
@@ -511,7 +512,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
         ),
       );
     }
-    
+
     return Stack(
       children: [
         Column(
@@ -547,7 +548,8 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
               child: Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                      horizontal: isCompactMode ? 4.0 : 8.0),
+                    horizontal: isCompactMode ? 4.0 : 8.0,
+                  ),
                   child: GestureDetector(
                     onTap: () => _showFullScreenText(
                       context,
@@ -576,8 +578,9 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
             // Autor de la cita
             Container(
               padding: EdgeInsets.symmetric(
-                  horizontal: isCompactMode ? 8 : 10,
-                  vertical: isCompactMode ? 2 : 3),
+                horizontal: isCompactMode ? 8 : 10,
+                vertical: isCompactMode ? 2 : 3,
+              ),
               decoration: BoxDecoration(
                 color: const Color(0xFF8B5CF6).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(isCompactMode ? 12 : 15),
@@ -613,10 +616,7 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                   ),
                 ],
               ),
-              child: const Text(
-                '🔗',
-                style: TextStyle(fontSize: 16),
-              ),
+              child: const Text('🔗', style: TextStyle(fontSize: 16)),
             ),
           ),
         ),
@@ -626,7 +626,11 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
 
   // 🌟 Mostrar texto en pantalla completa con fondo difuminado
   void _showFullScreenText(
-      BuildContext context, String text, String subtitle, bool isVerse) {
+    BuildContext context,
+    String text,
+    String subtitle,
+    bool isVerse,
+  ) {
     final GlobalKey screenshotKey = GlobalKey();
 
     showGeneralDialog(
@@ -645,17 +649,11 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
       transitionDuration: const Duration(milliseconds: 400),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          )),
-          child: FadeTransition(
-            opacity: animation,
-            child: child,
+          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+              .animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
           ),
+          child: FadeTransition(opacity: animation, child: child),
         );
       },
     );
@@ -698,8 +696,9 @@ class _FullScreenTextDialog extends StatelessWidget {
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       print('📸 Imagen capturada: ${image.width}x${image.height}');
 
-      ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
       if (byteData == null) {
         print('❌ Error: No se pudo convertir imagen a ByteData');
         throw Exception('Error al procesar imagen');
@@ -769,7 +768,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                   colors: [
                     (isVerse
                             ? const Color(
-                                0xFF1E3A8A) // Azul profundo para versículos
+                                0xFF1E3A8A,
+                              ) // Azul profundo para versículos
                             : const Color(0xFF7C3AED) // Morado para citas
                         )
                         .withOpacity(0.85),
@@ -801,10 +801,14 @@ class _FullScreenTextDialog extends StatelessWidget {
                     screenSize.width * 0.04; // 4% del ancho de pantalla
                 final maxContentWidth = screenSize.width * 0.9; // 90% del ancho
                 final baseTextSize = isSmallScreen ? 18.0 : 22.0;
-                final adaptiveTextSize =
-                    (baseTextSize / textScaleFactor).clamp(16.0, 28.0);
-                final subtitleSize =
-                    (adaptiveTextSize * 0.73).clamp(12.0, 20.0);
+                final adaptiveTextSize = (baseTextSize / textScaleFactor).clamp(
+                  16.0,
+                  28.0,
+                );
+                final subtitleSize = (adaptiveTextSize * 0.73).clamp(
+                  12.0,
+                  20.0,
+                );
 
                 return SingleChildScrollView(
                   padding: EdgeInsets.all(responsivePadding),
@@ -860,9 +864,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                         ),
 
                         SizedBox(
-                            height:
-                                screenSize.height * 0.05), // 5% de la altura
-
+                          height: screenSize.height * 0.05,
+                        ), // 5% de la altura
                         // 📝 Texto principal con diseño responsivo
                         GestureDetector(
                           onTap: () {}, // 🛑 ABSORBER toques en la tarjeta
@@ -872,7 +875,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                               width: maxContentWidth,
                               padding: EdgeInsets.all(isLargeText ? 40 : 32),
                               margin: EdgeInsets.symmetric(
-                                  horizontal: responsivePadding),
+                                horizontal: responsivePadding,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.95),
                                 borderRadius: BorderRadius.circular(24),
@@ -944,17 +948,18 @@ class _FullScreenTextDialog extends StatelessWidget {
                         ),
 
                         SizedBox(
-                            height:
-                                screenSize.height * 0.06), // 6% de la altura
-
+                          height: screenSize.height * 0.06,
+                        ), // 6% de la altura
                         // 💡 Indicación adaptativa para cerrar
                         Opacity(
                           opacity: 0.6,
                           child: Text(
                             'Toca fuera del texto para cerrar',
                             style: TextStyle(
-                              fontSize:
-                                  (14 * textScaleFactor).clamp(12.0, 18.0),
+                              fontSize: (14 * textScaleFactor).clamp(
+                                12.0,
+                                18.0,
+                              ),
                               color: Colors.white.withOpacity(0.8),
                               fontWeight: FontWeight.w400,
                             ),
@@ -963,8 +968,8 @@ class _FullScreenTextDialog extends StatelessWidget {
                         ),
 
                         SizedBox(
-                            height:
-                                screenSize.height * 0.02), // 2% de la altura
+                          height: screenSize.height * 0.02,
+                        ), // 2% de la altura
                       ],
                     ),
                   ),

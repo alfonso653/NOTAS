@@ -1,8 +1,10 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'dart:html' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:universal_io/io.dart' show File, Directory;
 
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'
@@ -73,11 +75,7 @@ class _ImageButtonState extends State<ImageButton> {
           }
 
           images.add(
-            _ImageInfo(
-              file: file,
-              date: date,
-              originalName: originalName,
-            ),
+            _ImageInfo(file: file, date: date, originalName: originalName),
           );
         }
       }
@@ -147,9 +145,9 @@ class _ImageButtonState extends State<ImageButton> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al obtener imagen: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al obtener imagen: $e')));
       }
     }
   }
@@ -191,9 +189,9 @@ class _ImageButtonState extends State<ImageButton> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al guardar imagen: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al guardar imagen: $e')));
       }
     }
   }
@@ -209,9 +207,9 @@ class _ImageButtonState extends State<ImageButton> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error eliminando imagen: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error eliminando imagen: $e')));
       }
     }
   }
@@ -330,11 +328,7 @@ class _ImageButtonState extends State<ImageButton> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -384,10 +378,7 @@ class _ImageButtonState extends State<ImageButton> {
                 const SizedBox(height: 4),
                 Text(
                   _formatDate(image.date),
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 10,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 10),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -406,8 +397,11 @@ class _ImageButtonState extends State<ImageButton> {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.visibility,
-                                  size: 14, color: Colors.blue),
+                              Icon(
+                                Icons.visibility,
+                                size: 14,
+                                color: Colors.blue,
+                              ),
                               SizedBox(width: 4),
                               Text(
                                 'Ver',
@@ -433,8 +427,9 @@ class _ImageButtonState extends State<ImageButton> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             title: const Text("¿Eliminar imagen?"),
-                            content:
-                                const Text("Esta acción no se puede deshacer."),
+                            content: const Text(
+                              "Esta acción no se puede deshacer.",
+                            ),
                             actions: [
                               TextButton(
                                 child: const Text("Cancelar"),
@@ -501,10 +496,7 @@ class _ImageButtonState extends State<ImageButton> {
                   margin: const EdgeInsets.all(20),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      image.file,
-                      fit: BoxFit.contain,
-                    ),
+                    child: Image.file(image.file, fit: BoxFit.contain),
                   ),
                 ),
               ),
@@ -545,10 +537,7 @@ class _ImageButtonState extends State<ImageButton> {
           heroTag: "camera_btn_${widget.noteId}",
           backgroundColor: Colors.white,
           onPressed: _takePhotoOrGallery,
-          child: const Text(
-            '📸',
-            style: TextStyle(fontSize: 26),
-          ),
+          child: const Text('📸', style: TextStyle(fontSize: 26)),
         ),
         const SizedBox(height: 12),
         // Botón inferior: Galería personal
@@ -597,10 +586,7 @@ class _OptionButton extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 label,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: color, fontWeight: FontWeight.w600),
               ),
             ],
           ),

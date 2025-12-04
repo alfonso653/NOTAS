@@ -16,7 +16,10 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/rendering.dart'; // Para RenderRepaintBoundary
 import 'dart:ui' as ui; // Para ui.Image y ImageByteFormat
 import 'dart:typed_data';
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'dart:html' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'platform_utils.dart' as platform;
+import 'package:universal_io/io.dart' show File;
 import 'dart:math' as math; // Para cos y sin del menú en abanico
 
 import 'text_format_panel.dart';
@@ -55,42 +58,40 @@ class _TextPart {
   ]);
 
   Map<String, dynamic> toJson() => {
-        'text': text,
-        'bold': bold,
-        'underline': underline,
-        'underlineColor': underlineColor,
-        'highlight': highlight,
-        'highlightColor': highlightColor,
-        'isImage': isImage,
-        'imageWidth': imageWidth,
-        'imageHeight': imageHeight,
-      };
+    'text': text,
+    'bold': bold,
+    'underline': underline,
+    'underlineColor': underlineColor,
+    'highlight': highlight,
+    'highlightColor': highlightColor,
+    'isImage': isImage,
+    'imageWidth': imageWidth,
+    'imageHeight': imageHeight,
+  };
 
   factory _TextPart.fromJson(Map<String, dynamic> json) => _TextPart(
-        (json['text'] ?? '') as String,
-        (json['bold'] ?? false) as bool,
-        (json['underline'] ?? false) as bool,
-        json['underlineColor'] == null
-            ? null
-            : (json['underlineColor'] as num).toInt(),
-        (json['highlight'] ?? false) as bool,
-        json['highlightColor'] == null
-            ? null
-            : (json['highlightColor'] as num).toInt(),
-        (json['isImage'] ?? false) as bool,
-        json['imageWidth'] == null
-            ? null
-            : (json['imageWidth'] as num).toDouble(),
-        json['imageHeight'] == null
-            ? null
-            : (json['imageHeight'] as num).toDouble(),
-      );
+    (json['text'] ?? '') as String,
+    (json['bold'] ?? false) as bool,
+    (json['underline'] ?? false) as bool,
+    json['underlineColor'] == null
+        ? null
+        : (json['underlineColor'] as num).toInt(),
+    (json['highlight'] ?? false) as bool,
+    json['highlightColor'] == null
+        ? null
+        : (json['highlightColor'] as num).toInt(),
+    (json['isImage'] ?? false) as bool,
+    json['imageWidth'] == null ? null : (json['imageWidth'] as num).toDouble(),
+    json['imageHeight'] == null
+        ? null
+        : (json['imageHeight'] as num).toDouble(),
+  );
 }
 
 /// Modelo para trazos de dibujo libre
 class DrawingStroke {
   final List<Offset>
-      points; // Coordenadas en el espacio del CONTENIDO (y = yVisible + scroll)
+  points; // Coordenadas en el espacio del CONTENIDO (y = yVisible + scroll)
   final Color color;
   final double strokeWidth;
   final String toolType; // 'pencil', 'pen', 'crayon', 'brush'
@@ -105,23 +106,25 @@ class DrawingStroke {
   });
 
   Map<String, dynamic> toJson() => {
-        'points': points.map((p) => {'dx': p.dx, 'dy': p.dy}).toList(),
-        'color': color.value,
-        'strokeWidth': strokeWidth,
-        'toolType': toolType,
-        'opacity': opacity,
-      };
+    'points': points.map((p) => {'dx': p.dx, 'dy': p.dy}).toList(),
+    'color': color.value,
+    'strokeWidth': strokeWidth,
+    'toolType': toolType,
+    'opacity': opacity,
+  };
 
   factory DrawingStroke.fromJson(Map<String, dynamic> json) => DrawingStroke(
-        points: (json['points'] as List)
-            .map((p) => Offset(
-                (p['dx'] as num).toDouble(), (p['dy'] as num).toDouble()))
-            .toList(),
-        color: Color(json['color'] as int),
-        strokeWidth: (json['strokeWidth'] as num).toDouble(),
-        toolType: json['toolType'] as String,
-        opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
-      );
+    points: (json['points'] as List)
+        .map(
+          (p) =>
+              Offset((p['dx'] as num).toDouble(), (p['dy'] as num).toDouble()),
+        )
+        .toList(),
+    color: Color(json['color'] as int),
+    strokeWidth: (json['strokeWidth'] as num).toDouble(),
+    toolType: json['toolType'] as String,
+    opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
+  );
 }
 
 /// CustomPainter para renderizar los trazos de dibujo libre
@@ -248,8 +251,8 @@ class DrawingPainter extends CustomPainter {
   // ✏️ Lápiz - Trazo suave y uniforme
   void _drawPencilStroke(Canvas canvas, DrawingStroke stroke) {
     final paint = Paint()
-      ..color =
-          stroke.color.withOpacity(0.8 * stroke.opacity) // ✨ Opacidad animada
+      ..color = stroke.color
+          .withOpacity(0.8 * stroke.opacity) // ✨ Opacidad animada
       ..strokeWidth = stroke.strokeWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -352,7 +355,11 @@ class DrawingPainter extends CustomPainter {
             (current.dy + next.dy) / 2,
           );
           path.quadraticBezierTo(
-              current.dx, current.dy, controlPoint.dx, controlPoint.dy);
+            current.dx,
+            current.dy,
+            controlPoint.dx,
+            controlPoint.dy,
+          );
         }
       }
 
@@ -365,8 +372,10 @@ class DrawingPainter extends CustomPainter {
     if (stroke.points.length < 2) return;
 
     // 1. Trazo principal con grosor variable
-    final mainPaint =
-        CalligraphyInkEffect.createPaint(stroke.color, stroke.strokeWidth);
+    final mainPaint = CalligraphyInkEffect.createPaint(
+      stroke.color,
+      stroke.strokeWidth,
+    );
 
     final path = Path();
     path.moveTo(stroke.points.first.dx, stroke.points.first.dy);
@@ -384,7 +393,11 @@ class DrawingPainter extends CustomPainter {
           (current.dy + next.dy) / 2,
         );
         path.quadraticBezierTo(
-            current.dx, current.dy, controlPoint.dx, controlPoint.dy);
+          current.dx,
+          current.dy,
+          controlPoint.dx,
+          controlPoint.dy,
+        );
       }
     }
 
@@ -493,7 +506,9 @@ class DrawingPainter extends CustomPainter {
     // Crear un trazo destacado en rojo
     final highlightPaint = Paint()
       ..color = Colors.red.withOpacity(0.8)
-      ..strokeWidth = stroke.strokeWidth + 4.0 // Más grueso para el highlight
+      ..strokeWidth =
+          stroke.strokeWidth +
+          4.0 // Más grueso para el highlight
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
@@ -531,18 +546,21 @@ class DrawingPainter extends CustomPainter {
 
     // Cuerpo del borrador (rectángulo rosa)
     final bodyPaint = Paint()
-      ..color = const Color(0xFFFFB3BA) // Rosa suave
+      ..color =
+          const Color(0xFFFFB3BA) // Rosa suave
       ..style = PaintingStyle.fill;
 
     // Contorno del borrador
     final outlinePaint = Paint()
-      ..color = const Color(0xFF8B5A5A) // Marrón suave
+      ..color =
+          const Color(0xFF8B5A5A) // Marrón suave
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
     // Metalico del borrador
     final metalPaint = Paint()
-      ..color = const Color(0xFFE0E0E0) // Gris metálico
+      ..color =
+          const Color(0xFFE0E0E0) // Gris metálico
       ..style = PaintingStyle.fill;
 
     // Dibujar cuerpo del borrador
@@ -568,7 +586,8 @@ class DrawingPainter extends CustomPainter {
 
     // Detalles del borrador (líneas horizontales)
     final detailPaint = Paint()
-      ..color = const Color(0xFFFF9FA5) // Rosa más oscuro
+      ..color =
+          const Color(0xFFFF9FA5) // Rosa más oscuro
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
 
@@ -625,36 +644,36 @@ class FloatingText {
   });
 
   Map<String, dynamic> toJson() => {
-        'text': text,
-        'x': x,
-        'y': y,
-        'width': width,
-        'bold': bold,
-        'underline': underline,
-        'underlineColor': underlineColor,
-        'highlight': highlight,
-        'highlightColor': highlightColor,
-        'isLocked': isLocked,
-        'fontSize': fontSize,
-      };
+    'text': text,
+    'x': x,
+    'y': y,
+    'width': width,
+    'bold': bold,
+    'underline': underline,
+    'underlineColor': underlineColor,
+    'highlight': highlight,
+    'highlightColor': highlightColor,
+    'isLocked': isLocked,
+    'fontSize': fontSize,
+  };
 
   factory FloatingText.fromJson(Map<String, dynamic> json) => FloatingText(
-        text: (json['text'] ?? '') as String,
-        x: (json['x'] as num).toDouble(),
-        y: (json['y'] as num).toDouble(),
-        width: (json['width'] as num).toDouble(),
-        bold: (json['bold'] ?? false) as bool,
-        underline: (json['underline'] ?? false) as bool,
-        underlineColor: json['underlineColor'] == null
-            ? null
-            : (json['underlineColor'] as num).toInt(),
-        highlight: (json['highlight'] ?? false) as bool,
-        highlightColor: json['highlightColor'] == null
-            ? null
-            : (json['highlightColor'] as num).toInt(),
-        isLocked: (json['isLocked'] ?? false) as bool,
-        fontSize: (json['fontSize'] ?? 16.0) as double,
-      );
+    text: (json['text'] ?? '') as String,
+    x: (json['x'] as num).toDouble(),
+    y: (json['y'] as num).toDouble(),
+    width: (json['width'] as num).toDouble(),
+    bold: (json['bold'] ?? false) as bool,
+    underline: (json['underline'] ?? false) as bool,
+    underlineColor: json['underlineColor'] == null
+        ? null
+        : (json['underlineColor'] as num).toInt(),
+    highlight: (json['highlight'] ?? false) as bool,
+    highlightColor: json['highlightColor'] == null
+        ? null
+        : (json['highlightColor'] as num).toInt(),
+    isLocked: (json['isLocked'] ?? false) as bool,
+    fontSize: (json['fontSize'] ?? 16.0) as double,
+  );
 }
 
 /// =========================
@@ -728,8 +747,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // 🌈 PALETA DE COLORES DE RESALTADO
   bool _showHighlightColorPalette = false;
-  Color _selectedHighlightColor =
-      const Color(0xFFFFEB3B); // Amarillo por defecto
+  Color _selectedHighlightColor = const Color(
+    0xFFFFEB3B,
+  ); // Amarillo por defecto
   final List<Color> _highlightColors = [
     const Color(0xFFFFEB3B), // Amarillo pastel
     const Color(0xFFE1F5FE), // Azul pastel
@@ -754,8 +774,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       {}; // Versículos seleccionados para inserción múltiple
   ScrollController _versesScrollController =
       ScrollController(); // Para mantener posición del scroll
-  ValueNotifier<int> _selectionCounter =
-      ValueNotifier<int>(0); // Contador para el botón
+  ValueNotifier<int> _selectionCounter = ValueNotifier<int>(
+    0,
+  ); // Contador para el botón
 
   // 📚 Libros del Nuevo Testamento
   final List<String> _ntBooks = [
@@ -785,7 +806,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     '2 Juan',
     '3 Juan',
     'Judas',
-    'Apocalipsis'
+    'Apocalipsis',
   ];
 
   // 📚 Libros del Antiguo Testamento (todos los 39 libros)
@@ -828,7 +849,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     'Sofonías',
     'Hageo',
     'Zacarías',
-    'Malaquías'
+    'Malaquías',
   ];
 
   // RepaintBoundary para compartir imagen
@@ -859,7 +880,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   // ========= Sistema de Borrador Profesional =========
   Offset? _eraserPosition; // Posición actual del borrador
   Offset?
-      _lastEraserPosition; // Última posición del borrador para trayectoria continua
+  _lastEraserPosition; // Última posición del borrador para trayectoria continua
   Set<DrawingStroke> _strokesToErase = {}; // Trazos que se van a borrar
   bool _isErasing = false; // Estado de borrado activo
 
@@ -896,15 +917,21 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     final String currentText = _hiddenController.text.trim();
     if (currentText.isNotEmpty) {
       setState(() {
-        _contentParts.add(_TextPart(
-          currentText,
-          _contentFormat.bold,
-          _contentFormat.underline,
-          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-          _contentFormat.highlight,
-          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
-          false,
-        ));
+        _contentParts.add(
+          _TextPart(
+            currentText,
+            _contentFormat.bold,
+            _contentFormat.underline,
+            _contentFormat.underline
+                ? _contentFormat.underlineColor.value
+                : null,
+            _contentFormat.highlight,
+            _contentFormat.highlight
+                ? _contentFormat.highlightColor.value
+                : null,
+            false,
+          ),
+        );
       });
       _hiddenController.clear();
     }
@@ -990,7 +1017,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   /// 🎯 Mostrar menú en abanico específico para textos flotantes
   void _showFloatingTextOptionsPanel(
-      BuildContext context, int index, FloatingText text) {
+    BuildContext context,
+    int index,
+    FloatingText text,
+  ) {
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
@@ -1054,7 +1084,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   /// 📝 Mostrar panel de formato específico para texto flotante
   void _showFloatingTextFormatPanel(
-      BuildContext context, int index, FloatingText text) {
+    BuildContext context,
+    int index,
+    FloatingText text,
+  ) {
     TextFormatValue currentFormat = TextFormatValue(
       bold: text.bold,
       underline: text.underline,
@@ -1079,11 +1112,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             setState(() {
               _floatingTexts[index].bold = val.bold;
               _floatingTexts[index].underline = val.underline;
-              _floatingTexts[index].underlineColor =
-                  val.underline ? val.underlineColor.value : null;
+              _floatingTexts[index].underlineColor = val.underline
+                  ? val.underlineColor.value
+                  : null;
               _floatingTexts[index].highlight = val.highlight;
-              _floatingTexts[index].highlightColor =
-                  val.highlight ? val.highlightColor.value : null;
+              _floatingTexts[index].highlightColor = val.highlight
+                  ? val.highlightColor.value
+                  : null;
             });
             _saveNote(pop: false);
           },
@@ -1097,7 +1132,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   /// 🎯 Mostrar menú en abanico circular para párrafo específico
   void _showParagraphOptionsPanel(
-      BuildContext context, int index, _TextPart part) {
+    BuildContext context,
+    int index,
+    _TextPart part,
+  ) {
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
@@ -1136,7 +1174,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   /// 🧶 Panel de formato para párrafo
   void _showParagraphFormatPanel(
-      BuildContext context, int index, _TextPart part) {
+    BuildContext context,
+    int index,
+    _TextPart part,
+  ) {
     TextFormatValue currentFormat = TextFormatValue(
       bold: part.bold,
       underline: part.underline,
@@ -1186,7 +1227,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       builder: (context) => AlertDialog(
         title: const Text('¿Eliminar párrafo?'),
         content: Text(
-            'Se eliminará: "${part.text.length > 50 ? part.text.substring(0, 50) + '...' : part.text}"'),
+          'Se eliminará: "${part.text.length > 50 ? part.text.substring(0, 50) + '...' : part.text}"',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1232,7 +1274,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
       // Posicionar el cursor después de la viñeta y el espacio
       _hiddenController.selection = TextSelection.collapsed(
-          offset: cursorPosition + bulletType.length + 1);
+        offset: cursorPosition + bulletType.length + 1,
+      );
 
       _showBulletsMenu = false; // Cerrar el menú
     });
@@ -1293,18 +1336,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               SizedBox(height: 8),
               Text(
                 'Se reproducirá un anuncio de 30 segundos. Tu visualización me ayuda a seguir desarrollando la app.',
-                style: TextStyle(
-                  color: Colors.blue.shade700,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.monetization_on,
-                      color: Colors.amber.shade600, size: 20),
+                  Icon(
+                    Icons.monetization_on,
+                    color: Colors.amber.shade600,
+                    size: 20,
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'Ingresos = Más Funcionalidades',
@@ -1414,10 +1457,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               SizedBox(height: 8),
               Text(
                 'Cada anuncio que ves me ayuda a dedicar más tiempo al desarrollo de nuevas características para la app.',
-                style: TextStyle(
-                  color: Colors.blue.shade700,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.blue.shade700, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 12),
@@ -1566,7 +1606,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
       // Posicionar el cursor después del número y el espacio
       _hiddenController.selection = TextSelection.collapsed(
-          offset: cursorPosition + '$nextNumber. '.length);
+        offset: cursorPosition + '$nextNumber. '.length,
+      );
 
       _showBulletsMenu = false; // Cerrar el menú
     });
@@ -1588,8 +1629,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
       // Posicionar el cursor después de la sangría y el espacio
       _hiddenController.selection = TextSelection.collapsed(
-          offset: cursorPosition + 6 // '    ➤ ' tiene 6 caracteres
-          );
+        offset: cursorPosition + 6, // '    ➤ ' tiene 6 caracteres
+      );
 
       _showBulletsMenu = false; // Cerrar el menú
     });
@@ -1652,13 +1693,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       '◦': '◦ ', // White bullet U+25E6
       '▪': '▪ ', // Black small square U+25AA
       '▫': '▫ ', // White small square U+25AB
-
       // Flechas
       '→': '→', // Right arrow U+2192
       '←': '←', // Left arrow U+2190
       '↑': '↑', // Up arrow U+2191
       '↓': '↓', // Down arrow U+2193
-
       // Símbolos especiales
       '★': '★', // Black star U+2605
       '☆': '☆', // White star U+2606
@@ -1666,7 +1705,6 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       '♠': '♠', // Black spade suit U+2660
       '♣': '♣', // Black club suit U+2663
       '♥': '♥', // Black heart suit U+2665
-
       // Emoticones básicos en Unicode
       '😊': '😊', // Smiling face U+1F60A
       '😍': '😍', // Heart eyes U+1F60D
@@ -1700,20 +1738,24 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
       try {
         // Intentar cargar fuentes personalizadas con soporte Unicode
-        final robotoData =
-            await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
-        final robotoBoldData =
-            await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+        final robotoData = await rootBundle.load(
+          'assets/fonts/NotoSans-Regular.ttf',
+        );
+        final robotoBoldData = await rootBundle.load(
+          'assets/fonts/NotoSans-Bold.ttf',
+        );
         robotoFont = pw.Font.ttf(robotoData);
         robotoBoldFont = pw.Font.ttf(robotoBoldData);
         print('✅ Fuentes Unicode NotoSans cargadas correctamente');
       } catch (e) {
         try {
           // Fallback a fuentes Nunito existentes
-          final robotoData =
-              await rootBundle.load('assets/fonts/Nunito-Regular.ttf');
-          final robotoBoldData =
-              await rootBundle.load('assets/fonts/Nunito-Bold.ttf');
+          final robotoData = await rootBundle.load(
+            'assets/fonts/Nunito-Regular.ttf',
+          );
+          final robotoBoldData = await rootBundle.load(
+            'assets/fonts/Nunito-Bold.ttf',
+          );
           robotoFont = pw.Font.ttf(robotoData);
           robotoBoldFont = pw.Font.ttf(robotoBoldData);
           print('✅ Fuentes Nunito cargadas como fallback');
@@ -1728,30 +1770,36 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       pdf.addPage(
         pw.MultiPage(
           pageTheme: pw.PageTheme(
-            theme:
-                pw.ThemeData.withFont(base: robotoFont, bold: robotoBoldFont),
+            theme: pw.ThemeData.withFont(
+              base: robotoFont,
+              bold: robotoBoldFont,
+            ),
             margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
           ),
           build: (context) {
             return <pw.Widget>[
               pw.SizedBox(height: 12),
-              pw.Text(widget.note.title,
-                  style: pw.TextStyle(
-                    font: robotoBoldFont,
-                    fontSize: 28,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                  textAlign: pw.TextAlign.center),
+              pw.Text(
+                widget.note.title,
+                style: pw.TextStyle(
+                  font: robotoBoldFont,
+                  fontSize: 28,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+                textAlign: pw.TextAlign.center,
+              ),
               if (widget.note.categoria.isNotEmpty)
                 pw.Padding(
                   padding: const pw.EdgeInsets.only(top: 4, bottom: 2),
-                  child: pw.Text(widget.note.categoria,
-                      style: pw.TextStyle(
-                        font: robotoFont,
-                        fontSize: 16,
-                        color: PdfColors.blueGrey,
-                      ),
-                      textAlign: pw.TextAlign.center),
+                  child: pw.Text(
+                    widget.note.categoria,
+                    style: pw.TextStyle(
+                      font: robotoFont,
+                      fontSize: 16,
+                      color: PdfColors.blueGrey,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
                 ),
               pw.SizedBox(height: 12),
               pw.Divider(thickness: 1.2, color: PdfColors.blueGrey),
@@ -1768,9 +1816,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 }
 
                 print(
-                    '🔤 Texto original: "${e.text.length > 50 ? e.text.substring(0, 50) : e.text}..."');
+                  '🔤 Texto original: "${e.text.length > 50 ? e.text.substring(0, 50) : e.text}..."',
+                );
                 print(
-                    '✨ Texto procesado: "${cleanText.length > 50 ? cleanText.substring(0, 50) : cleanText}..."');
+                  '✨ Texto procesado: "${cleanText.length > 50 ? cleanText.substring(0, 50) : cleanText}..."',
+                );
 
                 return pw.Padding(
                   padding: const pw.EdgeInsets.only(bottom: 8),
@@ -1804,27 +1854,34 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       final bytes = await pdf.save();
       print('✅ PDF generado exitosamente - tamaño: ${bytes.length} bytes');
 
-      final dir = await getTemporaryDirectory();
-      print('📂 Directorio temporal obtenido: ${dir.path}');
-
-      final file = File('${dir.path}/nota.pdf');
-      await file.writeAsBytes(bytes);
-      print('💾 Archivo PDF guardado: ${file.path}');
-
-      // Verificar que el archivo existe
-      if (await file.exists()) {
-        final fileSize = await file.length();
-        print('✅ Archivo confirmado - tamaño: $fileSize bytes');
+      if (kIsWeb) {
+        // En web, descargar directamente
+        print('🌐 Descargando PDF en web...');
+        platform.downloadFile(bytes, 'nota.pdf', 'application/pdf');
+        print('✅ PDF descargado');
       } else {
-        throw Exception('El archivo PDF no fue creado correctamente');
-      }
+        // En móvil, usar compartir
+        final dir = await getTemporaryDirectory();
+        print('📂 Directorio temporal obtenido: ${dir.path}');
 
-      print('🔗 Iniciando Share.shareXFiles...');
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/pdf', name: 'nota.pdf')],
-        text: _titleController.text,
-      );
-      print('✅ Share.shareXFiles completado');
+        final file = File('${dir.path}/nota.pdf');
+        await file.writeAsBytes(bytes);
+        print('💾 Archivo PDF guardado: ${file.path}');
+
+        // Verificar que el archivo existe
+        if (await file.exists()) {
+          final fileSize = await file.length();
+          print('✅ Archivo confirmado - tamaño: $fileSize bytes');
+        } else {
+          throw Exception('El archivo PDF no fue creado correctamente');
+        }
+
+        print('🔗 Iniciando Share.shareXFiles...');
+        await Share.shareXFiles([
+          XFile(file.path, mimeType: 'application/pdf', name: 'nota.pdf'),
+        ], text: _titleController.text);
+        print('✅ Share.shareXFiles completado');
+      }
     } catch (e, stackTrace) {
       print('❌ Error detallado en _shareAsPdf: $e');
       print('📚 StackTrace: $stackTrace');
@@ -1843,33 +1900,41 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         throw Exception('No se pudo acceder al área de la nota');
       }
       final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
-      final ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      final ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
       if (byteData == null) throw Exception('No se pudo codificar la imagen');
       final bytes = byteData.buffer.asUint8List();
       print('✅ Imagen generada exitosamente - tamaño: ${bytes.length} bytes');
 
-      final dir = await getTemporaryDirectory();
-      print('📂 Directorio temporal obtenido: ${dir.path}');
-
-      final file = File('${dir.path}/nota.png');
-      await file.writeAsBytes(bytes);
-      print('💾 Archivo PNG guardado: ${file.path}');
-
-      // Verificar que el archivo existe
-      if (await file.exists()) {
-        final fileSize = await file.length();
-        print('✅ Archivo confirmado - tamaño: $fileSize bytes');
+      if (kIsWeb) {
+        // En web, descargar directamente
+        print('🌐 Descargando imagen en web...');
+        platform.downloadFile(bytes, 'nota.png', 'image/png');
+        print('✅ Imagen descargada');
       } else {
-        throw Exception('El archivo PNG no fue creado correctamente');
-      }
+        // En móvil, usar compartir
+        final dir = await getTemporaryDirectory();
+        print('📂 Directorio temporal obtenido: ${dir.path}');
 
-      print('🔗 Iniciando Share.shareXFiles...');
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'image/png', name: 'nota.png')],
-        text: _titleController.text,
-      );
-      print('✅ Share.shareXFiles completado');
+        final file = File('${dir.path}/nota.png');
+        await file.writeAsBytes(bytes);
+        print('💾 Archivo PNG guardado: ${file.path}');
+
+        // Verificar que el archivo existe
+        if (await file.exists()) {
+          final fileSize = await file.length();
+          print('✅ Archivo confirmado - tamaño: $fileSize bytes');
+        } else {
+          throw Exception('El archivo PNG no fue creado correctamente');
+        }
+
+        print('🔗 Iniciando Share.shareXFiles...');
+        await Share.shareXFiles([
+          XFile(file.path, mimeType: 'image/png', name: 'nota.png'),
+        ], text: _titleController.text);
+        print('✅ Share.shareXFiles completado');
+      }
     } catch (e, stackTrace) {
       print('❌ Error detallado en _shareAsImage: $e');
       print('📚 StackTrace: $stackTrace');
@@ -1900,8 +1965,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
       final topLeft = contentBox.localToGlobal(Offset.zero, ancestor: stackBox);
       final size = contentBox.size;
-      final newRect =
-          Rect.fromLTWH(topLeft.dx, topLeft.dy, size.width, size.height);
+      final newRect = Rect.fromLTWH(
+        topLeft.dx,
+        topLeft.dy,
+        size.width,
+        size.height,
+      );
 
       if (_contentRectInStack == null ||
           _rectsDifferent(_contentRectInStack!, newRect)) {
@@ -1926,8 +1995,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // Convierte posición local del overlay de dibujo -> coordenadas del CONTENIDO
   Offset _toContentCoords(Offset localInOverlay) {
-    final scroll =
-        _scrollController.hasClients ? _scrollController.offset : 0.0;
+    final scroll = _scrollController.hasClients
+        ? _scrollController.offset
+        : 0.0;
     return Offset(localInOverlay.dx, localInOverlay.dy + scroll);
   }
 
@@ -2039,8 +2109,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     // 🔥 Manejar borrador del menú flotante - BORRADO SÚPER RESPONSIVO
     if (_showDrawingToolsMenu && _selectedBrushType == 5) {
-      final eraserRadius =
-          (_selectedBrushSize * 3.0).clamp(25.0, 60.0); // Área MÁS generosa
+      final eraserRadius = (_selectedBrushSize * 3.0).clamp(
+        25.0,
+        60.0,
+      ); // Área MÁS generosa
       _updateEraserPreview(p, eraserRadius);
       _eraseStrokesAtContinuous(p, radius: eraserRadius);
 
@@ -2132,8 +2204,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   // ✨ SISTEMA DE BORRADO INMEDIATO - BORRA AL TOCAR CUALQUIER LÍNEA
-  void _eraseStrokesAtContinuous(Offset positionInContent,
-      {double radius = 25.0}) {
+  void _eraseStrokesAtContinuous(
+    Offset positionInContent, {
+    double radius = 25.0,
+  }) {
     final toErase = <DrawingStroke>[];
 
     for (final stroke in _drawingStrokes) {
@@ -2156,8 +2230,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         // También verificar interpolación entre puntos para no perder intersecciones
         if (i > 0) {
           final prevPoint = stroke.points[i - 1];
-          final closestPointOnLine =
-              _getClosestPointOnLine(positionInContent, prevPoint, point);
+          final closestPointOnLine = _getClosestPointOnLine(
+            positionInContent,
+            prevPoint,
+            point,
+          );
           if ((closestPointOnLine - positionInContent).distance <= radius) {
             shouldErase = true;
             break;
@@ -2178,13 +2255,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // 🔥 Calcular el punto más cercano en una línea para detección precisa
   Offset _getClosestPointOnLine(
-      Offset point, Offset lineStart, Offset lineEnd) {
+    Offset point,
+    Offset lineStart,
+    Offset lineEnd,
+  ) {
     final lineDirection = lineEnd - lineStart;
     final lineLength = lineDirection.distance;
 
     if (lineLength == 0) return lineStart;
 
-    final t = ((point - lineStart).dx * lineDirection.dx +
+    final t =
+        ((point - lineStart).dx * lineDirection.dx +
             (point - lineStart).dy * lineDirection.dy) /
         (lineLength * lineLength);
 
@@ -2201,13 +2282,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       vsync: this,
     );
 
-    final animation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOutQuint, // Curva más agresiva
-    ));
+    final animation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Curves.easeOutQuint, // Curva más agresiva
+      ),
+    );
 
     _fadeControllers[stroke] = controller;
     _fadeAnimations[stroke] = animation;
@@ -2241,13 +2321,12 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       vsync: this,
     );
 
-    final animation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOut, // Curva suave
-    ));
+    final animation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Curves.easeOut, // Curva suave
+      ),
+    );
 
     _fadeControllers[stroke] = controller;
     _fadeAnimations[stroke] = animation;
@@ -2308,8 +2387,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           // También verificar líneas entre puntos
           if (j > 0) {
             final prevPoint = stroke.points[j - 1];
-            final closestPoint =
-                _getClosestPointOnLine(pointOnPath, prevPoint, point);
+            final closestPoint = _getClosestPointOnLine(
+              pointOnPath,
+              prevPoint,
+              point,
+            );
             if ((closestPoint - pointOnPath).distance <= radius) {
               toErase.add(stroke);
               break;
@@ -2398,15 +2480,21 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     if (currentText.isNotEmpty) {
       // Guardar texto actual con formato anterior
       setState(() {
-        _contentParts.add(_TextPart(
-          currentText,
-          _contentFormat.bold,
-          _contentFormat.underline,
-          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-          _contentFormat.highlight,
-          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
-          false,
-        ));
+        _contentParts.add(
+          _TextPart(
+            currentText,
+            _contentFormat.bold,
+            _contentFormat.underline,
+            _contentFormat.underline
+                ? _contentFormat.underlineColor.value
+                : null,
+            _contentFormat.highlight,
+            _contentFormat.highlight
+                ? _contentFormat.highlightColor.value
+                : null,
+            false,
+          ),
+        );
       });
       _hiddenController.clear();
     }
@@ -2444,15 +2532,21 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     final String currentText = _hiddenController.text.trim();
     if (currentText.isNotEmpty) {
       setState(() {
-        _contentParts.add(_TextPart(
-          currentText,
-          _contentFormat.bold,
-          _contentFormat.underline,
-          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-          _contentFormat.highlight,
-          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
-          false,
-        ));
+        _contentParts.add(
+          _TextPart(
+            currentText,
+            _contentFormat.bold,
+            _contentFormat.underline,
+            _contentFormat.underline
+                ? _contentFormat.underlineColor.value
+                : null,
+            _contentFormat.highlight,
+            _contentFormat.highlight
+                ? _contentFormat.highlightColor.value
+                : null,
+            false,
+          ),
+        );
       });
       _hiddenController.clear();
     }
@@ -2481,15 +2575,21 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     final String currentText = _hiddenController.text.trim();
     if (currentText.isNotEmpty) {
       setState(() {
-        _contentParts.add(_TextPart(
-          currentText,
-          _contentFormat.bold,
-          _contentFormat.underline,
-          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-          _contentFormat.highlight,
-          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
-          false,
-        ));
+        _contentParts.add(
+          _TextPart(
+            currentText,
+            _contentFormat.bold,
+            _contentFormat.underline,
+            _contentFormat.underline
+                ? _contentFormat.underlineColor.value
+                : null,
+            _contentFormat.highlight,
+            _contentFormat.highlight
+                ? _contentFormat.highlightColor.value
+                : null,
+            false,
+          ),
+        );
       });
       _hiddenController.clear();
     }
@@ -2553,7 +2653,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     // Patrones de título
     final titlePatterns = [
       RegExp(
-          r'^[A-ZÁÉÍÓÚ][A-ZÁÉÍÓÚA-Za-z\s]{2,}$'), // Mayúscula inicial + letras
+        r'^[A-ZÁÉÍÓÚ][A-ZÁÉÍÓÚA-Za-z\s]{2,}$',
+      ), // Mayúscula inicial + letras
       RegExp(r'^[#]{1,6}\s+'), // Markdown headers
       RegExp(r'^[0-9]+\.\s+[A-ZÁÉÍÓÚ]'), // "1. Título"
       RegExp(r'^[IVXLCDM]+\.\s+'), // Numeración romana
@@ -2588,11 +2689,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       RegExp(r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b'), // 01/01/2024
       RegExp(r'\b\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}\b'), // 2024-01-01
       RegExp(
-          r'\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{1,2},?\s+\d{4}\b',
-          caseSensitive: false),
+        r'\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{1,2},?\s+\d{4}\b',
+        caseSensitive: false,
+      ),
       RegExp(
-          r'\b\d{1,2}\s+(de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(de\s+)?\d{4}\b',
-          caseSensitive: false),
+        r'\b\d{1,2}\s+(de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(de\s+)?\d{4}\b',
+        caseSensitive: false,
+      ),
     ];
 
     return datePatterns.any((pattern) => pattern.hasMatch(text));
@@ -2622,23 +2725,25 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   bool _isBibleVersePattern(String text) {
     return text.contains('📖') ||
-        RegExp(r'\b(Juan|Mateo|Marcos|Lucas|Génesis|Salmos|Proverbios|Isaías|Jeremías|Apocalipsis)\s+\d+:\d+',
-                caseSensitive: false)
-            .hasMatch(text);
+        RegExp(
+          r'\b(Juan|Mateo|Marcos|Lucas|Génesis|Salmos|Proverbios|Isaías|Jeremías|Apocalipsis)\s+\d+:\d+',
+          caseSensitive: false,
+        ).hasMatch(text);
   }
 
   bool _isQuestionPattern(String text) {
     return text.endsWith('?') ||
         text.startsWith('¿') ||
-        RegExp(r'\b(qué|cómo|cuándo|dónde|por\s+qué|quién)\b',
-                caseSensitive: false)
-            .hasMatch(text);
+        RegExp(
+          r'\b(qué|cómo|cuándo|dónde|por\s+qué|quién)\b',
+          caseSensitive: false,
+        ).hasMatch(text);
   }
 
   bool _isUrlPattern(String text) {
     return RegExp(
-            r'https?:\/\/[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b')
-        .hasMatch(text);
+      r'https?:\/\/[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b',
+    ).hasMatch(text);
   }
 
   /// 🎨 FORMATEADORES ESPECÍFICOS ===
@@ -2656,10 +2761,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     // Capitalizar apropiadamente (solo primera letra de cada palabra importante)
     final words = formatted.split(' ');
-    final capitalized = words.map((word) {
-      if (word.length <= 2) return word.toLowerCase(); // "de", "la", "en", etc.
-      return word[0].toUpperCase() + word.substring(1).toLowerCase();
-    }).join(' ');
+    final capitalized = words
+        .map((word) {
+          if (word.length <= 2)
+            return word.toLowerCase(); // "de", "la", "en", etc.
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
 
     return '📋 $capitalized';
   }
@@ -2670,11 +2778,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
     // Asegurar espacio después de viñeta/número
     formatted = formatted.replaceAll(
-        RegExp(r'^([•·▪▫◦‣⁃\-\*\+]|[0-9a-zA-Z]+[\.\)])\s*'), r'$1 ');
+      RegExp(r'^([•·▪▫◦‣⁃\-\*\+]|[0-9a-zA-Z]+[\.\)])\s*'),
+      r'$1 ',
+    );
 
     // Capitalizar primera letra del contenido
-    final match = RegExp(r'^([•·▪▫◦‣⁃\-\*\+]|[0-9a-zA-Z]+[\.\)])\s*(.+)')
-        .firstMatch(formatted);
+    final match = RegExp(
+      r'^([•·▪▫◦‣⁃\-\*\+]|[0-9a-zA-Z]+[\.\)])\s*(.+)',
+    ).firstMatch(formatted);
     if (match != null) {
       final bullet = match.group(1)!;
       final content = match.group(2)!;
@@ -2795,7 +2906,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   }
 
   void _showAutoFormatSuccess(Map<String, dynamic> analysis) {
-    final totalItems = (analysis['titles'] as List).length +
+    final totalItems =
+        (analysis['titles'] as List).length +
         (analysis['lists'] as List).length +
         (analysis['paragraphs'] as List).length +
         (analysis['dates'] as List).length +
@@ -2812,8 +2924,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           children: [
             Icon(Icons.auto_fix_high, color: Colors.green.shade600, size: 28),
             SizedBox(width: 8),
-            Text('¡Formato Aplicado!',
-                style: TextStyle(color: Colors.green.shade700)),
+            Text(
+              '¡Formato Aplicado!',
+              style: TextStyle(color: Colors.green.shade700),
+            ),
           ],
         ),
         content: Column(
@@ -2828,14 +2942,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               Text('📝 Listas: ${(analysis['lists'] as List).length}'),
             if ((analysis['bible_verses'] as List).isNotEmpty)
               Text(
-                  '📖 Versículos: ${(analysis['bible_verses'] as List).length}'),
+                '📖 Versículos: ${(analysis['bible_verses'] as List).length}',
+              ),
             if ((analysis['dates'] as List).isNotEmpty)
               Text('📅 Fechas: ${(analysis['dates'] as List).length}'),
             if ((analysis['questions'] as List).isNotEmpty)
               Text('❓ Preguntas: ${(analysis['questions'] as List).length}'),
             SizedBox(height: 8),
-            Text('Palabras totales: ${analysis['totalWords']}',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            Text(
+              'Palabras totales: ${analysis['totalWords']}',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
           ],
         ),
         actions: [
@@ -2946,8 +3063,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.access_time,
-                      size: 12, color: Colors.blue.shade600),
+                  Icon(
+                    Icons.access_time,
+                    size: 12,
+                    color: Colors.blue.shade600,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     _formatDateTime(widget.note.date),
@@ -3029,25 +3149,39 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   items: const [
                     PopupMenuItem(value: 'Sermón', child: Text('📖  Sermón')),
                     PopupMenuItem(
-                        value: 'Estudio Bíblico',
-                        child: Text('📚  Estudio Bíblico')),
+                      value: 'Estudio Bíblico',
+                      child: Text('📚  Estudio Bíblico'),
+                    ),
                     PopupMenuItem(
-                        value: 'Reflexión', child: Text('🤔  Reflexión')),
+                      value: 'Reflexión',
+                      child: Text('🤔  Reflexión'),
+                    ),
                     PopupMenuItem(
-                        value: 'Devocional', child: Text('❤️  Devocional')),
+                      value: 'Devocional',
+                      child: Text('❤️  Devocional'),
+                    ),
                     PopupMenuItem(
-                        value: 'Testimonio', child: Text('🌟  Testimonio')),
+                      value: 'Testimonio',
+                      child: Text('🌟  Testimonio'),
+                    ),
                     PopupMenuItem(
-                        value: 'Apuntes Generales',
-                        child: Text('📓  Apuntes Generales')),
+                      value: 'Apuntes Generales',
+                      child: Text('📓  Apuntes Generales'),
+                    ),
                     PopupMenuItem(
-                        value: 'Discipulado', child: Text('🏫  Discipulado')),
+                      value: 'Discipulado',
+                      child: Text('🏫  Discipulado'),
+                    ),
                     PopupMenuItem(
-                        value: 'Conexion', child: Text('🔗  Conexion')),
+                      value: 'Conexion',
+                      child: Text('🔗  Conexion'),
+                    ),
                     PopupMenuItem(value: 'Música', child: Text('🎵  Música')),
                     PopupMenuItem(value: 'Cita', child: Text('💬  Cita')),
                     PopupMenuItem(
-                        value: 'Versículo', child: Text('📜  Versículo')),
+                      value: 'Versículo',
+                      child: Text('📜  Versículo'),
+                    ),
                     PopupMenuItem(value: 'Oración', child: Text('🙏  Oración')),
                     PopupMenuItem(value: 'Culto', child: Text('⛪  Culto')),
                     PopupMenuItem(value: 'Otro', child: Text('🌀  Otro')),
@@ -3110,17 +3244,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.unfold_more,
-              size: 16,
-              color: Colors.blue.shade600,
-            ),
+            Icon(Icons.unfold_more, size: 16, color: Colors.blue.shade600),
             const SizedBox(width: 2),
-            Icon(
-              Icons.mic,
-              size: 14,
-              color: Colors.green.shade600,
-            ),
+            Icon(Icons.mic, size: 14, color: Colors.green.shade600),
           ],
         ),
       ),
@@ -3173,15 +3299,21 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     final String currentText = _hiddenController.text.trim();
     if (currentText.isNotEmpty) {
       setState(() {
-        _contentParts.add(_TextPart(
-          currentText,
-          _contentFormat.bold,
-          _contentFormat.underline,
-          _contentFormat.underline ? _contentFormat.underlineColor.value : null,
-          _contentFormat.highlight,
-          _contentFormat.highlight ? _contentFormat.highlightColor.value : null,
-          false,
-        ));
+        _contentParts.add(
+          _TextPart(
+            currentText,
+            _contentFormat.bold,
+            _contentFormat.underline,
+            _contentFormat.underline
+                ? _contentFormat.underlineColor.value
+                : null,
+            _contentFormat.highlight,
+            _contentFormat.highlight
+                ? _contentFormat.highlightColor.value
+                : null,
+            false,
+          ),
+        );
       });
       _hiddenController.clear();
     }
@@ -3319,9 +3451,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     final verseCount = verses.length;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(verseCount == 1
-            ? 'Versículo añadido: ${verses.first.reference}'
-            : '$verseCount versículos añadidos exitosamente'),
+        content: Text(
+          verseCount == 1
+              ? 'Versículo añadido: ${verses.first.reference}'
+              : '$verseCount versículos añadidos exitosamente',
+        ),
         backgroundColor: const Color(0xFF059669),
         duration: const Duration(seconds: 3),
       ),
@@ -3609,11 +3743,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       color: Colors.red.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.close,
-                      color: Colors.red,
-                      size: 18,
-                    ),
+                    child: const Icon(Icons.close, color: Colors.red, size: 18),
                   ),
                 ),
               ],
@@ -3731,8 +3861,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 height: 44,
                 decoration: BoxDecoration(
                   color: !_contentFormat.highlight
-                      ? Colors.white
-                          .withOpacity(0.2) // Activo cuando no hay resaltado
+                      ? Colors.white.withOpacity(
+                          0.2,
+                        ) // Activo cuando no hay resaltado
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(
@@ -3744,8 +3875,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                 ),
                 child: Icon(
                   Icons.highlight_off_rounded,
-                  color:
-                      !_contentFormat.highlight ? Colors.white : Colors.white54,
+                  color: !_contentFormat.highlight
+                      ? Colors.white
+                      : Colors.white54,
                   size: 20,
                 ),
               ),
@@ -3781,11 +3913,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     ],
                   ),
                   child: isSelected
-                      ? const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 16,
-                        )
+                      ? const Icon(Icons.check, color: Colors.white, size: 16)
                       : null,
                 ),
               );
@@ -3840,8 +3968,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color:
-                isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
+            color: isSelected
+                ? Colors.white.withOpacity(0.2)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
@@ -3881,8 +4010,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           // Calculamos tamaños responsivos basados en el ancho disponible
           final screenWidth = MediaQuery.of(context).size.width;
           final containerWidth = math.min(
-              screenWidth * 0.7, 300.0); // Máximo 70% del ancho o 300px
-          final buttonWidth = (containerWidth - 80) /
+            screenWidth * 0.7,
+            300.0,
+          ); // Máximo 70% del ancho o 300px
+          final buttonWidth =
+              (containerWidth - 80) /
               2; // Ancho disponible dividido por 2 botones
 
           return Container(
@@ -3911,7 +4043,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   'Agregar Cita Bíblica',
                   style: TextStyle(
                     fontSize: math.max(
-                        screenWidth * 0.03, 10.0), // Mínimo 10px, escalable
+                      screenWidth * 0.03,
+                      10.0,
+                    ), // Mínimo 10px, escalable
                     fontWeight: FontWeight.w500,
                     color: Colors.white70,
                   ),
@@ -3938,12 +4072,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     final screenWidth = MediaQuery.of(context).size.width;
 
     // Ancho responsivo: usa el parámetro si se proporciona, sino calcula automáticamente
-    final buttonWidth = width ??
+    final buttonWidth =
+        width ??
         math.max(screenWidth * 0.15, 50.0); // Mínimo 50px, máximo 15% pantalla
-    final buttonHeight =
-        math.max(screenWidth * 0.08, 28.0); // Altura proporcional, mínimo 28px
-    final fontSize =
-        math.max(screenWidth * 0.035, 12.0); // Texto escalable, mínimo 12px
+    final buttonHeight = math.max(
+      screenWidth * 0.08,
+      28.0,
+    ); // Altura proporcional, mínimo 28px
+    final fontSize = math.max(
+      screenWidth * 0.035,
+      12.0,
+    ); // Texto escalable, mínimo 12px
 
     return GestureDetector(
       onTap: () => _selectTestament(text),
@@ -3953,7 +4092,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         decoration: BoxDecoration(
           color: isSelected ? Colors.blue : Colors.white.withOpacity(0.2),
           borderRadius: BorderRadius.circular(
-              buttonHeight * 0.5), // Radio proporcional a la altura
+            buttonHeight * 0.5,
+          ), // Radio proporcional a la altura
         ),
         child: Center(
           child: Text(
@@ -4114,8 +4254,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               horizontal: isCompact ? 4.0 : 6.0,
               vertical: isCompact ? 6.0 : 8.0,
             ),
-            margin:
-                const EdgeInsets.all(1), // Margen mínimo para espaciado limpio
+            margin: const EdgeInsets.all(
+              1,
+            ), // Margen mínimo para espaciado limpio
             decoration: BoxDecoration(
               // Diseño más formal y elegante
               gradient: LinearGradient(
@@ -4126,11 +4267,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   Colors.white.withOpacity(0.85),
                 ],
               ),
-              borderRadius:
-                  BorderRadius.circular(8), // Bordes más formales y sutiles
+              borderRadius: BorderRadius.circular(
+                8,
+              ), // Bordes más formales y sutiles
               border: Border.all(
-                color:
-                    Colors.blue.shade200.withOpacity(0.6), // Borde azul sutil
+                color: Colors.blue.shade200.withOpacity(
+                  0.6,
+                ), // Borde azul sutil
                 width: 1.0,
               ),
               boxShadow: [
@@ -4209,8 +4352,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.blue.shade900
-                  .withOpacity(0.95), // Misma paleta azul consistente
+              Colors.blue.shade900.withOpacity(
+                0.95,
+              ), // Misma paleta azul consistente
               Colors.blue.shade800.withOpacity(0.9),
             ],
           ),
@@ -4342,7 +4486,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       child: Container(
         margin: const EdgeInsets.all(1), // Margen mínimo para separación limpia
         padding: const EdgeInsets.symmetric(
-            horizontal: 4, vertical: 6), // Padding interno
+          horizontal: 4,
+          vertical: 6,
+        ), // Padding interno
         decoration: BoxDecoration(
           // Diseño rectangular elegante - NO MÁS CÍRCULOS
           gradient: LinearGradient(
@@ -4353,8 +4499,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               Colors.white.withOpacity(0.85),
             ],
           ),
-          borderRadius:
-              BorderRadius.circular(8), // Bordes rectangulares sutiles
+          borderRadius: BorderRadius.circular(
+            8,
+          ), // Bordes rectangulares sutiles
           border: Border.all(
             color: Colors.blue.shade300.withOpacity(0.6), // Borde azul elegante
             width: 1.0,
@@ -4399,10 +4546,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         child: Center(
           child: Text(
             message,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-            ),
+            style: const TextStyle(fontSize: 14, color: Colors.white),
           ),
         ),
       ),
@@ -4431,10 +4575,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ],
           ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.4),
-            width: 2,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.4),
@@ -4537,8 +4678,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 margin: const EdgeInsets.only(top: 12),
                                 child: ElevatedButton.icon(
                                   onPressed: () => _insertSelectedVerses(),
-                                  icon: const Icon(Icons.add,
-                                      color: Colors.white),
+                                  icon: const Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                  ),
                                   label: Text(
                                     'Insertar $count versículo${count > 1 ? 's' : ''}',
                                     style: const TextStyle(
@@ -4550,7 +4693,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green.shade600,
                                     padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
+                                      vertical: 12,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -4568,8 +4712,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                       _selectionCounter.value = 0;
                                     });
                                   },
-                                  icon: const Icon(Icons.clear,
-                                      color: Colors.white70),
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.white70,
+                                  ),
                                   label: const Text(
                                     'Cancelar selección',
                                     style: TextStyle(
@@ -4671,11 +4817,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               Row(
                 children: [
                   if (isSelected)
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 16,
-                    ),
+                    Icon(Icons.check_circle, color: Colors.green, size: 16),
                   if (isSelected) SizedBox(width: 4),
                   Expanded(
                     child: Text(
@@ -4711,7 +4853,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   // Función para insertar un versículo individual
   void _insertSingleVerse(
-      Map<String, dynamic> verse, String reference, String text) {
+    Map<String, dynamic> verse,
+    String reference,
+    String text,
+  ) {
     print('🔥 VERSÍCULO PRESIONADO: $reference');
 
     // 📝 Guardar texto actual del campo oculto si existe
@@ -4794,7 +4939,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     // Guardar cambios
     _saveNote(pop: false);
     print(
-        '🔥 ¡Nota guardada! Total partes: ${widget.note.contentParts.length}');
+      '🔥 ¡Nota guardada! Total partes: ${widget.note.contentParts.length}',
+    );
   }
 
   // Función para insertar todos los versículos seleccionados
@@ -4814,14 +4960,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
       if (selectedVersesList.isNotEmpty) {
         // Ordenar versículos por número
-        selectedVersesList.sort((a, b) => int.parse(a['verse'].toString())
-            .compareTo(int.parse(b['verse'].toString())));
+        selectedVersesList.sort(
+          (a, b) => int.parse(
+            a['verse'].toString(),
+          ).compareTo(int.parse(b['verse'].toString())),
+        );
 
         // Crear referencia agrupada
         final bookName = selectedVersesList.first['book_name'];
         final chapter = selectedVersesList.first['chapter'];
-        final verseNumbers =
-            selectedVersesList.map((v) => v['verse'].toString()).toList();
+        final verseNumbers = selectedVersesList
+            .map((v) => v['verse'].toString())
+            .toList();
 
         String groupedReference;
         if (verseNumbers.length == 1) {
@@ -4856,8 +5006,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         }
 
         // Crear un solo TextPart con todo el contenido
-        _contentParts.add(_TextPart(completeText.toString(),
-            false)); // Crear un texto plano para contentParts (para persistencia)
+        _contentParts.add(
+          _TextPart(completeText.toString(), false),
+        ); // Crear un texto plano para contentParts (para persistencia)
         final StringBuffer plainText = StringBuffer();
         plainText.write('📖 $groupedReference\n');
         for (int i = 0; i < selectedVersesList.length; i++) {
@@ -4911,7 +5062,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '${selectedVersesList.length} versículos añadidos: $groupedReference'),
+              '${selectedVersesList.length} versículos añadidos: $groupedReference',
+            ),
             backgroundColor: const Color(0xFF059669),
             duration: const Duration(seconds: 2),
           ),
@@ -4980,10 +5132,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ),
             Text(
               verse['text']!,
-              style: const TextStyle(
-                fontSize: 8,
-                color: Colors.white70,
-              ),
+              style: const TextStyle(fontSize: 8, color: Colors.white70),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -4999,101 +5148,101 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       'Juan': [
         {
           'reference': 'Juan 3:16',
-          'text': 'Porque de tal manera amó Dios al mundo...'
+          'text': 'Porque de tal manera amó Dios al mundo...',
         },
         {
           'reference': 'Juan 8:32',
-          'text': 'Y conoceréis la verdad, y la verdad os hará libres...'
+          'text': 'Y conoceréis la verdad, y la verdad os hará libres...',
         },
         {
           'reference': 'Juan 14:6',
-          'text': 'Yo soy el camino, la verdad y la vida...'
+          'text': 'Yo soy el camino, la verdad y la vida...',
         },
       ],
       'Salmos': [
         {
           'reference': 'Salmos 23:1',
-          'text': 'Jehová es mi pastor, nada me faltará...'
+          'text': 'Jehová es mi pastor, nada me faltará...',
         },
         {
           'reference': 'Salmos 46:10',
-          'text': 'Estad quietos, y conoced que yo soy Dios...'
+          'text': 'Estad quietos, y conoced que yo soy Dios...',
         },
         {
           'reference': 'Salmos 118:24',
-          'text': 'Este es el día que hizo Jehová...'
+          'text': 'Este es el día que hizo Jehová...',
         },
       ],
       'Filipenses': [
         {
           'reference': 'Filipenses 4:13',
-          'text': 'Todo lo puedo en Cristo que me fortalece...'
+          'text': 'Todo lo puedo en Cristo que me fortalece...',
         },
         {
           'reference': 'Filipenses 4:19',
-          'text': 'Mi Dios, pues, suplirá todo lo que os falta...'
+          'text': 'Mi Dios, pues, suplirá todo lo que os falta...',
         },
       ],
       'Romanos': [
         {
           'reference': 'Romanos 8:28',
-          'text': 'Y sabemos que a los que aman a Dios...'
+          'text': 'Y sabemos que a los que aman a Dios...',
         },
         {
           'reference': 'Romanos 10:9',
-          'text': 'Si confesares con tu boca que Jesús es el Señor...'
+          'text': 'Si confesares con tu boca que Jesús es el Señor...',
         },
       ],
       'Proverbios': [
         {
           'reference': 'Proverbios 3:5-6',
-          'text': 'Fíate de Jehová de todo tu corazón...'
+          'text': 'Fíate de Jehová de todo tu corazón...',
         },
         {
           'reference': 'Proverbios 16:9',
-          'text': 'El corazón del hombre piensa su camino...'
+          'text': 'El corazón del hombre piensa su camino...',
         },
       ],
       'Mateo': [
         {
           'reference': 'Mateo 6:33',
-          'text': 'Mas buscad primeramente el reino de Dios...'
+          'text': 'Mas buscad primeramente el reino de Dios...',
         },
         {
           'reference': 'Mateo 11:28',
-          'text': 'Venid a mí todos los que estáis trabajados...'
+          'text': 'Venid a mí todos los que estáis trabajados...',
         },
       ],
       'Malaquías': [
         {
           'reference': 'Malaquías 1:11',
           'text':
-              'Porque desde donde el sol nace hasta donde se pone, es grande mi nombre...'
+              'Porque desde donde el sol nace hasta donde se pone, es grande mi nombre...',
         },
         {
           'reference': 'Malaquías 2:10',
           'text':
-              '¿No tenemos todos un mismo padre? ¿No nos ha creado un mismo Dios?'
+              '¿No tenemos todos un mismo padre? ¿No nos ha creado un mismo Dios?',
         },
         {
           'reference': 'Malaquías 3:6',
           'text':
-              'Porque yo Jehová no cambio; por esto, hijos de Jacob, no habéis sido consumidos.'
+              'Porque yo Jehová no cambio; por esto, hijos de Jacob, no habéis sido consumidos.',
         },
         {
           'reference': 'Malaquías 3:7',
           'text':
-              'Desde los días de vuestros padres os habéis apartado de mis leyes...'
+              'Desde los días de vuestros padres os habéis apartado de mis leyes...',
         },
         {
           'reference': 'Malaquías 3:10',
           'text':
-              'Traed todos los diezmos al alfolí y haya alimento en mi casa...'
+              'Traed todos los diezmos al alfolí y haya alimento en mi casa...',
         },
         {
           'reference': 'Malaquías 4:2',
           'text':
-              'Mas a vosotros los que teméis mi nombre, nacerá el Sol de justicia...'
+              'Mas a vosotros los que teméis mi nombre, nacerá el Sol de justicia...',
         },
       ],
     };
@@ -5102,7 +5251,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         [
           {
             'reference': '$book 1:1',
-            'text': 'Versículo de ejemplo para $book...'
+            'text': 'Versículo de ejemplo para $book...',
           },
         ];
   }
@@ -5119,8 +5268,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       final afterCursor = currentText.substring(cursorPosition);
 
       _hiddenController.text = beforeCursor + verseText + afterCursor;
-      _hiddenController.selection =
-          TextSelection.collapsed(offset: cursorPosition + verseText.length);
+      _hiddenController.selection = TextSelection.collapsed(
+        offset: cursorPosition + verseText.length,
+      );
 
       _showBibleMenu = false;
       _currentBibleStep = 'testament'; // Reset para próxima vez
@@ -5142,8 +5292,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       final afterCursor = currentText.substring(cursorPosition);
 
       _hiddenController.text = beforeCursor + verseText + afterCursor;
-      _hiddenController.selection =
-          TextSelection.collapsed(offset: cursorPosition + verseText.length);
+      _hiddenController.selection = TextSelection.collapsed(
+        offset: cursorPosition + verseText.length,
+      );
 
       _showBibleMenu = false;
       _currentBibleStep = 'testament'; // Reset para próxima vez
@@ -5172,17 +5323,25 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _buildBulletOption(
-                icon: '●', label: 'Viñetas', onTap: () => _addBulletPoint('•')),
+              icon: '●',
+              label: 'Viñetas',
+              onTap: () => _addBulletPoint('•'),
+            ),
             _buildBulletOption(
-                icon: '■',
-                label: 'Cuadradas',
-                onTap: () => _addBulletPoint('▪')),
+              icon: '■',
+              label: 'Cuadradas',
+              onTap: () => _addBulletPoint('▪'),
+            ),
             _buildBulletOption(
-                icon: '1.',
-                label: 'Numeración',
-                onTap: () => _addNumberedList()),
+              icon: '1.',
+              label: 'Numeración',
+              onTap: () => _addNumberedList(),
+            ),
             _buildBulletOption(
-                icon: '➤', label: 'Sangría', onTap: () => _addIndentation()),
+              icon: '➤',
+              label: 'Sangría',
+              onTap: () => _addIndentation(),
+            ),
           ],
         ),
       ),
@@ -5209,10 +5368,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
   }
 
-  Widget _buildBulletOption(
-      {required String icon,
-      required String label,
-      required VoidCallback onTap}) {
+  Widget _buildBulletOption({
+    required String icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -5225,15 +5385,19 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(icon,
-                style: TextStyle(
-                    fontSize:
-                        _getIconSize(icon), // Tamaño optimizado por símbolo
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+            Text(
+              icon,
+              style: TextStyle(
+                fontSize: _getIconSize(icon), // Tamaño optimizado por símbolo
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
             if (label.isNotEmpty)
-              Text(label,
-                  style: const TextStyle(fontSize: 6, color: Colors.white70)),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 6, color: Colors.white70),
+              ),
           ],
         ),
       ),
@@ -5257,8 +5421,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
         decoration: BoxDecoration(
           // 🎭 Fondo activo: azul claro translúcido, inactivo: transparente
           color: isActive
-              ? const Color(0xFF87CEEB)
-                  .withOpacity(0.3) // Azul claro como la imagen
+              ? const Color(0xFF87CEEB).withOpacity(
+                  0.3,
+                ) // Azul claro como la imagen
               : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
           // 💎 Bordes sutiles para efecto cristal
@@ -5369,29 +5534,27 @@ class _NoteEditScreenState extends State<NoteEditScreen>
       vsync: this,
     );
 
-    _bibleScaleAnimation = Tween<double>(
-      begin: 0.3,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _bibleAnimationController,
-      curve: Curves.elasticOut,
-    ));
+    _bibleScaleAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _bibleAnimationController,
+        curve: Curves.elasticOut,
+      ),
+    );
 
-    _bibleOpacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _bibleAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _bibleOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _bibleAnimationController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
 
-    _bibleSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _bibleAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _bibleSlideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _bibleAnimationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _titleController = TextEditingController(text: widget.note.title);
     _categoriaController = TextEditingController(text: widget.note.categoria);
@@ -5420,16 +5583,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     // Restaurar textos flotantes
     _floatingTexts.clear();
     for (final text in widget.note.floatingTexts) {
-      final restoredText =
-          FloatingText.fromJson((text as Map).cast<String, dynamic>());
+      final restoredText = FloatingText.fromJson(
+        (text as Map).cast<String, dynamic>(),
+      );
       _floatingTexts.add(restoredText);
     }
 
     // Restaurar trazos
     _drawingStrokes.clear();
     for (final stroke in widget.note.drawingStrokes) {
-      final restoredStroke =
-          DrawingStroke.fromJson((stroke as Map).cast<String, dynamic>());
+      final restoredStroke = DrawingStroke.fromJson(
+        (stroke as Map).cast<String, dynamic>(),
+      );
       _drawingStrokes.add(restoredStroke);
     }
 
@@ -5451,8 +5616,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     if (_bibleData != null) return;
 
     try {
-      final String jsonString =
-          await rootBundle.loadString('assets/data/biblia.json');
+      final String jsonString = await rootBundle.loadString(
+        'assets/data/biblia.json',
+      );
       final Map<String, dynamic> jsonData = json.decode(jsonString);
       setState(() {
         _bibleData = jsonData;
@@ -5496,7 +5662,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     }
 
     print(
-        '📖 Capítulos encontrados para $jsonBookName: ${chapters.length}'); // Debug
+      '📖 Capítulos encontrados para $jsonBookName: ${chapters.length}',
+    ); // Debug
 
     final List<String> sortedChapters = chapters.toList()
       ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
@@ -5506,7 +5673,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
 
   /// 📖 Obtener versículos de un capítulo específico
   Future<List<Map<String, dynamic>>> _getChapterVerses(
-      String bookName, String chapter) async {
+    String bookName,
+    String chapter,
+  ) async {
     if (_bibleData == null) {
       await _loadBibleData();
     }
@@ -5514,13 +5683,20 @@ class _NoteEditScreenState extends State<NoteEditScreen>
     // Convertir nombre de interfaz a nombre del JSON
     final jsonBookName = _getJsonBookName(bookName);
     print(
-        '🔍 Buscando versículos para: $bookName -> $jsonBookName, capítulo: $chapter'); // Debug
+      '🔍 Buscando versículos para: $bookName -> $jsonBookName, capítulo: $chapter',
+    ); // Debug
 
-    final chapterVerses = _bibleVerses
-        .where((verse) =>
-            verse['book_name'] == jsonBookName && verse['chapter'] == chapter)
-        .toList()
-      ..sort((a, b) => int.parse(a['verse']).compareTo(int.parse(b['verse'])));
+    final chapterVerses =
+        _bibleVerses
+            .where(
+              (verse) =>
+                  verse['book_name'] == jsonBookName &&
+                  verse['chapter'] == chapter,
+            )
+            .toList()
+          ..sort(
+            (a, b) => int.parse(a['verse']).compareTo(int.parse(b['verse'])),
+          );
 
     print('📖 Versículos encontrados: ${chapterVerses.length}'); // Debug
 
@@ -5574,8 +5750,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
   Widget build(BuildContext context) {
     const double _bottomBarHeight = 50.0;
 
-    final currentScroll =
-        _scrollController.hasClients ? _scrollController.offset : 0.0;
+    final currentScroll = _scrollController.hasClients
+        ? _scrollController.offset
+        : 0.0;
 
     return Stack(
       children: [
@@ -5598,8 +5775,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
             ),
             title: const Text(
               'Editar nota',
-              style:
-                  TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             actions: [
               Padding(
@@ -5609,8 +5788,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   builder: (context, child) {
                     return IconButton(
                       icon: Opacity(
-                        opacity:
-                            _hasUnsavedChanges ? _blinkAnimation.value : 1.0,
+                        opacity: _hasUnsavedChanges
+                            ? _blinkAnimation.value
+                            : 1.0,
                         child: Icon(
                           Icons.save_rounded,
                           size: 24,
@@ -5640,15 +5820,18 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   showModalBottomSheet(
                     context: context,
                     shape: const RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
                     ),
                     builder: (ctx) => Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         ListTile(
-                          leading:
-                              const Text('🟢', style: TextStyle(fontSize: 22)),
+                          leading: const Text(
+                            '🟢',
+                            style: TextStyle(fontSize: 22),
+                          ),
                           title: const Text('Compartir como texto'),
                           onTap: () async {
                             Navigator.pop(ctx);
@@ -5656,8 +5839,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           },
                         ),
                         ListTile(
-                          leading:
-                              const Text('🟡', style: TextStyle(fontSize: 22)),
+                          leading: const Text(
+                            '🟡',
+                            style: TextStyle(fontSize: 22),
+                          ),
                           title: const Text('Compartir como PDF'),
                           onTap: () async {
                             Navigator.pop(ctx);
@@ -5665,8 +5850,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           },
                         ),
                         ListTile(
-                          leading:
-                              const Text('🔴', style: TextStyle(fontSize: 22)),
+                          leading: const Text(
+                            '🔴',
+                            style: TextStyle(fontSize: 22),
+                          ),
                           title: const Text('Compartir como imagen'),
                           onTap: () async {
                             Navigator.pop(ctx);
@@ -5691,8 +5878,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                       showModalBottomSheet(
                         context: context,
                         shape: const RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(16)),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
                         ),
                         builder: (_) => SkinPanel(
                           color: _noteColor,
@@ -5712,7 +5900,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         builder: (ctx) => AlertDialog(
                           title: const Text('Eliminar nota'),
                           content: const Text(
-                              '¿Estás seguro de que deseas eliminar esta nota?'),
+                            '¿Estás seguro de que deseas eliminar esta nota?',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx),
@@ -5720,14 +5909,16 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             ),
                             TextButton(
                               onPressed: () {
-                                context
-                                    .read<NoteProvider>()
-                                    .deleteNote(widget.note);
+                                context.read<NoteProvider>().deleteNote(
+                                  widget.note,
+                                );
                                 Navigator.pop(ctx);
                                 Navigator.pop(context);
                               },
-                              child: const Text('Eliminar',
-                                  style: TextStyle(color: Colors.red)),
+                              child: const Text(
+                                'Eliminar',
+                                style: TextStyle(color: Colors.red),
+                              ),
                             ),
                           ],
                         ),
@@ -5778,8 +5969,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius:
-                            BorderRadius.circular(_isHeaderCollapsed ? 20 : 12),
+                        borderRadius: BorderRadius.circular(
+                          _isHeaderCollapsed ? 20 : 12,
+                        ),
                         border: Border.all(
                           color: _isHeaderCollapsed
                               ? Colors.blue.shade200.withOpacity(0.7)
@@ -5788,8 +5980,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black
-                                .withOpacity(_isHeaderCollapsed ? 0.06 : 0.12),
+                            color: Colors.black.withOpacity(
+                              _isHeaderCollapsed ? 0.06 : 0.12,
+                            ),
                             blurRadius: _isHeaderCollapsed ? 3 : 6,
                             offset: Offset(0, _isHeaderCollapsed ? 1 : 2),
                             spreadRadius: _isHeaderCollapsed ? 0 : 0.5,
@@ -5816,7 +6009,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     // Título y sliders
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 0),
+                        horizontal: 24,
+                        vertical: 0,
+                      ),
                       child: Column(
                         children: [
                           _editingTitle
@@ -5876,9 +6071,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   data: SliderTheme.of(context).copyWith(
                                     trackHeight: 2,
                                     thumbShape: const RoundSliderThumbShape(
-                                        enabledThumbRadius: 6),
+                                      enabledThumbRadius: 6,
+                                    ),
                                     overlayShape: const RoundSliderOverlayShape(
-                                        overlayRadius: 12),
+                                      overlayRadius: 12,
+                                    ),
                                     thumbColor: Colors.black,
                                     activeTrackColor: Colors.black54,
                                     inactiveTrackColor: Colors.black26,
@@ -5887,13 +6084,16 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                     min: _minTitleFontSize,
                                     max: _maxTitleFontSize,
                                     value: _titleFontSize.clamp(
-                                        _minTitleFontSize, _maxTitleFontSize),
+                                      _minTitleFontSize,
+                                      _maxTitleFontSize,
+                                    ),
                                     onChanged: (v) {
                                       setState(() {
                                         final oldSize = _titleFontSize;
                                         final newSize = v.clamp(
-                                            _minTitleFontSize,
-                                            _maxTitleFontSize);
+                                          _minTitleFontSize,
+                                          _maxTitleFontSize,
+                                        );
                                         final scaleFactor = newSize / oldSize;
 
                                         _titleFontSize = newSize;
@@ -5915,39 +6115,46 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   data: SliderTheme.of(context).copyWith(
                                     trackHeight: 2,
                                     thumbShape: const RoundSliderThumbShape(
-                                        enabledThumbRadius: 6),
+                                      enabledThumbRadius: 6,
+                                    ),
                                     overlayShape: const RoundSliderOverlayShape(
-                                        overlayRadius: 12),
+                                      overlayRadius: 12,
+                                    ),
                                     thumbColor: Colors.blue,
                                     activeTrackColor: Colors.blueAccent,
-                                    inactiveTrackColor:
-                                        Colors.blueAccent.withOpacity(0.25),
+                                    inactiveTrackColor: Colors.blueAccent
+                                        .withOpacity(0.25),
                                   ),
                                   child: Slider(
                                     min: _minContentFontSize,
                                     max: _maxContentFontSize,
                                     value: _contentFontSize.clamp(
-                                        _minContentFontSize,
-                                        _maxContentFontSize),
+                                      _minContentFontSize,
+                                      _maxContentFontSize,
+                                    ),
                                     onChanged: (v) {
                                       setState(() {
                                         final oldSize = _contentFontSize;
                                         final newSize = v.clamp(
-                                            _minContentFontSize,
-                                            _maxContentFontSize);
+                                          _minContentFontSize,
+                                          _maxContentFontSize,
+                                        );
                                         final scaleFactor = newSize / oldSize;
 
                                         _contentFontSize = newSize;
 
-                                        for (int i = 0;
-                                            i < _floatingTexts.length;
-                                            i++) {
+                                        for (
+                                          int i = 0;
+                                          i < _floatingTexts.length;
+                                          i++
+                                        ) {
                                           _floatingTexts[i].fontSize *=
                                               scaleFactor;
                                           _floatingTexts[i].fontSize =
-                                              _floatingTexts[i]
-                                                  .fontSize
-                                                  .clamp(8.0, 48.0);
+                                              _floatingTexts[i].fontSize.clamp(
+                                                8.0,
+                                                48.0,
+                                              );
                                         }
                                       });
                                       _saveNote();
@@ -5982,8 +6189,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children:
-                                  List.generate(_contentParts.length, (i) {
+                              children: List.generate(_contentParts.length, (
+                                i,
+                              ) {
                                 final part = _contentParts[i];
 
                                 if (part.isImage) {
@@ -5991,8 +6199,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 }
 
                                 if (_editingPartIndex == i) {
-                                  _partControllers[i] ??=
-                                      TextEditingController(text: part.text);
+                                  _partControllers[i] ??= TextEditingController(
+                                    text: part.text,
+                                  );
                                   return Focus(
                                     onFocusChange: (hasFocus) {
                                       if (!hasFocus) {
@@ -6004,12 +6213,14 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                             _contentFormat.underline,
                                             _contentFormat.underline
                                                 ? _contentFormat
-                                                    .underlineColor.value
+                                                      .underlineColor
+                                                      .value
                                                 : null,
                                             _contentFormat.highlight,
                                             _contentFormat.highlight
                                                 ? _contentFormat
-                                                    .highlightColor.value
+                                                      .highlightColor
+                                                      .value
                                                 : null,
                                             false,
                                           );
@@ -6039,26 +6250,32 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                               : TextDecoration.none,
                                           decorationColor:
                                               _contentParts[i].underline
-                                                  ? Color(_contentParts[i]
+                                              ? Color(
+                                                  _contentParts[i]
                                                           .underlineColor ??
-                                                      0xFF9333EA)
-                                                  : null,
+                                                      0xFF9333EA,
+                                                )
+                                              : null,
                                           decorationThickness:
                                               _contentParts[i].underline
-                                                  ? 2.5
-                                                  : null,
+                                              ? 2.5
+                                              : null,
                                           backgroundColor:
                                               _contentParts[i].highlight
-                                                  ? Color(_contentParts[i]
+                                              ? Color(
+                                                  _contentParts[i]
                                                           .highlightColor ??
-                                                      0xFFEAB308)
-                                                  : Colors.transparent,
+                                                      0xFFEAB308,
+                                                )
+                                              : Colors.transparent,
                                         ),
                                         textAlign: TextAlign.left,
                                         decoration: const InputDecoration(
                                           border: InputBorder.none,
                                           contentPadding: EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
                                         ),
                                         onChanged: (_) =>
                                             setHasUnsavedChanges(true),
@@ -6090,7 +6307,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                       color: Colors.transparent,
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            vertical: 4.0, horizontal: 8.0),
+                                          vertical: 4.0,
+                                          horizontal: 8.0,
+                                        ),
                                         child: RichText(
                                           text: TextSpan(
                                             children: [
@@ -6105,23 +6324,25 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                                   decoration: part.underline
                                                       ? TextDecoration.underline
                                                       : TextDecoration.none,
-                                                  decorationColor: part
-                                                              .underline &&
+                                                  decorationColor:
+                                                      part.underline &&
                                                           part.underlineColor !=
                                                               null
                                                       ? Color(
-                                                          part.underlineColor!)
+                                                          part.underlineColor!,
+                                                        )
                                                       : null,
                                                   decorationThickness:
                                                       part.underline
-                                                          ? 2.5
-                                                          : null,
-                                                  backgroundColor: part
-                                                              .highlight &&
+                                                      ? 2.5
+                                                      : null,
+                                                  backgroundColor:
+                                                      part.highlight &&
                                                           part.highlightColor !=
                                                               null
                                                       ? Color(
-                                                          part.highlightColor!)
+                                                          part.highlightColor!,
+                                                        )
                                                       : Colors.transparent,
                                                 ),
                                               ),
@@ -6140,17 +6361,22 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                       }),
                                       onLongPress: () {
                                         _showParagraphOptionsPanel(
-                                            context, i, part);
+                                          context,
+                                          i,
+                                          part,
+                                        );
                                       },
                                       child: DragTarget<int>(
                                         onWillAccept: (from) =>
                                             from != null && from != i,
                                         onAccept: (from) {
                                           setState(() {
-                                            final moved =
-                                                _contentParts.removeAt(from);
+                                            final moved = _contentParts
+                                                .removeAt(from);
                                             _contentParts.insert(
-                                                _dropInsertIndex ?? i, moved);
+                                              _dropInsertIndex ?? i,
+                                              moved,
+                                            );
                                             _dropInsertIndex = null;
                                             _saveNote();
                                           });
@@ -6158,8 +6384,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                         onLeave: (_) => setState(() {
                                           _dropInsertIndex = null;
                                         }),
-                                        builder: (context, candidateData,
-                                            rejectedData) {
+                                        builder: (context, candidateData, rejectedData) {
                                           final isActive =
                                               candidateData.isNotEmpty;
                                           return Column(
@@ -6167,18 +6392,21 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                               AnimatedOpacity(
                                                 opacity: isActive ? 1.0 : 0.0,
                                                 duration: const Duration(
-                                                    milliseconds: 180),
+                                                  milliseconds: 180,
+                                                ),
                                                 child: Container(
                                                   height: 3,
-                                                  margin: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 12),
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                      ),
                                                   decoration: BoxDecoration(
                                                     color: Colors.blue
                                                         .withOpacity(0.5),
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                            4),
+                                                          4,
+                                                        ),
                                                   ),
                                                 ),
                                               ),
@@ -6190,13 +6418,17 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                                 }),
                                                 onLongPress: () {
                                                   _showParagraphOptionsPanel(
-                                                      context, i, part);
+                                                    context,
+                                                    i,
+                                                    part,
+                                                  );
                                                 },
                                                 child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      vertical: 4.0,
-                                                      horizontal: 8.0),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 4.0,
+                                                        horizontal: 8.0,
+                                                      ),
                                                   child: Align(
                                                     alignment:
                                                         Alignment.centerLeft,
@@ -6208,38 +6440,41 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                                             style: TextStyle(
                                                               fontSize:
                                                                   _contentFontSize,
-                                                              fontWeight: part.bold
+                                                              fontWeight:
+                                                                  part.bold
                                                                   ? FontWeight
-                                                                      .bold
+                                                                        .bold
                                                                   : FontWeight
-                                                                      .normal,
+                                                                        .normal,
                                                               color: Colors
                                                                   .black87,
-                                                              decoration: part
-                                                                      .underline
+                                                              decoration:
+                                                                  part.underline
                                                                   ? TextDecoration
-                                                                      .underline
+                                                                        .underline
                                                                   : TextDecoration
-                                                                      .none,
-                                                              decorationColor: part
-                                                                          .underline &&
+                                                                        .none,
+                                                              decorationColor:
+                                                                  part.underline &&
                                                                       part.underlineColor !=
                                                                           null
-                                                                  ? Color(part
-                                                                      .underlineColor!)
+                                                                  ? Color(
+                                                                      part.underlineColor!,
+                                                                    )
                                                                   : null,
                                                               decorationThickness:
                                                                   part.underline
-                                                                      ? 2.5
-                                                                      : null,
-                                                              backgroundColor: part
-                                                                          .highlight &&
+                                                                  ? 2.5
+                                                                  : null,
+                                                              backgroundColor:
+                                                                  part.highlight &&
                                                                       part.highlightColor !=
                                                                           null
-                                                                  ? Color(part
-                                                                      .highlightColor!)
+                                                                  ? Color(
+                                                                      part.highlightColor!,
+                                                                    )
                                                                   : Colors
-                                                                      .transparent,
+                                                                        .transparent,
                                                             ),
                                                           ),
                                                         ],
@@ -6286,8 +6521,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   decorationColor: _contentFormat.underline
                                       ? _contentFormat.underlineColor
                                       : null,
-                                  decorationThickness:
-                                      _contentFormat.underline ? 2.5 : null,
+                                  decorationThickness: _contentFormat.underline
+                                      ? 2.5
+                                      : null,
                                   backgroundColor: _contentFormat.highlight
                                       ? _contentFormat.highlightColor
                                       : Colors.transparent,
@@ -6298,7 +6534,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                   contentPadding: EdgeInsets.only(
-                                      left: 0, right: 8, top: 10, bottom: 10),
+                                    left: 0,
+                                    right: 8,
+                                    top: 10,
+                                    bottom: 10,
+                                  ),
                                   hintText: 'Construye...',
                                   fillColor: Colors.transparent,
                                   filled: true,
@@ -6334,8 +6574,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                             final adjustedY = text.y - scrollOffset;
 
                             return Positioned(
-                              key:
-                                  ValueKey('floating_text_${idx}_${text.text}'),
+                              key: ValueKey(
+                                'floating_text_${idx}_${text.text}',
+                              ),
                               left: text.x,
                               top: adjustedY,
                               child: GestureDetector(
@@ -6345,7 +6586,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 },
                                 onLongPress: () {
                                   _showFloatingTextOptionsPanel(
-                                      context, idx, text);
+                                    context,
+                                    idx,
+                                    text,
+                                  );
                                 },
                                 onPanUpdate: (details) {
                                   setState(() {
@@ -6375,9 +6619,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                           : TextDecoration.none,
                                       decorationColor:
                                           text.underlineColor != null
-                                              ? Color(text.underlineColor!)
-                                              : null,
-                                      backgroundColor: text.highlight &&
+                                          ? Color(text.underlineColor!)
+                                          : null,
+                                      backgroundColor:
+                                          text.highlight &&
                                               text.highlightColor != null
                                           ? Color(text.highlightColor!)
                                           : null,
@@ -6410,7 +6655,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 scrollOffset: currentScroll,
                                 strokesToErase: _strokesToErase,
                                 eraserPosition: _eraserPosition,
-                                eraserRadius: _showDrawingToolsMenu &&
+                                eraserRadius:
+                                    _showDrawingToolsMenu &&
                                         _selectedBrushType == 5
                                     ? _selectedBrushSize * 2
                                     : 20.0,
@@ -6427,7 +6673,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 scrollOffset: currentScroll,
                                 strokesToErase: _strokesToErase,
                                 eraserPosition: _eraserPosition,
-                                eraserRadius: _showDrawingToolsMenu &&
+                                eraserRadius:
+                                    _showDrawingToolsMenu &&
                                         _selectedBrushType == 5
                                     ? _selectedBrushSize * 2
                                     : 20.0,
@@ -6455,8 +6702,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               bottom: false,
               minimum: EdgeInsets.zero,
               child: Container(
-                height:
-                    MediaQuery.of(context).viewInsets.bottom > 0 ? 100 : 120,
+                height: MediaQuery.of(context).viewInsets.bottom > 0
+                    ? 100
+                    : 120,
                 decoration: BoxDecoration(
                   // � Fondo oscuro tipo dock de iOS
                   // 🌙 Fondo Glass Morphism - translúcido con blur
@@ -6484,8 +6732,10 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                   ],
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -6496,7 +6746,8 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                           children: [
                             // Botón A - Texto Normal
                             _buildFloatingButton(
-                              isActive: (!_contentFormat.bold &&
+                              isActive:
+                                  (!_contentFormat.bold &&
                                   !_contentFormat.underline &&
                                   !_contentFormat.highlight),
                               icon: Container(
@@ -6508,36 +6759,46 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.normal,
-                                    color: (!_contentFormat.bold &&
+                                    color:
+                                        (!_contentFormat.bold &&
                                             !_contentFormat.underline &&
                                             !_contentFormat.highlight)
                                         ? const Color(
-                                            0xFF2563EB) // Azul para activo
+                                            0xFF2563EB,
+                                          ) // Azul para activo
                                         : const Color(
-                                            0xFF64748B), // Gris azulado para inactivo
+                                            0xFF64748B,
+                                          ), // Gris azulado para inactivo
                                   ),
                                 ),
                               ),
                               onTap: () {
                                 // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                                final String currentText =
-                                    _hiddenController.text.trim();
+                                final String currentText = _hiddenController
+                                    .text
+                                    .trim();
                                 if (currentText.isNotEmpty) {
                                   // Guardar texto actual con formato anterior
                                   setState(() {
-                                    _contentParts.add(_TextPart(
-                                      currentText,
-                                      _contentFormat.bold,
-                                      _contentFormat.underline,
-                                      _contentFormat.underline
-                                          ? _contentFormat.underlineColor.value
-                                          : null,
-                                      _contentFormat.highlight,
-                                      _contentFormat.highlight
-                                          ? _contentFormat.highlightColor.value
-                                          : null,
-                                      false,
-                                    ));
+                                    _contentParts.add(
+                                      _TextPart(
+                                        currentText,
+                                        _contentFormat.bold,
+                                        _contentFormat.underline,
+                                        _contentFormat.underline
+                                            ? _contentFormat
+                                                  .underlineColor
+                                                  .value
+                                            : null,
+                                        _contentFormat.highlight,
+                                        _contentFormat.highlight
+                                            ? _contentFormat
+                                                  .highlightColor
+                                                  .value
+                                            : null,
+                                        false,
+                                      ),
+                                    );
                                   });
                                   _hiddenController.clear();
                                 }
@@ -6552,8 +6813,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 });
                                 _saveNote(pop: false);
                                 // Mantener foco en el texto
-                                FocusScope.of(context)
-                                    .requestFocus(_hiddenFocus);
+                                FocusScope.of(
+                                  context,
+                                ).requestFocus(_hiddenFocus);
                               },
                             ),
                             _buildFloatingButton(
@@ -6563,30 +6825,39 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 size: 20,
                                 color: _contentFormat.bold
                                     ? const Color(
-                                        0xFF2563EB) // Azul para activo
+                                        0xFF2563EB,
+                                      ) // Azul para activo
                                     : const Color(
-                                        0xFF64748B), // Gris azulado para inactivo
+                                        0xFF64748B,
+                                      ), // Gris azulado para inactivo
                               ),
                               onTap: () {
                                 // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                                final String currentText =
-                                    _hiddenController.text.trim();
+                                final String currentText = _hiddenController
+                                    .text
+                                    .trim();
                                 if (currentText.isNotEmpty) {
                                   // Guardar texto actual con formato anterior
                                   setState(() {
-                                    _contentParts.add(_TextPart(
-                                      currentText,
-                                      _contentFormat.bold,
-                                      _contentFormat.underline,
-                                      _contentFormat.underline
-                                          ? _contentFormat.underlineColor.value
-                                          : null,
-                                      _contentFormat.highlight,
-                                      _contentFormat.highlight
-                                          ? _contentFormat.highlightColor.value
-                                          : null,
-                                      false,
-                                    ));
+                                    _contentParts.add(
+                                      _TextPart(
+                                        currentText,
+                                        _contentFormat.bold,
+                                        _contentFormat.underline,
+                                        _contentFormat.underline
+                                            ? _contentFormat
+                                                  .underlineColor
+                                                  .value
+                                            : null,
+                                        _contentFormat.highlight,
+                                        _contentFormat.highlight
+                                            ? _contentFormat
+                                                  .highlightColor
+                                                  .value
+                                            : null,
+                                        false,
+                                      ),
+                                    );
                                   });
                                   _hiddenController.clear();
                                 }
@@ -6599,8 +6870,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 });
                                 _saveNote(pop: false);
                                 // Mantener foco en el texto
-                                FocusScope.of(context)
-                                    .requestFocus(_hiddenFocus);
+                                FocusScope.of(
+                                  context,
+                                ).requestFocus(_hiddenFocus);
                               },
                             ),
                             _buildFloatingButton(
@@ -6610,30 +6882,39 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 size: 20,
                                 color: _contentFormat.underline
                                     ? const Color(
-                                        0xFF2563EB) // Azul para activo
+                                        0xFF2563EB,
+                                      ) // Azul para activo
                                     : const Color(
-                                        0xFF64748B), // Gris azulado para inactivo
+                                        0xFF64748B,
+                                      ), // Gris azulado para inactivo
                               ),
                               onTap: () {
                                 // 🎯 FORMATO CONTINUO: Separar texto antes de cambiar formato
-                                final String currentText =
-                                    _hiddenController.text.trim();
+                                final String currentText = _hiddenController
+                                    .text
+                                    .trim();
                                 if (currentText.isNotEmpty) {
                                   // Guardar texto actual con formato anterior
                                   setState(() {
-                                    _contentParts.add(_TextPart(
-                                      currentText,
-                                      _contentFormat.bold,
-                                      _contentFormat.underline,
-                                      _contentFormat.underline
-                                          ? _contentFormat.underlineColor.value
-                                          : null,
-                                      _contentFormat.highlight,
-                                      _contentFormat.highlight
-                                          ? _contentFormat.highlightColor.value
-                                          : null,
-                                      false,
-                                    ));
+                                    _contentParts.add(
+                                      _TextPart(
+                                        currentText,
+                                        _contentFormat.bold,
+                                        _contentFormat.underline,
+                                        _contentFormat.underline
+                                            ? _contentFormat
+                                                  .underlineColor
+                                                  .value
+                                            : null,
+                                        _contentFormat.highlight,
+                                        _contentFormat.highlight
+                                            ? _contentFormat
+                                                  .highlightColor
+                                                  .value
+                                            : null,
+                                        false,
+                                      ),
+                                    );
                                   });
                                   _hiddenController.clear();
                                 }
@@ -6646,8 +6927,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 });
                                 _saveNote(pop: false);
                                 // Mantener foco en el texto
-                                FocusScope.of(context)
-                                    .requestFocus(_hiddenFocus);
+                                FocusScope.of(
+                                  context,
+                                ).requestFocus(_hiddenFocus);
                               },
                             ),
 
@@ -6684,11 +6966,13 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 size: 20,
                                 color: _showHighlightColorPalette
                                     ? const Color(
-                                        0xFF2563EB) // Azul cuando activo
+                                        0xFF2563EB,
+                                      ) // Azul cuando activo
                                     : (_contentFormat.highlight
-                                        ? _selectedHighlightColor
-                                            .withOpacity(0.8)
-                                        : const Color(0xFF64748B)),
+                                          ? _selectedHighlightColor.withOpacity(
+                                              0.8,
+                                            )
+                                          : const Color(0xFF64748B)),
                               ),
                               onTap: () =>
                                   _toggleHighlightColorMenu(), // Solo toggle del menú
@@ -6701,9 +6985,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 size: 20,
                                 color: _isDrawingMode
                                     ? const Color(
-                                        0xFF2563EB) // Azul para activo
+                                        0xFF2563EB,
+                                      ) // Azul para activo
                                     : const Color(
-                                        0xFF64748B), // Gris azulado para inactivo
+                                        0xFF64748B,
+                                      ), // Gris azulado para inactivo
                               ),
                               onTap: () {
                                 setState(() {
@@ -6724,9 +7010,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 size: 20,
                                 color: _showBibleMenu
                                     ? const Color(
-                                        0xFF2563EB) // Azul para activo
+                                        0xFF2563EB,
+                                      ) // Azul para activo
                                     : const Color(
-                                        0xFF64748B), // Gris azulado para inactivo
+                                        0xFF64748B,
+                                      ), // Gris azulado para inactivo
                               ),
                               onTap: () {
                                 // 🎯 Ocultar teclado automáticamente para mostrar las tarjetas bíblicas
@@ -6753,9 +7041,11 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                                 size: 20,
                                 color: _showBulletsMenu
                                     ? const Color(
-                                        0xFF2563EB) // Azul para activo
+                                        0xFF2563EB,
+                                      ) // Azul para activo
                                     : const Color(
-                                        0xFF64748B), // Gris azulado para inactivo
+                                        0xFF64748B,
+                                      ), // Gris azulado para inactivo
                               ),
                               onTap: () {
                                 setState(() {
@@ -6787,10 +7077,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
               transitionBuilder: (child, animation) {
                 return ScaleTransition(
                   scale: animation,
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
+                  child: FadeTransition(opacity: animation, child: child),
                 );
               },
               child: _isFloatingButtonsCollapsed
@@ -6814,8 +7101,9 @@ class _NoteEditScreenState extends State<NoteEditScreen>
                     child: FadeTransition(
                       opacity: _bibleOpacityAnimation,
                       child: Material(
-                        color: Colors.black
-                            .withOpacity(0.5 * _bibleOpacityAnimation.value),
+                        color: Colors.black.withOpacity(
+                          0.5 * _bibleOpacityAnimation.value,
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 80),
                           child: Center(
@@ -6855,7 +7143,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           Positioned(
             bottom: MediaQuery.of(context).viewInsets.bottom > 0
                 ? MediaQuery.of(context).viewInsets.bottom +
-                    140 // 🎯 Arriba del teclado con Glass Morphism
+                      140 // 🎯 Arriba del teclado con Glass Morphism
                 : 177, // 🎯 Arriba del menú Glass Morphism (altura 125 + padding 47 + espacio 5)
             left: 20,
             right: 20,
@@ -6866,7 +7154,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           Positioned(
             bottom: MediaQuery.of(context).viewInsets.bottom > 0
                 ? MediaQuery.of(context).viewInsets.bottom +
-                    140 // 🎯 Arriba del teclado con Glass Morphism
+                      140 // 🎯 Arriba del teclado con Glass Morphism
                 : 177, // 🎯 Arriba del menú Glass Morphism (altura 125 + padding 47 + espacio 5)
             left: 20,
             right: 20,
@@ -6878,7 +7166,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           Positioned(
             bottom: MediaQuery.of(context).viewInsets.bottom > 0
                 ? MediaQuery.of(context).viewInsets.bottom +
-                    210 // 🎯 Arriba del menú de lápices
+                      210 // 🎯 Arriba del menú de lápices
                 : 247, // 🎯 Arriba del menú de lápices (177 + altura del menú ~70)
             left: 20,
             right: 20,
@@ -6890,7 +7178,7 @@ class _NoteEditScreenState extends State<NoteEditScreen>
           Positioned(
             bottom: MediaQuery.of(context).viewInsets.bottom > 0
                 ? MediaQuery.of(context).viewInsets.bottom +
-                    210 // 🎯 Arriba del menú de herramientas
+                      210 // 🎯 Arriba del menú de herramientas
                 : 247, // 🎯 Arriba del menú de herramientas
             left: 20,
             right: 20,
@@ -6943,17 +7231,11 @@ class _FanMenuOverlayState extends State<_FanMenuOverlay>
     _scaleAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
     _rotationAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
     _controller.forward();
   }
 
@@ -7057,10 +7339,7 @@ class _FanMenuOverlayState extends State<_FanMenuOverlay>
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.black12,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.black12, width: 1),
               boxShadow: const [
                 BoxShadow(
                   color: Colors.black26,
@@ -7069,11 +7348,7 @@ class _FanMenuOverlayState extends State<_FanMenuOverlay>
                 ),
               ],
             ),
-            child: Icon(
-              icon,
-              color: Colors.black87,
-              size: 22,
-            ),
+            child: Icon(icon, color: Colors.black87, size: 22),
           ),
         ),
       ),
@@ -7243,8 +7518,10 @@ class SkinPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Color de fondo',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Color de fondo',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             LayoutBuilder(
               builder: (context, constraints) {
@@ -7257,8 +7534,9 @@ class SkinPanel extends StatelessWidget {
                 if (boxSize > maxBox) boxSize = maxBox;
                 return GridView.builder(
                   shrinkWrap: true,
-                  physics: const AlwaysScrollableScrollPhysics()
-                      .applyTo(const NeverScrollableScrollPhysics()),
+                  physics: const AlwaysScrollableScrollPhysics().applyTo(
+                    const NeverScrollableScrollPhysics(),
+                  ),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     mainAxisSpacing: 6,
@@ -7278,8 +7556,12 @@ class SkinPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildColorOption(BuildContext context, Color c, Color selected,
-      {double size = 40}) {
+  Widget _buildColorOption(
+    BuildContext context,
+    Color c,
+    Color selected, {
+    double size = 40,
+  }) {
     final isSelected = c.value == selected.value;
     return GestureDetector(
       onTap: () {

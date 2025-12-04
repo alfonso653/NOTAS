@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'dart:html' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 
 class DailyVerseWidget extends StatefulWidget {
@@ -43,13 +44,9 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
       vsync: this,
     );
 
-    particleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: particleController,
-      curve: Curves.linear,
-    ));
+    particleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: particleController, curve: Curves.linear),
+    );
 
     particleController.repeat();
   }
@@ -65,15 +62,17 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
     try {
       print('🔄 Iniciando captura de screenshot...');
 
-      final RenderRepaintBoundary boundary = screenshotKey.currentContext!
-          .findRenderObject() as RenderRepaintBoundary;
+      final RenderRepaintBoundary boundary =
+          screenshotKey.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
 
       // Capturar el widget como imagen
       final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
       print('📸 Imagen capturada con éxito');
 
-      final ByteData? byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      final ByteData? byteData = await image.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
 
       if (byteData != null) {
         final Uint8List imageBytes = byteData.buffer.asUint8List();
@@ -267,12 +266,15 @@ class _DailyVerseWidgetState extends State<DailyVerseWidget>
                             // Subtítulo estilizado
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 12),
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
-                                color: (isVerse
-                                        ? const Color(0xFF374151)
-                                        : const Color(0xFF8B5CF6))
-                                    .withOpacity(0.1),
+                                color:
+                                    (isVerse
+                                            ? const Color(0xFF374151)
+                                            : const Color(0xFF8B5CF6))
+                                        .withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
